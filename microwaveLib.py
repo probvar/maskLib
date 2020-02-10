@@ -11,7 +11,7 @@ import maskLib.MaskLib as m
 from dxfwrite import DXFEngine as dxf
 from dxfwrite import const
 from dxfwrite.entities import Polyline
-from dxfwrite.vector2d import vadd, vsub, vector2angle, magnitude, distance
+from dxfwrite.vector2d import vadd, midpoint ,vsub, vector2angle, magnitude, distance
 from dxfwrite.algebra import rotate_2d
 
 from maskLib.Entities import SolidPline, SkewRect, CurveRect, InsideCurve
@@ -101,7 +101,7 @@ def waffle(chip, grid_x, grid_y=None,width=10,height=None,exclude=None,padx=0,pa
 # ===============================================================================
 
 
-def CPW_straight(chip,structure,length,w=None,s=None,bgcolor=None): #note: uses CPW conventions
+def CPW_straight(chip,structure,length,w=None,s=None,bgcolor=None,**kwargs): #note: uses CPW conventions
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -120,11 +120,11 @@ def CPW_straight(chip,structure,length,w=None,s=None,bgcolor=None): #note: uses 
         except KeyError:
             print('s not defined in ',chip.chipID,'!')
             
-    chip.add(dxf.rectangle(struct().getPos((0,-w/2)),length,-s,rotation=struct().direction,bgcolor=bgcolor))
-    chip.add(dxf.rectangle(struct().getPos((0,w/2)),length,s,rotation=struct().direction,bgcolor=bgcolor),structure=structure,length=length)
+    chip.add(dxf.rectangle(struct().getPos((0,-w/2)),length,-s,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+    chip.add(dxf.rectangle(struct().getPos((0,w/2)),length,s,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=length)
         
     
-def CPW_taper(chip,structure,length=None,w0=None,s0=None,w1=None,s1=None,bgcolor=None): #note: uses CPW conventions
+def CPW_taper(chip,structure,length=None,w0=None,s0=None,w1=None,s1=None,bgcolor=None,**kwargs): #note: uses CPW conventions
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -156,10 +156,10 @@ def CPW_taper(chip,structure,length=None,w0=None,s0=None,w1=None,s1=None,bgcolor
     if length is None:
         length = math.sqrt(3)*abs(w0/2+s0-w1/2-s1)
     
-    chip.add(SkewRect(struct().getPos((0,-w0/2)),length,s0,(0,w0/2-w1/2),s1,rotation=struct().direction,valign=const.TOP,edgeAlign=const.TOP,bgcolor=bgcolor))
-    chip.add(SkewRect(struct().getPos((0,w0/2)),length,s0,(0,w1/2-w0/2),s1,rotation=struct().direction,valign=const.BOTTOM,edgeAlign=const.BOTTOM,bgcolor=bgcolor),structure=structure,length=length)
+    chip.add(SkewRect(struct().getPos((0,-w0/2)),length,s0,(0,w0/2-w1/2),s1,rotation=struct().direction,valign=const.TOP,edgeAlign=const.TOP,bgcolor=bgcolor,**kwargs))
+    chip.add(SkewRect(struct().getPos((0,w0/2)),length,s0,(0,w1/2-w0/2),s1,rotation=struct().direction,valign=const.BOTTOM,edgeAlign=const.BOTTOM,bgcolor=bgcolor,**kwargs),structure=structure,length=length)
     
-def CPW_stub_short(chip,structure,flipped=False,curve_ins=True,curve_out=True,r_out=None,w=None,s=None,bgcolor=None):
+def CPW_stub_short(chip,structure,flipped=False,curve_ins=True,curve_out=True,r_out=None,w=None,s=None,bgcolor=None,**kwargs):
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -194,25 +194,25 @@ def CPW_stub_short(chip,structure,flipped=False,curve_ins=True,curve_out=True,r_
         l=min(s/2,r_out)
         
         if l<s/2:
-            chip.add(dxf.rectangle(struct().getPos((dx,w/2+l)),l,s-2*l,halign=flipped and const.RIGHT or const.LEFT,valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor))
-            chip.add(dxf.rectangle(struct().getPos((dx,-w/2-l)),l,s-2*l,halign=flipped and const.RIGHT or const.LEFT,valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor))
+            chip.add(dxf.rectangle(struct().getPos((dx,w/2+l)),l,s-2*l,halign=flipped and const.RIGHT or const.LEFT,valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().getPos((dx,-w/2-l)),l,s-2*l,halign=flipped and const.RIGHT or const.LEFT,valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
         if curve_out:
-            chip.add(CurveRect(struct().getPos((dx,w/2+s-l)),l,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor))
-            chip.add(CurveRect(struct().getPos((dx,-w/2-s+l)),l,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor))
+            chip.add(CurveRect(struct().getPos((dx,w/2+s-l)),l,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs))
+            chip.add(CurveRect(struct().getPos((dx,-w/2-s+l)),l,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
         else:
-            chip.add(dxf.rectangle(struct().getPos((dx,w/2+s-l)),l,l,halign=flipped and const.RIGHT or const.LEFT,valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor))
-            chip.add(dxf.rectangle(struct().getPos((dx,-w/2-s+l)),l,l,halign=flipped and const.RIGHT or const.LEFT,valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor))
+            chip.add(dxf.rectangle(struct().getPos((dx,w/2+s-l)),l,l,halign=flipped and const.RIGHT or const.LEFT,valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().getPos((dx,-w/2-s+l)),l,l,halign=flipped and const.RIGHT or const.LEFT,valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
         if curve_ins:
-            chip.add(CurveRect(struct().getPos((dx,w/2+l)),l,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor))
-            chip.add(CurveRect(struct().getPos((dx,-w/2-l)),l,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor),structure=structure,length=l)
+            chip.add(CurveRect(struct().getPos((dx,w/2+l)),l,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
+            chip.add(CurveRect(struct().getPos((dx,-w/2-l)),l,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs),structure=structure,length=l)
         else:
-            chip.add(dxf.rectangle(struct().getPos((dx,w/2+l)),l,l,halign=flipped and const.RIGHT or const.LEFT,valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor))
-            chip.add(dxf.rectangle(struct().getPos((dx,-w/2-l)),l,l,halign=flipped and const.RIGHT or const.LEFT,valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor),structure=structure,length=l)
+            chip.add(dxf.rectangle(struct().getPos((dx,w/2+l)),l,l,halign=flipped and const.RIGHT or const.LEFT,valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().getPos((dx,-w/2-l)),l,l,halign=flipped and const.RIGHT or const.LEFT,valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=l)
 
     else:
-        CPW_straight(chip,structure,s/2,w=w,s=s,bgcolor=bgcolor)
+        CPW_straight(chip,structure,s/2,w=w,s=s,bgcolor=bgcolor,**kwargs)
         
-def CPW_stub_open(chip,structure,r_out=None,r_ins=None,w=None,s=None,flipped=False,bgcolor=None):
+def CPW_stub_open(chip,structure,r_out=None,r_ins=None,w=None,s=None,flipped=False,bgcolor=None,**kwargs):
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -248,16 +248,16 @@ def CPW_stub_open(chip,structure,r_out=None,r_ins=None,w=None,s=None,flipped=Fal
         dx = s
 
     if r_ins > 0:
-        chip.add(InsideCurve(struct().getPos((dx,w/2)),r_ins,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor))
-        chip.add(InsideCurve(struct().getPos((dx,-w/2)),r_ins,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor))
+        chip.add(InsideCurve(struct().getPos((dx,w/2)),r_ins,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs))
+        chip.add(InsideCurve(struct().getPos((dx,-w/2)),r_ins,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
     if r_out >0:
-        chip.add(CurveRect(struct().getPos((dx,w/2)),s,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor))
-        chip.add(dxf.rectangle(struct().getPos((dx,0)),flipped and -s or s,w,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor))
-        chip.add(CurveRect(struct().getPos((dx,-w/2)),s,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor),structure=structure,length=s)
+        chip.add(CurveRect(struct().getPos((dx,w/2)),s,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs))
+        chip.add(dxf.rectangle(struct().getPos((dx,0)),flipped and -s or s,w,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+        chip.add(CurveRect(struct().getPos((dx,-w/2)),s,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs),structure=structure,length=s)
     else:
-        chip.add(dxf.rectangle(struct().start,s,w+2*s,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor),structure=structure,length=s)
+        chip.add(dxf.rectangle(struct().start,s,w+2*s,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=s)
         
-def CPW_stub_round(chip,structure,w=None,s=None,round_left=True,round_right=True,flipped=False,bgcolor=None):
+def CPW_stub_round(chip,structure,w=None,s=None,round_left=True,round_right=True,flipped=False,bgcolor=None,**kwargs):
     #same as stub_open, but preserves gap width along turn (so radii are defined by w, s)
     def struct():
         if isinstance(structure,m.Structure):
@@ -282,22 +282,22 @@ def CPW_stub_round(chip,structure,w=None,s=None,round_left=True,round_right=True
         dx = s+w/2
 
     if False:#round_left and round_right:
-        chip.add(CurveRect(struct().getPos((dx,w/2)),s,w/2,angle=180,ralign=const.BOTTOM,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor),structure=structure,length=s+w/2)
+        chip.add(CurveRect(struct().getPos((dx,w/2)),s,w/2,angle=180,ralign=const.BOTTOM,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs),structure=structure,length=s+w/2)
     else:
         if round_left:
-            chip.add(CurveRect(struct().getPos((dx,w/2)),s,w/2,angle=90,ralign=const.BOTTOM,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor))
+            chip.add(CurveRect(struct().getPos((dx,w/2)),s,w/2,angle=90,ralign=const.BOTTOM,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs))
         else:
-            chip.add(dxf.rectangle(struct().getPos((0,w/2)),s+w/2,s,rotation=struct().direction,bgcolor=bgcolor))
-            chip.add(InsideCurve(struct().getPos((flipped and s or w/2,w/2)),w/2,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor))
-            chip.add(dxf.rectangle(struct().getPos((s+w/2-dx,w/2)),-s,-w/2,rotation=struct().direction,halign = flipped and const.RIGHT or const.LEFT, bgcolor=bgcolor))
+            chip.add(dxf.rectangle(struct().getPos((0,w/2)),s+w/2,s,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(InsideCurve(struct().getPos((flipped and s or w/2,w/2)),w/2,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().getPos((s+w/2-dx,w/2)),-s,-w/2,rotation=struct().direction,halign = flipped and const.RIGHT or const.LEFT, bgcolor=bgcolor,**kwargs))
         if round_right:
-            chip.add(CurveRect(struct().getPos((dx,-w/2)),s,w/2,angle=90,ralign=const.BOTTOM,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor),structure=structure,length=s+w/2)
+            chip.add(CurveRect(struct().getPos((dx,-w/2)),s,w/2,angle=90,ralign=const.BOTTOM,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs),structure=structure,length=s+w/2)
         else:
-            chip.add(dxf.rectangle(struct().getPos((0,-w/2)),s+w/2,-s,rotation=struct().direction,bgcolor=bgcolor))
-            chip.add(InsideCurve(struct().getPos((flipped and s or w/2,-w/2)),w/2,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor))
-            chip.add(dxf.rectangle(struct().getPos((s+w/2-dx,-w/2)),-s,w/2,rotation=struct().direction,halign = flipped and const.RIGHT or const.LEFT, bgcolor=bgcolor),structure=structure,length=s+w/2)
+            chip.add(dxf.rectangle(struct().getPos((0,-w/2)),s+w/2,-s,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(InsideCurve(struct().getPos((flipped and s or w/2,-w/2)),w/2,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().getPos((s+w/2-dx,-w/2)),-s,w/2,rotation=struct().direction,halign = flipped and const.RIGHT or const.LEFT, bgcolor=bgcolor,**kwargs),structure=structure,length=s+w/2)
     
-def CPW_bend(chip,structure,angle=90,CCW=True,w=None,s=None,radius=None,ptDensity=120,bgcolor=None):
+def CPW_bend(chip,structure,angle=90,CCW=True,w=None,s=None,radius=None,ptDensity=120,bgcolor=None,**kwargs):
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -326,11 +326,11 @@ def CPW_bend(chip,structure,angle=90,CCW=True,w=None,s=None,radius=None,ptDensit
         angle = angle + 360
     angle = angle%360
         
-    chip.add(CurveRect(struct().start,s,radius,angle=angle,ptDensity=ptDensity,roffset=w/2,ralign=const.BOTTOM,rotation=struct().direction,vflip=not CCW,bgcolor=bgcolor))
-    chip.add(CurveRect(struct().start,s,radius,angle=angle,ptDensity=ptDensity,roffset=-w/2,ralign=const.TOP,valign=const.TOP,rotation=struct().direction,vflip=not CCW,bgcolor=bgcolor))
+    chip.add(CurveRect(struct().start,s,radius,angle=angle,ptDensity=ptDensity,roffset=w/2,ralign=const.BOTTOM,rotation=struct().direction,vflip=not CCW,bgcolor=bgcolor,**kwargs))
+    chip.add(CurveRect(struct().start,s,radius,angle=angle,ptDensity=ptDensity,roffset=-w/2,ralign=const.TOP,valign=const.TOP,rotation=struct().direction,vflip=not CCW,bgcolor=bgcolor,**kwargs))
     struct().updatePos(newStart=struct().getPos((radius*math.sin(math.radians(angle)),(CCW and 1 or -1)*radius*(math.cos(math.radians(angle))-1))),angle=CCW and -angle or angle)
 
-def Wire_bend(chip,structure,angle=90,CCW=True,w=None,radius=None,bgcolor=None):
+def Wire_bend(chip,structure,angle=90,CCW=True,w=None,radius=None,bgcolor=None,**kwargs):
     #only defined for 90 degree bends
     if angle%90 != 0:
         return
@@ -358,21 +358,21 @@ def Wire_bend(chip,structure,angle=90,CCW=True,w=None,radius=None,bgcolor=None):
     angle = angle%360
         
     if radius-w/2 > 0:
-        chip.add(CurveRect(struct().start,radius-w/2,radius,angle=angle,roffset=-w/2,ralign=const.TOP,valign=const.TOP,rotation=struct().direction,vflip=not CCW,bgcolor=bgcolor))
+        chip.add(CurveRect(struct().start,radius-w/2,radius,angle=angle,roffset=-w/2,ralign=const.TOP,valign=const.TOP,rotation=struct().direction,vflip=not CCW,bgcolor=bgcolor,**kwargs))
     for i in range(angle//90):
-        chip.add(InsideCurve(struct().getPos(vadd(rotate_2d((radius+w/2,(CCW and 1 or -1)*(radius+w/2)),(CCW and -1 or 1)*math.radians(i*90)),(0,CCW and -radius or radius))),radius+w/2,rotation=struct().direction+(CCW and -1 or 1)*i*90,bgcolor=bgcolor,vflip=not CCW))
+        chip.add(InsideCurve(struct().getPos(vadd(rotate_2d((radius+w/2,(CCW and 1 or -1)*(radius+w/2)),(CCW and -1 or 1)*math.radians(i*90)),(0,CCW and -radius or radius))),radius+w/2,rotation=struct().direction+(CCW and -1 or 1)*i*90,bgcolor=bgcolor,vflip=not CCW,**kwargs))
     struct().updatePos(newStart=struct().getPos((radius*math.sin(math.radians(angle)),(CCW and 1 or -1)*radius*(math.cos(math.radians(angle))-1))),angle=CCW and -angle or angle)
 
 # ===============================================================================
 # composite CPW function definitions
 # ===============================================================================
 
-def CPW_launcher(chip,struct,offset=0,length=None,padw=300,pads=160,w=None,s=None,r_ins=0,r_out=0,bgcolor=None):
-    CPW_stub_open(chip,struct,r_out=r_out,r_ins=r_ins,w=padw,s=pads,flipped=True)
-    CPW_straight(chip,struct,padw,w=padw,s=pads)
-    CPW_taper(chip,struct,w0=padw,s0=pads)
+def CPW_launcher(chip,struct,offset=0,length=None,padw=300,pads=160,w=None,s=None,r_ins=0,r_out=0,bgcolor=None,**kwargs):
+    CPW_stub_open(chip,struct,r_out=r_out,r_ins=r_ins,w=padw,s=pads,flipped=True,**kwargs)
+    CPW_straight(chip,struct,padw,w=padw,s=pads,**kwargs)
+    CPW_taper(chip,struct,w0=padw,s0=pads,**kwargs)
 
-def CPW_wiggles(chip,structure,length=None,nTurns=None,minWidth=None,maxWidth=None,CCW=True,start_bend = True,stop_bend=True,w=None,s=None,radius=None,bgcolor=None):
+def CPW_wiggles(chip,structure,length=None,nTurns=None,minWidth=None,maxWidth=None,CCW=True,start_bend = True,stop_bend=True,w=None,s=None,radius=None,bgcolor=None,**kwargs):
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -404,33 +404,33 @@ def CPW_wiggles(chip,structure,length=None,nTurns=None,minWidth=None,maxWidth=No
         print('not enough params specified for CPW_wiggles!')
         return
     if start_bend:
-        CPW_bend(chip,structure,angle=90,CCW=CCW,w=w,s=s,radius=radius,bgcolor=bgcolor)
+        CPW_bend(chip,structure,angle=90,CCW=CCW,w=w,s=s,radius=radius,bgcolor=bgcolor,**kwargs)
         if h > radius:
-            CPW_straight(chip,structure,h-radius,w=w,s=s,bgcolor=bgcolor)
+            CPW_straight(chip,structure,h-radius,w=w,s=s,bgcolor=bgcolor,**kwargs)
     else:
-        CPW_straight(chip,structure,h,w=w,s=s,bgcolor=bgcolor)
-    CPW_bend(chip,structure,angle=180,CCW=not CCW,w=w,s=s,radius=radius,bgcolor=bgcolor)
-    CPW_straight(chip,structure,h+radius,w=w,s=s,bgcolor=bgcolor)
+        CPW_straight(chip,structure,h,w=w,s=s,bgcolor=bgcolor,**kwargs)
+    CPW_bend(chip,structure,angle=180,CCW=not CCW,w=w,s=s,radius=radius,bgcolor=bgcolor,**kwargs)
+    CPW_straight(chip,structure,h+radius,w=w,s=s,bgcolor=bgcolor,**kwargs)
     if h > radius:
-        CPW_straight(chip,structure,h-radius,w=w,s=s,bgcolor=bgcolor)
-    CPW_bend(chip,structure,angle=180,CCW=CCW,w=w,s=s,radius=radius,bgcolor=bgcolor)
+        CPW_straight(chip,structure,h-radius,w=w,s=s,bgcolor=bgcolor,**kwargs)
+    CPW_bend(chip,structure,angle=180,CCW=CCW,w=w,s=s,radius=radius,bgcolor=bgcolor,**kwargs)
     if h > radius:
-        CPW_straight(chip,structure,h-radius,w=w,s=s,bgcolor=bgcolor)
+        CPW_straight(chip,structure,h-radius,w=w,s=s,bgcolor=bgcolor,**kwargs)
     for n in range(nTurns-1):
-        CPW_straight(chip,structure,h+radius,w=w,s=s,bgcolor=bgcolor)
-        CPW_bend(chip,structure,angle=180,CCW=not CCW,w=w,s=s,radius=radius,bgcolor=bgcolor)
-        CPW_straight(chip,structure,h+radius,w=w,s=s,bgcolor=bgcolor)
+        CPW_straight(chip,structure,h+radius,w=w,s=s,bgcolor=bgcolor,**kwargs)
+        CPW_bend(chip,structure,angle=180,CCW=not CCW,w=w,s=s,radius=radius,bgcolor=bgcolor,**kwargs)
+        CPW_straight(chip,structure,h+radius,w=w,s=s,bgcolor=bgcolor,**kwargs)
         if h > radius:
-            CPW_straight(chip,structure,h-radius,w=w,s=s,bgcolor=bgcolor)
-        CPW_bend(chip,structure,angle=180,CCW=CCW,w=w,s=s,radius=radius,bgcolor=bgcolor)
+            CPW_straight(chip,structure,h-radius,w=w,s=s,bgcolor=bgcolor,**kwargs)
+        CPW_bend(chip,structure,angle=180,CCW=CCW,w=w,s=s,radius=radius,bgcolor=bgcolor,**kwargs)
         if h > radius:
-            CPW_straight(chip,structure,h-radius,w=w,s=s,bgcolor=bgcolor)
+            CPW_straight(chip,structure,h-radius,w=w,s=s,bgcolor=bgcolor,**kwargs)
     if stop_bend:
-        CPW_bend(chip,structure,angle=90,CCW=not CCW,w=w,s=s,radius=radius,bgcolor=bgcolor)
+        CPW_bend(chip,structure,angle=90,CCW=not CCW,w=w,s=s,radius=radius,bgcolor=bgcolor,**kwargs)
     else:
-        CPW_straight(chip,structure,radius,w=w,s=s,bgcolor=bgcolor)
+        CPW_straight(chip,structure,radius,w=w,s=s,bgcolor=bgcolor,**kwargs)
 
-def CPW_directTo(chip,from_structure,to_structure,to_flipped=True,w=None,s=None,radius=None,CW1_override=None,CW2_override=None,flip_angle=False,debug=False):
+def CPW_directTo(chip,from_structure,to_structure,to_flipped=True,w=None,s=None,radius=None,CW1_override=None,CW2_override=None,flip_angle=False,debug=False,**kwargs):
     def struct1():
         if isinstance(from_structure,m.Structure):
             return from_structure
@@ -490,13 +490,13 @@ def CPW_directTo(chip,from_structure,to_structure,to_flipped=True,w=None,s=None,
             print('adjusting angle')
             angle1 = angle1 + math.degrees(math.asin(abs(2*radius/distance(center2,center1))))
             '''
-    CPW_bend(chip,from_structure,angle=angle1,w=w,s=s,radius=radius, CCW=CW1)
-    CPW_straight(chip,from_structure,distance(center2,center1)*math.cos(correction_angle),w=w,s=s)
+    CPW_bend(chip,from_structure,angle=angle1,w=w,s=s,radius=radius, CCW=CW1,**kwargs)
+    CPW_straight(chip,from_structure,distance(center2,center1)*math.cos(correction_angle),w=w,s=s,**kwargs)
     
     angle2 = abs(struct1().direction-struct2.direction)
     if angle2 > 270:
         angle2 = min(angle2,abs(360-angle2))
-    CPW_bend(chip,from_structure,angle=angle2,w=w,s=s,radius=radius,CCW=CW2)
+    CPW_bend(chip,from_structure,angle=angle2,w=w,s=s,radius=radius,CCW=CW2,**kwargs)
 
 def wiggle_calc(chip,structure,length=None,nTurns=None,maxWidth=None,Width=None,start_bend = True,stop_bend=True,w=None,s=None,radius=None):
     #figure out 
@@ -544,7 +544,7 @@ def wiggle_calc(chip,structure,length=None,nTurns=None,maxWidth=None,Width=None,
     h = max(h,radius)
     return {'nTurns':nTurns,'h':h,'length':length}
 
-def Inductor_wiggles(chip,structure,length=None,nTurns=None,maxWidth=None,Width=None,CCW=True,start_bend = True,stop_bend=True,pad_to_width=False,w=None,s=None,radius=None,bgcolor=None):
+def Inductor_wiggles(chip,structure,length=None,nTurns=None,maxWidth=None,Width=None,CCW=True,start_bend = True,stop_bend=True,pad_to_width=False,w=None,s=None,radius=None,bgcolor=None,**kwargs):
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -603,48 +603,48 @@ def Inductor_wiggles(chip,structure,length=None,nTurns=None,maxWidth=None,Width=
         if Width is None:
             print('ERROR: cannot pad to width with Width undefined!')
         if start_bend:
-            chip.add(dxf.rectangle(struct().getPos((0,h+radius+w/2)),(2*radius)+(nTurns)*4*radius,Width-(h+radius+w/2),rotation=struct().direction,bgcolor=bgcolor))
-            chip.add(dxf.rectangle(struct().getPos((0,-h-radius-w/2)),(stop_bend)*(radius+w/2)+(nTurns)*4*radius + radius-w/2,(h+radius+w/2)-Width,rotation=struct().direction,bgcolor=bgcolor))
+            chip.add(dxf.rectangle(struct().getPos((0,h+radius+w/2)),(2*radius)+(nTurns)*4*radius,Width-(h+radius+w/2),rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().getPos((0,-h-radius-w/2)),(stop_bend)*(radius+w/2)+(nTurns)*4*radius + radius-w/2,(h+radius+w/2)-Width,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
         else:
-            chip.add(dxf.rectangle(struct().getPos((-h-radius-w/2,w/2)),(h+radius+w/2)-Width,(radius-w/2)+(nTurns)*4*radius,rotation=struct().direction,bgcolor=bgcolor))
-            chip.add(dxf.rectangle(struct().getPos((h+radius+w/2,-radius)),Width-(h+radius+w/2),(stop_bend)*(radius+w/2)+(nTurns)*4*radius + w/2,rotation=struct().direction,bgcolor=bgcolor))
+            chip.add(dxf.rectangle(struct().getPos((-h-radius-w/2,w/2)),(h+radius+w/2)-Width,(radius-w/2)+(nTurns)*4*radius,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().getPos((h+radius+w/2,-radius)),Width-(h+radius+w/2),(stop_bend)*(radius+w/2)+(nTurns)*4*radius + w/2,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
     #begin wiggles
     if start_bend:
-        chip.add(dxf.rectangle(struct().getPos((0,pm*w/2)),radius+w/2,pm*(h+radius),rotation=struct().direction,bgcolor=bgcolor))
-        Wire_bend(chip,structure,angle=90,CCW=CCW,w=w,radius=radius,bgcolor=bgcolor)
+        chip.add(dxf.rectangle(struct().getPos((0,pm*w/2)),radius+w/2,pm*(h+radius),rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+        Wire_bend(chip,structure,angle=90,CCW=CCW,w=w,radius=radius,bgcolor=bgcolor,**kwargs)
         if h > radius:
-            chip.add(dxf.rectangle(struct().getPos((0,-pm*w/2)),h+w/2,pm*(radius-w/2),valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor),structure=struct(),length=h-radius)
+            chip.add(dxf.rectangle(struct().getPos((0,-pm*w/2)),h+w/2,pm*(radius-w/2),valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=struct(),length=h-radius)
         else:
-            chip.add(dxf.rectangle(struct().getPos((0,-pm*w/2)),radius+w/2,pm*(radius-w/2),valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor))
+            chip.add(dxf.rectangle(struct().getPos((0,-pm*w/2)),radius+w/2,pm*(radius-w/2),valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
     else:
-        chip.add(dxf.rectangle(struct().getPos((0,-pm*w/2)),2*radius+w/2,pm*(radius-w/2),valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor),structure=struct(),length=radius)
+        chip.add(dxf.rectangle(struct().getPos((0,-pm*w/2)),2*radius+w/2,pm*(radius-w/2),valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=struct(),length=radius)
         #struct().shiftPos(h)
-    chip.add(dxf.rectangle(struct().getPos((0,pm*w/2)),-h-max(h,radius)-radius-w/2,pm*(2*radius-w),rotation=struct().direction,bgcolor=bgcolor))
-    Wire_bend(chip,structure,angle=180,CCW=not CCW,w=w,radius=radius,bgcolor=bgcolor)
+    chip.add(dxf.rectangle(struct().getPos((0,pm*w/2)),-h-max(h,radius)-radius-w/2,pm*(2*radius-w),rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+    Wire_bend(chip,structure,angle=180,CCW=not CCW,w=w,radius=radius,bgcolor=bgcolor,**kwargs)
     struct().shiftPos(h+radius)
     if h > radius:
         struct().shiftPos(h-radius)
-    chip.add(dxf.rectangle(struct().getPos((0,-pm*w/2)),-h-max(h,radius)-radius-w/2,pm*(-2*radius+w),rotation=struct().direction,bgcolor=bgcolor))
-    Wire_bend(chip,structure,angle=180,CCW=CCW,w=w,radius=radius,bgcolor=bgcolor)
+    chip.add(dxf.rectangle(struct().getPos((0,-pm*w/2)),-h-max(h,radius)-radius-w/2,pm*(-2*radius+w),rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+    Wire_bend(chip,structure,angle=180,CCW=CCW,w=w,radius=radius,bgcolor=bgcolor,**kwargs)
     if h > radius:
         struct().shiftPos(h-radius)
     for n in range(nTurns-1):
         struct().shiftPos(h+radius)
-        chip.add(dxf.rectangle(struct().getPos((0,pm*w/2)),-h-max(h,radius)-radius-w/2,pm*(2*radius-w),rotation=struct().direction,bgcolor=bgcolor))
-        Wire_bend(chip,structure,angle=180,CCW=not CCW,w=w,radius=radius,bgcolor=bgcolor)
+        chip.add(dxf.rectangle(struct().getPos((0,pm*w/2)),-h-max(h,radius)-radius-w/2,pm*(2*radius-w),rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+        Wire_bend(chip,structure,angle=180,CCW=not CCW,w=w,radius=radius,bgcolor=bgcolor,**kwargs)
         struct().shiftPos(2*h)
-        chip.add(dxf.rectangle(struct().getPos((0,-pm*w/2)),-h-max(h,radius)-radius-w/2,pm*(-2*radius+w),rotation=struct().direction,bgcolor=bgcolor))
-        Wire_bend(chip,structure,angle=180,CCW=CCW,w=w,radius=radius,bgcolor=bgcolor)
+        chip.add(dxf.rectangle(struct().getPos((0,-pm*w/2)),-h-max(h,radius)-radius-w/2,pm*(-2*radius+w),rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+        Wire_bend(chip,structure,angle=180,CCW=CCW,w=w,radius=radius,bgcolor=bgcolor,**kwargs)
         struct().shiftPos(h-radius)
-    chip.add(dxf.rectangle(struct().getLastPos((-radius-w/2,pm*w/2)),w/2+h,pm*(radius-w/2),rotation=struct().direction,bgcolor=bgcolor),structure=struct())
+    chip.add(dxf.rectangle(struct().getLastPos((-radius-w/2,pm*w/2)),w/2+h,pm*(radius-w/2),rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=struct())
     if stop_bend:
-        chip.add(dxf.rectangle(struct().getPos((radius+w/2,-pm*w/2)),h+radius,pm*(radius+w/2),rotation=struct().direction,bgcolor=bgcolor))
-        Wire_bend(chip,structure,angle=90,CCW=not CCW,w=w,radius=radius,bgcolor=bgcolor)
+        chip.add(dxf.rectangle(struct().getPos((radius+w/2,-pm*w/2)),h+radius,pm*(radius+w/2),rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+        Wire_bend(chip,structure,angle=90,CCW=not CCW,w=w,radius=radius,bgcolor=bgcolor,**kwargs)
     else:
         #CPW_straight(chip,structure,radius,w=w,s=s,bgcolor=bgcolor)
-        chip.add(dxf.rectangle(struct().getPos((0,pm*w/2)),radius,pm*(radius-w/2),rotation=struct().direction,bgcolor=bgcolor),structure=struct(),length=radius)
+        chip.add(dxf.rectangle(struct().getPos((0,pm*w/2)),radius,pm*(radius-w/2),rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=struct(),length=radius)
 
-def JellyfishResonator(chip,structure,width,height,l_ind,w_cap=None,s_cap=None,r_cap=None,w_ind=3,r_ind=6,ialign=const.BOTTOM,nTurns=None,maxWidth=None,CCW=True,bgcolor=None):
+def JellyfishResonator(chip,structure,width,height,l_ind,w_cap=None,s_cap=None,r_cap=None,w_ind=3,r_ind=6,ialign=const.BOTTOM,nTurns=None,maxWidth=None,CCW=True,bgcolor=None,**kwargs):
     #inductor params: wire width = w_ind, radius (sets pitch) = r_ind, total inductor wire length = l_ind. ialign determines where the inductor should align to, (TOP = bunch at capacitor)
     #capacitor params: wire width = w_cap, gap to ground = s_cap, nominal horseshoe bend radius = r_cap ()
     def struct():
@@ -682,51 +682,53 @@ def JellyfishResonator(chip,structure,width,height,l_ind,w_cap=None,s_cap=None,r
     inductor_pad = height - w_cap - 3*s_cap - (nTurns+0.5)*4*r_ind
     
     #assume structure starts in correct orientation
-    chip.add(dxf.rectangle(struct().start,s_cap,width - 2*(w_cap+2*s_cap),valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor))
+    chip.add(dxf.rectangle(struct().start,s_cap,width - 2*(w_cap+2*s_cap),valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
     
     s_r = struct().cloneAlong((s_cap+w_cap/2,-width/2 + 2*s_cap+w_cap),newDirection=-90)
     
-    CPW_bend(chip,s_r,CCW=False,radius=r_cap)
-    CPW_straight(chip,s_r,height-3*s_cap-w_cap*3/2)
-    CPW_stub_round(chip,s_r,round_right = (inductor_pad >= 0),round_left=False)
+    CPW_bend(chip,s_r,CCW=False,radius=r_cap,**kwargs)
+    CPW_straight(chip,s_r,height-3*s_cap-w_cap*3/2,**kwargs)
+    CPW_stub_round(chip,s_r,round_right = (inductor_pad >= 0),round_left=False,**kwargs)
     
     s_l = struct().cloneAlong((s_cap+w_cap/2,width/2 - 2*s_cap - w_cap),newDirection=90)
     
-    CPW_bend(chip,s_l,radius=r_cap)
-    CPW_straight(chip,s_l,height-3*s_cap-w_cap*3/2)
-    CPW_stub_round(chip,s_l,round_left = (inductor_pad >= 0),round_right=False)
+    CPW_bend(chip,s_l,radius=r_cap,**kwargs)
+    CPW_straight(chip,s_l,height-3*s_cap-w_cap*3/2,**kwargs)
+    CPW_stub_round(chip,s_l,round_left = (inductor_pad >= 0),round_right=False,**kwargs)
     
     s_0 = struct().cloneAlong((s_cap+w_cap,0))
     s_0.defaults['w']=w_ind
     s_0.defaults['radius']=r_ind
-    CPW_stub_short(chip,s_0,s=(width - 2*(w_cap+2*s_cap)-w_ind)/2,r_out=r_cap-w_cap/2,curve_out=False,flipped=True)
+    CPW_stub_short(chip,s_0,s=(width - 2*(w_cap+2*s_cap)-w_ind)/2,r_out=r_cap-w_cap/2,curve_out=False,flipped=True,**kwargs)
     
     
     if inductor_pad < -s_cap-w_cap/2:
         #print('WARNING: capacitor is not long enough to cover inductor.')
-        chip.add(dxf.rectangle(s_l.start,-inductor_pad-s_cap-w_cap/2,2*s_cap+w_cap,rotation=s_r.direction,valign=const.MIDDLE,bgcolor=bgcolor),structure=s_l,length=-inductor_pad-s_cap-w_cap/2)
-        chip.add(dxf.rectangle(s_r.start,-inductor_pad-s_cap-w_cap/2,2*s_cap+w_cap,rotation=s_r.direction,valign=const.MIDDLE,bgcolor=bgcolor),structure=s_r,length=-inductor_pad-s_cap-w_cap/2)
+        chip.add(dxf.rectangle(s_l.start,-inductor_pad-s_cap-w_cap/2,2*s_cap+w_cap,rotation=s_r.direction,valign=const.MIDDLE,bgcolor=bgcolor,**kwargs),structure=s_l,length=-inductor_pad-s_cap-w_cap/2)
+        chip.add(dxf.rectangle(s_r.start,-inductor_pad-s_cap-w_cap/2,2*s_cap+w_cap,rotation=s_r.direction,valign=const.MIDDLE,bgcolor=bgcolor,**kwargs),structure=s_r,length=-inductor_pad-s_cap-w_cap/2)
     if inductor_pad < 0:
-        chip.add(dxf.rectangle(s_l.start,w_cap/2+s_cap,-s_cap-w_cap/2,rotation=s_r.direction,bgcolor=bgcolor))
-        chip.add(dxf.rectangle(s_r.start,w_cap/2+s_cap,s_cap+w_cap/2,rotation=s_r.direction,bgcolor=bgcolor))
-        chip.add(CurveRect(s_l.start,w_cap/2+s_cap,w_cap/2+s_cap,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor),structure=s_l,length=s_cap+w_cap/2)
-        chip.add(CurveRect(s_r.start,w_cap/2+s_cap,w_cap/2+s_cap,ralign=const.TOP,rotation=struct().direction,vflip=True,bgcolor=bgcolor),structure=s_r,length=s_cap+w_cap/2)
+        chip.add(dxf.rectangle(s_l.start,w_cap/2+s_cap,-s_cap-w_cap/2,rotation=s_r.direction,bgcolor=bgcolor,**kwargs))
+        chip.add(dxf.rectangle(s_r.start,w_cap/2+s_cap,s_cap+w_cap/2,rotation=s_r.direction,bgcolor=bgcolor,**kwargs))
+        chip.add(CurveRect(s_l.start,w_cap/2+s_cap,w_cap/2+s_cap,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=s_l,length=s_cap+w_cap/2)
+        chip.add(CurveRect(s_r.start,w_cap/2+s_cap,w_cap/2+s_cap,ralign=const.TOP,rotation=struct().direction,vflip=True,bgcolor=bgcolor,**kwargs),structure=s_r,length=s_cap+w_cap/2)
         inductor_pad = inductor_pad + s_cap + w_cap/2 #in case extra length from capacitor stub is too much length
     
     if inductor_pad > 0:
         if ialign is const.BOTTOM:
-            CPW_straight(chip,s_0,inductor_pad,s=(width - 2*(w_cap+2*s_cap)-w_ind)/2)
+            CPW_straight(chip,s_0,inductor_pad,s=(width - 2*(w_cap+2*s_cap)-w_ind)/2,**kwargs)
         elif ialign is const.MIDDLE:
-            CPW_straight(chip,s_0,inductor_pad/2,s=(width - 2*(w_cap+2*s_cap)-w_ind)/2)
-    Inductor_wiggles(chip,s_0,length=l_ind,maxWidth=maxWidth,Width=(width - 2*(w_cap+2*s_cap))/2,nTurns=nTurns,pad_to_width=True,CCW=CCW,bgcolor=bgcolor)
+            CPW_straight(chip,s_0,inductor_pad/2,s=(width - 2*(w_cap+2*s_cap)-w_ind)/2,**kwargs)
+    Inductor_wiggles(chip,s_0,length=l_ind,maxWidth=maxWidth,Width=(width - 2*(w_cap+2*s_cap))/2,nTurns=nTurns,pad_to_width=True,CCW=CCW,bgcolor=bgcolor,**kwargs)
     if inductor_pad > 0:
         if ialign is const.TOP:
-            CPW_straight(chip,s_0,inductor_pad,s=(width - 2*(w_cap+2*s_cap)-w_ind)/2)
+            CPW_straight(chip,s_0,inductor_pad,s=(width - 2*(w_cap+2*s_cap)-w_ind)/2,**kwargs)
         elif ialign is const.MIDDLE:
-            CPW_straight(chip,s_0,inductor_pad/2,s=(width - 2*(w_cap+2*s_cap)-w_ind)/2)
-    CPW_stub_short(chip,s_0,s=(width - 2*(w_cap+2*s_cap)-w_ind)/2,r_out=r_cap-w_cap/2,curve_out=False)
+            CPW_straight(chip,s_0,inductor_pad/2,s=(width - 2*(w_cap+2*s_cap)-w_ind)/2,**kwargs)
+    CPW_stub_short(chip,s_0,s=(width - 2*(w_cap+2*s_cap)-w_ind)/2,r_out=r_cap-w_cap/2,curve_out=False,**kwargs)
+    #update parent structure position, if callable
+    structure.updatePos(s_0.start,newDir=s_0.direction)
     
-def DoubleJellyfishResonator(chip,structure,width,height,l_ind,w_cap=None,s_cap=None,r_cap=None,w_ind=3,r_ind=6,ialign=const.BOTTOM,nTurns=None,maxWidth=None,CCW=True,bgcolor=None):
+def DoubleJellyfishResonator(chip,structure,width,height,l_ind,w_cap=None,s_cap=None,r_cap=None,w_ind=3,r_ind=6,ialign=const.BOTTOM,nTurns=None,maxWidth=None,CCW=True,bgcolor=None,**kwargs):
     #inductor params: wire width = w_ind, radius (sets pitch) = r_ind, total inductor wire length = l_ind. ialign determines where the inductor should align to, (TOP = bunch at capacitor)
     #capacitor params: wire width = w_cap, gap to ground = s_cap, nominal horseshoe bend radius = r_cap ()
     def struct():
@@ -768,21 +770,21 @@ def DoubleJellyfishResonator(chip,structure,width,height,l_ind,w_cap=None,s_cap=
     inductor_pad = height - w_cap - 3*s_cap - (nTurns+0.5)*4*r_ind
     
     #assume structure starts in correct orientation
-    chip.add(dxf.rectangle(struct().start,s_cap,width - 2*(w_cap+2*s_cap),valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor))
+    chip.add(dxf.rectangle(struct().start,s_cap,width - 2*(w_cap+2*s_cap),valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
     
     s_r = struct().cloneAlong((s_cap+w_cap/2,-width/2 + 2*s_cap+w_cap),newDirection=-90)
     s_l = struct().cloneAlong((s_cap+w_cap/2,width/2 - 2*s_cap - w_cap),newDirection=90)
     
     if height-3*s_cap-w_cap*3/2 > 0:
-        CPW_bend(chip,s_l,radius=r_cap)
-        CPW_bend(chip,s_r,CCW=False,radius=r_cap)
-        CPW_straight(chip,s_l,height-3*s_cap-w_cap*3/2)
-        CPW_straight(chip,s_r,height-3*s_cap-w_cap*3/2)
+        CPW_bend(chip,s_l,radius=r_cap,**kwargs)
+        CPW_bend(chip,s_r,CCW=False,radius=r_cap,**kwargs)
+        CPW_straight(chip,s_l,height-3*s_cap-w_cap*3/2,**kwargs)
+        CPW_straight(chip,s_r,height-3*s_cap-w_cap*3/2,**kwargs)
     else:
-        CPW_straight(chip,s_l,s_cap+w_cap/2)
-        CPW_straight(chip,s_r,s_cap+w_cap/2)
-    CPW_stub_round(chip,s_l,round_left = (inductor_pad > 0) or (height-3*s_cap-w_cap*3/2 < 0),round_right=False) 
-    CPW_stub_round(chip,s_r,round_right = (inductor_pad > 0) or (height-3*s_cap-w_cap*3/2 < 0),round_left=False)
+        CPW_straight(chip,s_l,s_cap+w_cap/2,**kwargs)
+        CPW_straight(chip,s_r,s_cap+w_cap/2,**kwargs)
+    CPW_stub_round(chip,s_l,round_left = (inductor_pad > 0) or (height-3*s_cap-w_cap*3/2 < 0),round_right=False,**kwargs) 
+    CPW_stub_round(chip,s_r,round_right = (inductor_pad > 0) or (height-3*s_cap-w_cap*3/2 < 0),round_left=False,**kwargs)
     
     if height-3*s_cap-w_cap*3/2 < 0:
         s_l.updatePos(newStart=s_l.getPos((-s_cap -w_cap/2,-s_cap-w_cap/2)),angle=-90)
@@ -791,43 +793,44 @@ def DoubleJellyfishResonator(chip,structure,width,height,l_ind,w_cap=None,s_cap=
     s_0 = struct().cloneAlong((s_cap+w_cap,(width - 2*(w_cap+2*s_cap))/4))
     s_0.defaults['w']=w_ind
     s_0.defaults['radius']=r_ind
-    CPW_stub_short(chip,s_0,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,r_out=r_cap-w_cap/2,curve_out=False,flipped=True)
+    CPW_stub_short(chip,s_0,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,r_out=r_cap-w_cap/2,curve_out=False,flipped=True,**kwargs)
     
     s_1 = struct().cloneAlong((s_cap+w_cap,-(width - 2*(w_cap+2*s_cap))/4))
     s_1.defaults['w']=w_ind
     s_1.defaults['radius']=r_ind
-    CPW_stub_short(chip,s_1,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,r_out=r_cap-w_cap/2,curve_out=False,flipped=True)
+    CPW_stub_short(chip,s_1,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,r_out=r_cap-w_cap/2,curve_out=False,flipped=True,**kwargs)
     
     if inductor_pad < -s_cap-w_cap/2:
         #print('WARNING: capacitor is not long enough to cover inductor.')
-        chip.add(dxf.rectangle(s_l.start,-inductor_pad-s_cap-w_cap/2,2*s_cap+w_cap,rotation=s_l.direction,valign=const.MIDDLE,bgcolor=bgcolor),structure=s_l,length=-inductor_pad-s_cap-w_cap/2)
-        chip.add(dxf.rectangle(s_r.start,-inductor_pad-s_cap-w_cap/2,2*s_cap+w_cap,rotation=s_r.direction,valign=const.MIDDLE,bgcolor=bgcolor),structure=s_r,length=-inductor_pad-s_cap-w_cap/2)
+        chip.add(dxf.rectangle(s_l.start,-inductor_pad-s_cap-w_cap/2,2*s_cap+w_cap,rotation=s_l.direction,valign=const.MIDDLE,bgcolor=bgcolor,**kwargs),structure=s_l,length=-inductor_pad-s_cap-w_cap/2)
+        chip.add(dxf.rectangle(s_r.start,-inductor_pad-s_cap-w_cap/2,2*s_cap+w_cap,rotation=s_r.direction,valign=const.MIDDLE,bgcolor=bgcolor,**kwargs),structure=s_r,length=-inductor_pad-s_cap-w_cap/2)
     if inductor_pad < 0:
-        chip.add(dxf.rectangle(s_l.start,w_cap/2+s_cap,-s_cap-w_cap/2,rotation=s_l.direction,bgcolor=bgcolor))
-        chip.add(dxf.rectangle(s_r.start,w_cap/2+s_cap,s_cap+w_cap/2,rotation=s_r.direction,bgcolor=bgcolor))
-        chip.add(CurveRect(s_l.start,w_cap/2+s_cap,w_cap/2+s_cap,ralign=const.TOP,rotation=s_l.direction,bgcolor=bgcolor),structure=s_l,length=s_cap+w_cap/2)
-        chip.add(CurveRect(s_r.start,w_cap/2+s_cap,w_cap/2+s_cap,ralign=const.TOP,rotation=s_r.direction,vflip=True,bgcolor=bgcolor),structure=s_r,length=s_cap+w_cap/2)
+        chip.add(dxf.rectangle(s_l.start,w_cap/2+s_cap,-s_cap-w_cap/2,rotation=s_l.direction,bgcolor=bgcolor,**kwargs))
+        chip.add(dxf.rectangle(s_r.start,w_cap/2+s_cap,s_cap+w_cap/2,rotation=s_r.direction,bgcolor=bgcolor,**kwargs))
+        chip.add(CurveRect(s_l.start,w_cap/2+s_cap,w_cap/2+s_cap,ralign=const.TOP,rotation=s_l.direction,bgcolor=bgcolor,**kwargs),structure=s_l,length=s_cap+w_cap/2)
+        chip.add(CurveRect(s_r.start,w_cap/2+s_cap,w_cap/2+s_cap,ralign=const.TOP,rotation=s_r.direction,vflip=True,bgcolor=bgcolor,**kwargs),structure=s_r,length=s_cap+w_cap/2)
         inductor_pad = inductor_pad + s_cap + w_cap/2 #in case extra length from capacitor stub is too much length
     
     if inductor_pad > 0:
         if ialign is const.BOTTOM:
-            CPW_straight(chip,s_0,inductor_pad,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4)
-            CPW_straight(chip,s_1,inductor_pad,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4)
+            CPW_straight(chip,s_0,inductor_pad,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,**kwargs)
+            CPW_straight(chip,s_1,inductor_pad,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,**kwargs)
         elif ialign is const.MIDDLE:
-            CPW_straight(chip,s_0,inductor_pad/2,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4)
-            CPW_straight(chip,s_1,inductor_pad/2,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4)
-    Inductor_wiggles(chip,s_0,length=l_ind,maxWidth=maxWidth,Width=(width - 2*(w_cap+2*s_cap))/4,nTurns=nTurns,pad_to_width=True,CCW=True,bgcolor=bgcolor)
-    Inductor_wiggles(chip,s_1,length=l_ind,maxWidth=maxWidth,Width=(width - 2*(w_cap+2*s_cap))/4,nTurns=nTurns,pad_to_width=True,CCW=False,bgcolor=bgcolor)
+            CPW_straight(chip,s_0,inductor_pad/2,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,**kwargs)
+            CPW_straight(chip,s_1,inductor_pad/2,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,**kwargs)
+    Inductor_wiggles(chip,s_0,length=l_ind,maxWidth=maxWidth,Width=(width - 2*(w_cap+2*s_cap))/4,nTurns=nTurns,pad_to_width=True,CCW=True,bgcolor=bgcolor,**kwargs)
+    Inductor_wiggles(chip,s_1,length=l_ind,maxWidth=maxWidth,Width=(width - 2*(w_cap+2*s_cap))/4,nTurns=nTurns,pad_to_width=True,CCW=False,bgcolor=bgcolor,**kwargs)
     if inductor_pad > 0:
         if ialign is const.TOP:
-            CPW_straight(chip,s_0,inductor_pad,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4)
-            CPW_straight(chip,s_1,inductor_pad,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4)
+            CPW_straight(chip,s_0,inductor_pad,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,**kwargs)
+            CPW_straight(chip,s_1,inductor_pad,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,**kwargs)
         elif ialign is const.MIDDLE:
-            CPW_straight(chip,s_0,inductor_pad/2,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4)
-            CPW_straight(chip,s_1,inductor_pad/2,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4)
-    CPW_stub_short(chip,s_0,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,r_out=r_cap-w_cap/2,curve_out=False)
-    CPW_stub_short(chip,s_1,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,r_out=r_cap-w_cap/2,curve_out=False)
-    
+            CPW_straight(chip,s_0,inductor_pad/2,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,**kwargs)
+            CPW_straight(chip,s_1,inductor_pad/2,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,**kwargs)
+    CPW_stub_short(chip,s_0,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,r_out=r_cap-w_cap/2,curve_out=False,**kwargs)
+    CPW_stub_short(chip,s_1,s=(width - 2*(w_cap+2*s_cap)-2*w_ind)/4,r_out=r_cap-w_cap/2,curve_out=False,**kwargs)
+    #update parent structure position, if callable
+    structure.updatePos(midpoint(s_0.start,s_1.start),newDir=s_0.direction)
     
 # ===============================================================================
 # basic TWO-LAYER CPS function definitions
