@@ -4,7 +4,7 @@ Created on Fri Oct  4 17:29:02 2019
 
 @author: Sasha
 
-Library for drawing standard microwave components (CPW parts, inductors, capacitors etc)
+Library for drawing standard components for DC measurements (Four probe resistance bars, etc)
 """
 
 import maskLib.MaskLib as m

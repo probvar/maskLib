@@ -363,6 +363,50 @@ def Wire_bend(chip,structure,angle=90,CCW=True,w=None,radius=None,bgcolor=None,*
         chip.add(InsideCurve(struct().getPos(vadd(rotate_2d((radius+w/2,(CCW and 1 or -1)*(radius+w/2)),(CCW and -1 or 1)*math.radians(i*90)),(0,CCW and -radius or radius))),radius+w/2,rotation=struct().direction+(CCW and -1 or 1)*i*90,bgcolor=bgcolor,vflip=not CCW,**kwargs))
     struct().updatePos(newStart=struct().getPos((radius*math.sin(math.radians(angle)),(CCW and 1 or -1)*radius*(math.cos(math.radians(angle))-1))),angle=CCW and -angle or angle)
 
+def CPW_tee(chip,structure,w=None,s=None,radius=None,w1=None,s1=None,ptDensity=60,bgcolor=None,hflip=False,**kwargs):
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        else:
+            return chip.structure(structure)
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            print('w not defined ',chip.chipID)
+    if s is None:
+        try:
+            s = struct().defaults['s']
+        except KeyError:
+            print('s not defined ',chip.chipID)
+    if radius is None:
+        try:
+            radius = 2*struct().defaults['s']
+        except KeyError:
+            print('radius not defined in ',chip.chipID,'!')
+            return
+    #default to left and right branches identical to original structure
+    if w1 is None:
+        w1 = w
+    if s1 is None:
+        s1 = s
+        
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+        
+    #long curves not allowed if gaps differ
+    if s!=s1:
+        radius = min(abs(radius),min(s,s1))
+    
+    s_rad = max(radius,s1)
+
+    chip.add(dxf.rectangle(struct().start,s1,2*max(s_rad,s)+w,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+
+    s_l = struct().cloneAlong((s_rad+w/2,w/2+max(s,s_rad)),newDirection=90)
+    s_r = struct().cloneAlong((s_rad+w/2,-w/2-max(s,s_rad)),newDirection=-90)
+    
+    return s_l,s_r
+
 # ===============================================================================
 # composite CPW function definitions
 # ===============================================================================
