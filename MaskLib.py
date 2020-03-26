@@ -126,7 +126,7 @@ class Wafer:
         
     def save(self):
         self.drawing.save()
-        print('saved as: '+ self.path + self.fileName + '.dxf')
+        print('Saved as: '+ '\x1b[36m' + self.path + self.fileName + '.dxf'+'\x1b[0m')
     
     def lyr(self,layerName):
         return self.multiLayer and layerName or '0'

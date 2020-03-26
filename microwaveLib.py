@@ -391,7 +391,7 @@ def CPW_tee(chip,structure,w=None,s=None,radius=None,r_ins=None,w1=None,s1=None,
         try:
             r_ins = struct().defaults['r_ins']
         except KeyError: # quiet catch
-            print('r_ins is not defined in ',chip.chipID,'!')    
+            r_ins = None   
     
     #default to left and right branches identical to original structure
     if w1 is None:
@@ -662,7 +662,7 @@ def Inductor_wiggles(chip,structure,length=None,nTurns=None,maxWidth=None,Width=
         try:
             s = struct().defaults['s']
         except KeyError:
-            print('s not defined ',chip.chipID)
+            print('\x1b[33ms not defined in ',chip.chipID,'\x1b[0m')
     #prevent dumb entries
     if nTurns is None:
         nTurns = 1
@@ -686,7 +686,7 @@ def Inductor_wiggles(chip,structure,length=None,nTurns=None,maxWidth=None,Width=
     else: #length is not contrained
         h= maxWidth-radius-w/2
     if h < radius:
-        print('Warning: Wiggles too tight. Adjusting length')
+        print('\x1b[33mWarning:\x1b[0m Wiggles too tight. Adjusting length')
     h = max(h,radius)
     if (h is None) or (nTurns is None):
         print('not enough params specified for CPW_wiggles!')
