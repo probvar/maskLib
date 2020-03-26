@@ -20,6 +20,7 @@ from copy import deepcopy
 from matplotlib.path import Path
 from matplotlib.transforms import Bbox
 import math
+from copy import copy
 
 # ===============================================================================
 # perforate the ground plane with a grid of squares, which avoid any polylines 
@@ -363,7 +364,8 @@ def Wire_bend(chip,structure,angle=90,CCW=True,w=None,radius=None,bgcolor=None,*
         chip.add(InsideCurve(struct().getPos(vadd(rotate_2d((radius+w/2,(CCW and 1 or -1)*(radius+w/2)),(CCW and -1 or 1)*math.radians(i*90)),(0,CCW and -radius or radius))),radius+w/2,rotation=struct().direction+(CCW and -1 or 1)*i*90,bgcolor=bgcolor,vflip=not CCW,**kwargs))
     struct().updatePos(newStart=struct().getPos((radius*math.sin(math.radians(angle)),(CCW and 1 or -1)*radius*(math.cos(math.radians(angle))-1))),angle=CCW and -angle or angle)
 
-def CPW_tee(chip,structure,w=None,s=None,radius=None,w1=None,s1=None,ptDensity=60,bgcolor=None,hflip=False,**kwargs):
+def CPW_tee(chip,structure,w=None,s=None,radius=None,r_out=None,w1=None,s1=None,ptDensity=60,bgcolor=None,hflip=False,branch_off=None,**kwargs):
+    
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -392,7 +394,7 @@ def CPW_tee(chip,structure,w=None,s=None,radius=None,w1=None,s1=None,ptDensity=6
         s1 = s
         
     #clone structure defaults
-    defaults1 = struct().defaults
+    defaults1 = copy(struct().defaults)
     #update new defaults if defined
     defaults1.update({'w':w1})
     defaults1.update({'s':s1})
@@ -403,15 +405,32 @@ def CPW_tee(chip,structure,w=None,s=None,radius=None,w1=None,s1=None,ptDensity=6
     if s!=s1:
         radius = min(abs(radius),min(s,s1))
     
+    if r_out is None:
+        r_out = radius
+    
     s_rad = max(radius,s1)
 
-    chip.add(dxf.rectangle(struct().getPos((s_rad+w1 - 2*hflip*(s_rad+w1),0)),hflip and -s1 or s1,2*max(s_rad,s)+w,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+    chip.add(dxf.rectangle(struct().getPos((s_rad+w1 - 2*hflip*(s_rad+w1),0)),hflip and -s1 or s1,2*max(radius,s)+w,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
     if s==s1:
         chip.add(CurveRect(struct().getPos((0,-w/2-s)),s,radius,hflip=hflip,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
         chip.add(CurveRect(struct().getPos((0,w/2+s)),s,radius,hflip=hflip,vflip=True,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-
-    s_l = struct().cloneAlong((s_rad+w1/2 - 2*hflip*(s_rad+w1/2),w/2+max(s,s_rad)),newDirection=90,defaults=defaults1)
-    s_r = struct().cloneAlong((s_rad+w1/2 - 2*hflip*(s_rad+w1/2),-w/2-max(s,s_rad)),newDirection=-90,defaults=defaults1)
+    else:
+        if s1>s:
+            chip.add(dxf.rectangle(struct().getPos((0,-w/2)),hflip and s-s1 or s1-s,-s,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().getPos((0,w/2)),hflip and s-s1 or s1-s,s,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(CurveRect(struct().getPos((hflip and s-s1 or s1-s,-w/2-s)),radius,radius,hflip=hflip,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(CurveRect(struct().getPos((hflip and s-s1 or s1-s,w/2+s)),radius,radius,hflip=hflip,vflip=True,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+        else:#s1<s
+            chip.add(CurveRect(struct().getPos((0,-w/2-radius)),radius,radius,hflip=hflip,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(CurveRect(struct().getPos((0,w/2+radius)),radius,radius,hflip=hflip,vflip=True,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().getPos((0,-w/2-radius)),hflip and -radius or radius,-(s-s1),rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().getPos((0,w/2+radius)),hflip and -radius or radius,(s-s1),rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+        if r_out > 0:
+            chip.add(InsideCurve(struct().getPos((0,w/2+s)),r_out,hflip=hflip,vflip=True,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(InsideCurve(struct().getPos((0,-w/2-s)),r_out,hflip=hflip,vflip=False,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            
+    s_l = struct().cloneAlong((s_rad+w1/2 - 2*hflip*(s_rad+w1/2),w/2+max(radius,s)),newDirection=90,defaults=defaults1)
+    s_r = struct().cloneAlong((s_rad+w1/2 - 2*hflip*(s_rad+w1/2),-w/2-max(radius,s)),newDirection=-90,defaults=defaults1)
     
     return s_l,s_r
 
