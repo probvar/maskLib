@@ -391,6 +391,11 @@ def CPW_tee(chip,structure,w=None,s=None,radius=None,w1=None,s1=None,ptDensity=6
     if s1 is None:
         s1 = s
         
+    #clone structure defaults
+    defaults1 = struct().defaults
+    #update new defaults if defined
+    defaults1.update({'w':w1})
+    defaults1.update({'s':s1})
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
         
@@ -400,10 +405,13 @@ def CPW_tee(chip,structure,w=None,s=None,radius=None,w1=None,s1=None,ptDensity=6
     
     s_rad = max(radius,s1)
 
-    chip.add(dxf.rectangle(struct().start,s1,2*max(s_rad,s)+w,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+    chip.add(dxf.rectangle(struct().getPos((s_rad+w1 - 2*hflip*(s_rad+w1),0)),hflip and -s1 or s1,2*max(s_rad,s)+w,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+    if s==s1:
+        chip.add(CurveRect(struct().getPos((0,-w/2-s)),s,radius,hflip=hflip,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+        chip.add(CurveRect(struct().getPos((0,w/2+s)),s,radius,hflip=hflip,vflip=True,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
 
-    s_l = struct().cloneAlong((s_rad+w/2,w/2+max(s,s_rad)),newDirection=90)
-    s_r = struct().cloneAlong((s_rad+w/2,-w/2-max(s,s_rad)),newDirection=-90)
+    s_l = struct().cloneAlong((s_rad+w1/2 - 2*hflip*(s_rad+w1/2),w/2+max(s,s_rad)),newDirection=90,defaults=defaults1)
+    s_r = struct().cloneAlong((s_rad+w1/2 - 2*hflip*(s_rad+w1/2),-w/2-max(s,s_rad)),newDirection=-90,defaults=defaults1)
     
     return s_l,s_r
 

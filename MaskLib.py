@@ -213,7 +213,12 @@ class Wafer:
             self.chipPts =[[-self.chipX/2,-self.chipY/2]]
         else:
             self.chipPts =[[0,0]]
-        self.chips = []
+            
+        #setup the default chip
+        self.defaultChip = Chip(self,'BLANK',self.defaultLayer)
+        self.defaultChip.save(self)
+        #populate with the default chip
+        self.chips = [self.defaultChip]
         #setup the viewport
         self.drawing.add_vport('*ACTIVE',ucs_icon=0,circle_zoom=1000,grid_on=1,center_point=(0,0),aspect_ratio=2*(max(self.chipX,self.chipY)))
     
@@ -451,11 +456,11 @@ class Structure:
         localPos = vsub(pos,self.last)
         return rotate_2d(localPos,-math.radians(self.last_direction))
     
-    def cloneAlong(self,vector=None,distance=None,angle=0,newDirection=0):
-        return Structure(self.chip,start=self.getPos(vector=vector,distance=distance,angle=angle),direction=self.direction+newDirection,defaults=self.defaults)
+    def cloneAlong(self,vector=None,distance=None,angle=0,newDirection=0,defaults=None):
+        return Structure(self.chip,start=self.getPos(vector=vector,distance=distance,angle=angle),direction=self.direction+newDirection,defaults=defaults is not None and defaults or self.defaults)
     
-    def cloneAlongLast(self,vector=None,distance=None,angle=0,newDirection=0):
-        return Structure(self.chip,start=self.getLastPos(vector=vector,distance=distance,angle=angle),direction=self.direction+newDirection,defaults=self.defaults)
+    def cloneAlongLast(self,vector=None,distance=None,angle=0,newDirection=0,defaults=None):
+        return Structure(self.chip,start=self.getLastPos(vector=vector,distance=distance,angle=angle),direction=self.direction+newDirection,defaults=defaults is not None and defaults or self.defaults)
 
 # ===============================================================================
 #  BEGIN CUSTOM CLASS DEFINITIONS        
