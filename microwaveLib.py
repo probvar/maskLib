@@ -239,7 +239,7 @@ def CPW_stub_open(chip,structure,r_out=None,r_ins=None,w=None,s=None,flipped=Fal
         try:
             r_ins = struct().defaults['r_ins']
         except KeyError:
-            print('r_ins not defined in ',chip.chipID,'!')
+            #print('r_ins not defined in ',chip.chipID,'!')
             r_ins=0
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
@@ -364,7 +364,7 @@ def Wire_bend(chip,structure,angle=90,CCW=True,w=None,radius=None,bgcolor=None,*
         chip.add(InsideCurve(struct().getPos(vadd(rotate_2d((radius+w/2,(CCW and 1 or -1)*(radius+w/2)),(CCW and -1 or 1)*math.radians(i*90)),(0,CCW and -radius or radius))),radius+w/2,rotation=struct().direction+(CCW and -1 or 1)*i*90,bgcolor=bgcolor,vflip=not CCW,**kwargs))
     struct().updatePos(newStart=struct().getPos((radius*math.sin(math.radians(angle)),(CCW and 1 or -1)*radius*(math.cos(math.radians(angle))-1))),angle=CCW and -angle or angle)
 
-def CPW_tee(chip,structure,w=None,s=None,radius=None,r_out=None,w1=None,s1=None,ptDensity=60,bgcolor=None,hflip=False,branch_off=None,**kwargs):
+def CPW_tee(chip,structure,w=None,s=None,radius=None,r_ins=None,w1=None,s1=None,ptDensity=60,bgcolor=None,hflip=False,branch_off=None,**kwargs):
     
     def struct():
         if isinstance(structure,m.Structure):
@@ -387,6 +387,12 @@ def CPW_tee(chip,structure,w=None,s=None,radius=None,r_out=None,w1=None,s1=None,
         except KeyError:
             print('radius not defined in ',chip.chipID,'!')
             return
+    if r_ins is None: #check if r_ins is defined in the defaults
+        try:
+            r_ins = struct().defaults['r_ins']
+        except KeyError: # quiet catch
+            print('r_ins is not defined in ',chip.chipID,'!')    
+    
     #default to left and right branches identical to original structure
     if w1 is None:
         w1 = w
@@ -405,8 +411,9 @@ def CPW_tee(chip,structure,w=None,s=None,radius=None,r_out=None,w1=None,s1=None,
     if s!=s1:
         radius = min(abs(radius),min(s,s1))
     
-    if r_out is None:
-        r_out = radius
+    #assign a inside curve radius if not defined
+    if r_ins is None:
+        r_ins = radius
     
     s_rad = max(radius,s1)
 
@@ -425,9 +432,10 @@ def CPW_tee(chip,structure,w=None,s=None,radius=None,r_out=None,w1=None,s1=None,
             chip.add(CurveRect(struct().getPos((0,w/2+radius)),radius,radius,hflip=hflip,vflip=True,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
             chip.add(dxf.rectangle(struct().getPos((0,-w/2-radius)),hflip and -radius or radius,-(s-s1),rotation=struct().direction,bgcolor=bgcolor,**kwargs))
             chip.add(dxf.rectangle(struct().getPos((0,w/2+radius)),hflip and -radius or radius,(s-s1),rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-        if r_out > 0:
-            chip.add(InsideCurve(struct().getPos((0,w/2+s)),r_out,hflip=hflip,vflip=True,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-            chip.add(InsideCurve(struct().getPos((0,-w/2-s)),r_out,hflip=hflip,vflip=False,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+    if radius <= min(s,s1) and r_ins > 0:
+        #inside edges are square
+        chip.add(InsideCurve(struct().getPos((0,w/2+s)),r_ins,hflip=hflip,vflip=True,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+        chip.add(InsideCurve(struct().getPos((0,-w/2-s)),r_ins,hflip=hflip,vflip=False,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
             
     s_l = struct().cloneAlong((s_rad+w1/2 - 2*hflip*(s_rad+w1/2),w/2+max(radius,s)),newDirection=90,defaults=defaults1)
     s_r = struct().cloneAlong((s_rad+w1/2 - 2*hflip*(s_rad+w1/2),-w/2-max(radius,s)),newDirection=-90,defaults=defaults1)
