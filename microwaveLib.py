@@ -114,12 +114,12 @@ def CPW_straight(chip,structure,length,w=None,s=None,bgcolor=None,**kwargs): #no
         try:
             w = struct().defaults['w']
         except KeyError:
-            print('w not defined in ',chip.chipID,'!')
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     if s is None:
         try:
             s = struct().defaults['s']
         except KeyError:
-            print('s not defined in ',chip.chipID,'!')
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
             
     chip.add(dxf.rectangle(struct().getPos((0,-w/2)),length,-s,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
     chip.add(dxf.rectangle(struct().getPos((0,w/2)),length,s,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=length)
@@ -137,22 +137,22 @@ def CPW_taper(chip,structure,length=None,w0=None,s0=None,w1=None,s1=None,bgcolor
         try:
             w0 = struct().defaults['w']
         except KeyError:
-            print('w not defined in ',chip.chipID,'!')
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     if s0 is None:
         try:
             s0 = struct().defaults['s']
         except KeyError:
-            print('s not defined in ',chip.chipID,'!')
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     if w1 is None:
         try:
             w1 = struct().defaults['w']
         except KeyError:
-            print('w not defined in ',chip.chipID,'!')
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     if s1 is None:
         try:
             s1 = struct().defaults['s']
         except KeyError:
-            print('s not defined in ',chip.chipID,'!')
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     #if undefined, make outer angle 30 degrees
     if length is None:
         length = math.sqrt(3)*abs(w0/2+s0-w1/2-s1)
@@ -170,17 +170,17 @@ def CPW_stub_short(chip,structure,flipped=False,curve_ins=True,curve_out=True,r_
         try:
             w = struct().defaults['w']
         except KeyError:
-            print('w not defined in ',chip.chipID,'!')
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     if s is None:
         try:
             s = struct().defaults['s']
         except KeyError:
-            print('s not defined in ',chip.chipID,'!')
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     if r_out is None:
         try:
             r_out = min(struct().defaults['r_out'],s/2)
         except KeyError:
-            print('r_out not defined in ',chip.chipID,'!')
+            print('r_out not defined in ',chip.chipID,'!\x1b[0m')
             r_out=0
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
@@ -223,23 +223,23 @@ def CPW_stub_open(chip,structure,r_out=None,r_ins=None,w=None,s=None,flipped=Fal
         try:
             w = struct().defaults['w']
         except KeyError:
-            print('w not defined ',chip.chipID)
+            print('\x1b[33mw not defined in ',chip.chipID,'!\x1b[0m')
     if s is None:
         try:
             s = struct().defaults['s']
         except KeyError:
-            print('s not defined ',chip.chipID)
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     if r_out is None:
         try:
             r_out = struct().defaults['r_out']
         except KeyError:
-            print('r_out not defined in ',chip.chipID,'!')
+            print('\x1b[33mr_out not defined in ',chip.chipID,'!\x1b[0m')
             r_out=0
     if r_ins is None:
         try:
             r_ins = struct().defaults['r_ins']
         except KeyError:
-            #print('r_ins not defined in ',chip.chipID,'!')
+            #print('r_ins not defined in ',chip.chipID,'!\x1b[0m')
             r_ins=0
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
@@ -269,12 +269,12 @@ def CPW_stub_round(chip,structure,w=None,s=None,round_left=True,round_right=True
         try:
             w = struct().defaults['w']
         except KeyError:
-            print('w not defined ',chip.chipID)
+            print('\x1b[33mw not defined in ',chip.chipID)
     if s is None:
         try:
             s = struct().defaults['s']
         except KeyError:
-            print('s not defined ',chip.chipID)
+            print('\x1b[33ms not defined in ',chip.chipID)
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
     
@@ -308,17 +308,17 @@ def CPW_bend(chip,structure,angle=90,CCW=True,w=None,s=None,radius=None,ptDensit
         try:
             w = struct().defaults['w']
         except KeyError:
-            print('w not defined ',chip.chipID)
+            print('\x1b[33mw not defined in ',chip.chipID)
     if s is None:
         try:
             s = struct().defaults['s']
         except KeyError:
-            print('s not defined ',chip.chipID)
+            print('\x1b[33ms not defined in ',chip.chipID)
     if radius is None:
         try:
             radius = struct().defaults['radius']
         except KeyError:
-            print('radius not defined in ',chip.chipID,'!')
+            print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
             return
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
@@ -344,12 +344,12 @@ def Wire_bend(chip,structure,angle=90,CCW=True,w=None,radius=None,bgcolor=None,*
         try:
             w = struct().defaults['w']
         except KeyError:
-            print('w not defined ',chip.chipID)
+            print('\x1b[33mw not defined in ',chip.chipID)
     if radius is None:
         try:
             radius = struct().defaults['radius']
         except KeyError:
-            print('radius not defined in ',chip.chipID,'!')
+            print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
             return
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
@@ -375,17 +375,17 @@ def CPW_tee(chip,structure,w=None,s=None,radius=None,r_ins=None,w1=None,s1=None,
         try:
             w = struct().defaults['w']
         except KeyError:
-            print('w not defined ',chip.chipID)
+            print('\x1b[33mw not defined in ',chip.chipID)
     if s is None:
         try:
             s = struct().defaults['s']
         except KeyError:
-            print('s not defined ',chip.chipID)
+            print('\x1b[33ms not defined in ',chip.chipID)
     if radius is None:
         try:
             radius = 2*struct().defaults['s']
         except KeyError:
-            print('radius not defined in ',chip.chipID,'!')
+            print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
             return
     if r_ins is None: #check if r_ins is defined in the defaults
         try:
@@ -477,7 +477,7 @@ def CPW_wiggles(chip,structure,length=None,nTurns=None,minWidth=None,maxWidth=No
         try:
             radius = struct().defaults['radius']
         except KeyError:
-            print('radius not defined in ',chip.chipID,'!')
+            print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
             return
     #prevent dumb entries
     if nTurns is None:
@@ -535,7 +535,7 @@ def CPW_directTo(chip,from_structure,to_structure,to_flipped=True,w=None,s=None,
         try:
             radius = struct1().defaults['radius']
         except KeyError:
-            print('radius not defined in ',chip.chipID,'!')
+            print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
             return
     #struct2 is only a local copy
     struct2 = isinstance(to_structure,m.Structure) and to_structure or chip.structure(to_structure)
@@ -604,18 +604,18 @@ def wiggle_calc(chip,structure,length=None,nTurns=None,maxWidth=None,Width=None,
         try:
             radius = struct().defaults['radius']
         except KeyError:
-            print('radius not defined in ',chip.chipID,'!')
+            print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
             return
     if w is None:
         try:
             w = struct().defaults['w']
         except KeyError:
-            print('w not defined ',chip.chipID)
+            print('\x1b[33mw not defined in ',chip.chipID,'!\x1b[0m')
     if s is None:
         try:
             s = struct().defaults['s']
         except KeyError:
-            print('s not defined ',chip.chipID)
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     #prevent dumb entries
     if nTurns is None:
         nTurns = 1
@@ -649,7 +649,7 @@ def Inductor_wiggles(chip,structure,length=None,nTurns=None,maxWidth=None,Width=
         try:
             radius = struct().defaults['radius']
         except KeyError:
-            print('radius not defined in ',chip.chipID,'!')
+            print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
             return
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
@@ -657,12 +657,12 @@ def Inductor_wiggles(chip,structure,length=None,nTurns=None,maxWidth=None,Width=
         try:
             w = struct().defaults['w']
         except KeyError:
-            print('w not defined ',chip.chipID)
+            print('\x1b[33mw not defined in ',chip.chipID,'!\x1b[0m')
     if s is None:
         try:
             s = struct().defaults['s']
         except KeyError:
-            print('\x1b[33ms not defined in ',chip.chipID,'\x1b[0m')
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     #prevent dumb entries
     if nTurns is None:
         nTurns = 1
@@ -751,7 +751,7 @@ def JellyfishResonator(chip,structure,width,height,l_ind,w_cap=None,s_cap=None,r
         try:
             r_cap = struct().defaults['radius']
         except KeyError:
-            print('radius not defined in ',chip.chipID,'!')
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
             return
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
@@ -759,12 +759,12 @@ def JellyfishResonator(chip,structure,width,height,l_ind,w_cap=None,s_cap=None,r
         try:
             w_cap = struct().defaults['w']
         except KeyError:
-            print('w not defined ',chip.chipID)
+            print('\x1b[33mw not defined in ',chip.chipID,'!\x1b[0m')
     if s_cap is None:
         try:
             s_cap = struct().defaults['s']
         except KeyError:
-            print('s not defined ',chip.chipID)
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     if nTurns is None:
         nTurns = wiggle_calc(chip,struct(),length=l_ind,maxWidth=maxWidth,Width=(width - 2*(w_cap+2*s_cap))/2,w=w_ind,radius=r_ind)['nTurns']
     #override dumb inputs
@@ -835,7 +835,7 @@ def DoubleJellyfishResonator(chip,structure,width,height,l_ind,w_cap=None,s_cap=
         try:
             r_cap = struct().defaults['radius']
         except KeyError:
-            print('radius not defined in ',chip.chipID,'!')
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
             return
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
@@ -843,12 +843,12 @@ def DoubleJellyfishResonator(chip,structure,width,height,l_ind,w_cap=None,s_cap=
         try:
             w_cap = struct().defaults['w']
         except KeyError:
-            print('w not defined ',chip.chipID)
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     if s_cap is None:
         try:
             s_cap = struct().defaults['s']
         except KeyError:
-            print('s not defined ',chip.chipID)
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     if l_ind is not None:
         if nTurns is None:
             nTurns = wiggle_calc(chip,struct(),length=l_ind,maxWidth=maxWidth,Width=(width - 2*(w_cap+2*s_cap))/4,w=w_ind,radius=r_ind)['nTurns']
