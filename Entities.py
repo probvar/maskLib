@@ -16,6 +16,7 @@ from dxfwrite.vector2d import vadd, vsub
 class SolidPline(SubscriptAttributes):
     ''' Shape consisting of a Polyline and solid background** if polyline has 4 points or less
             acts like a Polyline, quacks like a Polyline, but generates a polyline + solid when dxf tags are called
+        If polyline has >4 points, builds up solid out of triangles starting at first point
     '''
     name = 'SOLIDPLINE'
     
@@ -39,8 +40,13 @@ class SolidPline(SubscriptAttributes):
         self.transformed_points = self._transform_points(self.points)
         if self.color is not None:
             data.append(self._build_polyline())
-        if self.bgcolor is not None and len(self.points) <= 4:
-            data.append(self._build_solid())
+        if self.bgcolor is not None:
+            if len(self.points) <= 4:
+                data.append(self._build_solid())
+            else:
+                for i in range(len(self.points)-2):
+                    data.append(self._build_solid_triangle(i))
+            
         return data
         
     def _transform_points(self,points):
@@ -68,8 +74,13 @@ class SolidPline(SubscriptAttributes):
         self.points.append(point)
 
     def _build_solid(self):
-        """ build the background solid """
+        """ build a single unified background solid (only works for 4 points)"""
         return Solid(self.transformed_points, color=self.bgcolor, layer=self.layer)    
+    
+    def _build_solid_triangle(self,i):
+        ''' build a single background solid triangle segment '''
+        solidpts = [self.transformed_points[j] for j in [0,i+1,i+2]]
+        return Solid(solidpts, color=self.bgcolor, layer=self.layer) 
     
     def __dxf__(self):
         ''' get the dxf string '''
