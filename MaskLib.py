@@ -15,12 +15,17 @@ from dxfwrite import DXFEngine as dxf
 from dxfwrite.vector2d import vadd,midpoint,vmul_scalar,vsub
 from dxfwrite.algebra import rotate_2d
 
-
+# ===============================================================================
+#  LOOKUP DICTIONARIES FOR COMMON TERMS 
+# ===============================================================================
+waferDiameters = {'2in':50800,'3in':76200,'4in':101600,'6in',152400}
+sawWidths = {'4A':101.6,'8A':203.2}
 
 # ===============================================================================
 #  UTILITY FUNCTIONS  
 # ===============================================================================
-#Define Index Marker Function for 0 -9
+#Define Marker Function for numbers 0-9
+#High visibility markers composed of a grid of six squares
 def Marker09(dwg,xpos,ypos,number,width,bg=None,**kwargs):
     shapes = [[],  [[0,0]],  [[0,0],[1,1]],    [[0,0],[1,1],[0,1]],  [[0,0],[0,1],[2,0],[2,1]],
              [[0,1],[1,0],[2,1]],  [[0,0],[1,0],[2,0],[1,1]],   [[0,0],[0,1],[1,0],[1,1],[2,1]], [[0,0],[0,1],[1,0],[1,1]],
@@ -28,7 +33,7 @@ def Marker09(dwg,xpos,ypos,number,width,bg=None,**kwargs):
     number = number % len(shapes)
     for v in shapes[number]:
         dwg.add(dxf.rectangle((xpos+v[0]*width,ypos+v[1]*width),width,width,bgcolor=bg,**kwargs))
-        
+     
 
 def curveAB(a,b,clockwise,angleDeg,ptdensity):
     #generate a segmented curve from A to B specified by angle. Point density = #pts / revolution
@@ -54,6 +59,9 @@ def transformedQuadrants(UD=1,LR=1):
     return UD==1 and (LR==1 and [0,1,2,3,4] or [0,2,1,4,3]) or (LR==1 and [0,4,3,2,1] or [0,3,4,1,2])
 
 def skewRect(corner,width,height,offset,newLength,edge=1,**kwargs):
+    
+    #>>>>>>>> Deprecated, use Entities.SkewRect instead <<<<<<<<<<
+    
     #quadrangle drawn counterclockwise starting from bottom left
     #edges are indexed 0-3 correspondingly
     #edge 1 is default (east edge )
@@ -77,11 +85,11 @@ def skewRect(corner,width,height,offset,newLength,edge=1,**kwargs):
 
 # ===============================================================================
 #  WAFER CLASS  
-#       master class designed to handle all layers and store chips
+#       master class designed to handle all layers, main dxf drawing and stores chips
 # ===============================================================================
 class Wafer:
     #====================wafer properties======================
-    fileName = 'Test.dxf'
+    fileName = 'Test'
     path = ''
     waferDiameter = 50800
     padding = 2500
@@ -99,12 +107,6 @@ class Wafer:
     layerColors = {'0':7} #colors corresponding to layers
     layerNames = ['0']
     defaultLayer = '0' #default layer to draw chips on
-    #====================dicing border properties======================
-    thin=5      #thin section of crosshair
-    thick=20    #thick section of crosshair AND dash thickness
-    short=40    #short section of crosshair
-    long=100    #long section of crosshair
-    dash=400    #spacing between dashes
     
     def __init__(self,name,path):
         #keep all settings default
@@ -113,13 +115,13 @@ class Wafer:
         self.path = path
         self.drawing = dxf.drawing(path + name + '.dxf')
         
-    def setProperties(self,waferDiameter,padding,sawWidth,chipX,chipY,frame,solid,multiLayer):
+    def setProperties(self,chipWidth,chipHeight,waferDiameter=50800,padding=2500,sawWidth=203.2,frame=True,solid=False,multiLayer=True):
         #set the basic properties of the wafer
         self.waferDiameter = waferDiameter
         self.padding = padding
         self.sawWidth = sawWidth
-        self.chipY = chipY
-        self.chipX = chipX
+        self.chipY = chipWidth + sawWidth
+        self.chipX = chipHeight + sawWidth
         self.frame = frame
         self.solid = solid
         self.multiLayer = multiLayer
@@ -223,50 +225,56 @@ class Wafer:
         self.drawing.add_vport('*ACTIVE',ucs_icon=0,circle_zoom=1000,grid_on=1,center_point=(0,0),aspect_ratio=2*(max(self.chipX,self.chipY)))
     
     #dicing saw border
-    def DicingBorder(self,maxpts=0,minpts=0):
+    def DicingBorder(self,maxpts=0,minpts=0,thin=5,thick=20,short=40,long=100,dash=400):
+        # maxpts:     where in chip list to stop putting a dicing border 
+        # minpts:     where in chip list to start putting dicing border
+        # thin:5      #thin section of crosshair
+        # thick:20    #thick section of crosshair AND dash thickness
+        # short:40    #short section of crosshair
+        # long:100    #long section of crosshair
+        # dash:400    #spacing between dashes
+        
         #determine filling
         bg = self.bg('MARKERS')
-        offsetX = ((self.chipX-2*self.short-2*self.long)%(self.dash)+self.dash)/2
-        offsetY = ((self.chipY-2*self.short-2*self.long)%(self.dash)+self.dash)/2
+        offsetX = ((self.chipX-2*short-2*long)%(dash)+dash)/2
+        offsetY = ((self.chipY-2*short-2*long)%(dash)+dash)/2
         border = dxf.block('DICINGBORDER')
-        border.add(dxf.rectangle((0,0),self.short+self.thin,self.thin,bgcolor=bg))
-        border.add(dxf.rectangle((self.short+self.thin,0),self.long,self.thick,bgcolor=bg))
-        border.add(dxf.rectangle((0,self.thin),self.thin,self.short,bgcolor=bg))
-        border.add(dxf.rectangle((0,self.thin+self.short),self.thick,self.long,bgcolor=bg))
+        border.add(dxf.rectangle((0,0),short+thin,thin,bgcolor=bg))
+        border.add(dxf.rectangle((short+thin,0),long,thick,bgcolor=bg))
+        border.add(dxf.rectangle((0,thin),thin,short,bgcolor=bg))
+        border.add(dxf.rectangle((0,thin+short),thick,long,bgcolor=bg))
         
-        for x in range(int(self.short+self.long),int(self.chipX-self.short-self.long-self.dash),self.dash):
-            border.add(dxf.rectangle((x+offsetX,0),self.thick,self.thick,bgcolor=bg))
+        for x in range(int(short+long),int(self.chipX-short-long-dash),dash):
+            border.add(dxf.rectangle((x+offsetX,0),thick,thick,bgcolor=bg))
         
-        border.add(dxf.rectangle((self.chipX,0),-self.short-self.thin,self.thin,bgcolor=bg))
-        border.add(dxf.rectangle((self.chipX-self.short-self.thin,0),-self.long,self.thick,bgcolor=bg))
-        border.add(dxf.rectangle((self.chipX,self.thin),-self.thin,self.short,bgcolor=bg))
-        border.add(dxf.rectangle((self.chipX,self.thin+self.short),-self.thick,self.long,bgcolor=bg))
+        border.add(dxf.rectangle((self.chipX,0),-short-thin,thin,bgcolor=bg))
+        border.add(dxf.rectangle((self.chipX-short-thin,0),-long,thick,bgcolor=bg))
+        border.add(dxf.rectangle((self.chipX,thin),-thin,short,bgcolor=bg))
+        border.add(dxf.rectangle((self.chipX,thin+short),-thick,long,bgcolor=bg))
         
-        for y in range(int(self.short+self.long),int(self.chipY-self.short-self.long-self.dash),self.dash):
-            border.add(dxf.rectangle((0,y+offsetY),self.thick,self.thick,bgcolor=bg))
+        for y in range(int(short+long),int(self.chipY-short-long-dash),dash):
+            border.add(dxf.rectangle((0,y+offsetY),thick,thick,bgcolor=bg))
         
-        border.add(dxf.rectangle((0,self.chipY),self.short+self.thin,-self.thin,bgcolor=bg))
-        border.add(dxf.rectangle((self.short+self.thin,self.chipY),self.long,-self.thick,bgcolor=bg))
-        border.add(dxf.rectangle((0,-self.thin+self.chipY),self.thin,-self.short,bgcolor=bg))
-        border.add(dxf.rectangle((0,-self.thin-self.short+self.chipY),self.thick,-self.long,bgcolor=bg))
+        border.add(dxf.rectangle((0,self.chipY),short+thin,-thin,bgcolor=bg))
+        border.add(dxf.rectangle((short+thin,self.chipY),long,-thick,bgcolor=bg))
+        border.add(dxf.rectangle((0,-thin+self.chipY),thin,-short,bgcolor=bg))
+        border.add(dxf.rectangle((0,-thin-short+self.chipY),thick,-long,bgcolor=bg))
         
-        for x in range(int(self.short+self.long),int(self.chipX-self.short-self.long-self.dash),self.dash):
-            border.add(dxf.rectangle((x+offsetX-self.thick,self.chipY),self.thick,-self.thick,bgcolor=bg))
+        for x in range(int(short+long),int(self.chipX-short-long-dash),dash):
+            border.add(dxf.rectangle((x+offsetX-thick,self.chipY),thick,-thick,bgcolor=bg))
         
-        border.add(dxf.rectangle((self.chipX,self.chipY),-self.short-self.thin,-self.thin,bgcolor=bg))
-        border.add(dxf.rectangle((self.chipX-self.short-self.thin,self.chipY),-self.long,-self.thick,bgcolor=bg))
-        border.add(dxf.rectangle((self.chipX,-self.thin+self.chipY),-self.thin,-self.short,bgcolor=bg))
-        border.add(dxf.rectangle((self.chipX,-self.thin-self.short+self.chipY),-self.thick,-self.long,bgcolor=bg))
+        border.add(dxf.rectangle((self.chipX,self.chipY),-short-thin,-thin,bgcolor=bg))
+        border.add(dxf.rectangle((self.chipX-short-thin,self.chipY),-long,-thick,bgcolor=bg))
+        border.add(dxf.rectangle((self.chipX,-thin+self.chipY),-thin,-short,bgcolor=bg))
+        border.add(dxf.rectangle((self.chipX,-thin-short+self.chipY),-thick,-long,bgcolor=bg))
         
-        for y in range(int(self.short+self.long),int(self.chipY-self.short-self.long-self.dash),self.dash):
-            border.add(dxf.rectangle((self.chipX,y+offsetY-self.thick),-self.thick,self.thick,bgcolor=bg))
-        
-
+        for y in range(int(short+long),int(self.chipY-short-long-dash),dash):
+            border.add(dxf.rectangle((self.chipX,y+offsetY-thick),-thick,thick,bgcolor=bg))
         
         self.drawing.blocks.add(border)
 
         for index,pt in enumerate(self.chipPts):
-            if (maxpts==0 or index<maxpts) and index>minpts:
+            if (maxpts==0 or index<maxpts) and index>=minpts:
                 self.drawing.add(dxf.insert('DICINGBORDER',insert=(pt[0],pt[1]),layer=self.lyr('MARKERS')))
 
                 
@@ -467,6 +475,7 @@ class Structure:
 # ===============================================================================
 #  7mm CHIP CLASS  
 #       chip with 8 structures corresponding to the launcher positions
+#       NOTE: chip size still needs to be set in the wafer settings, this just determines structure location
 # ===============================================================================
 
 class Chip7mm(Chip):
@@ -497,6 +506,7 @@ class Chip7mm(Chip):
 # ===============================================================================
 #  LARGE MARKER CHIP CLASS  
 #       chip with large centered rectangle for high visibility
+#       NOTE: ribs enabled greatly increases file size
 # ===============================================================================
 
 class MarkerLarge(Chip):
@@ -512,7 +522,7 @@ class MarkerLarge(Chip):
         
 # ===============================================================================
 #  BLANK CENTERED WR10 CHIP CLASS  
-#       chip with wr10 rectangle
+#       chip with a rectangle marking dimensions of wr10 waveguide
 # ===============================================================================
 
 class BlankCenteredWR10(Chip):

@@ -8,6 +8,7 @@ Created on Fri Aug 31 16:45:06 2018
 import maskLib.MaskLib as m
 from maskLib.microwaveLib import *
 from maskLib.Entities import SolidPline, SkewRect, CurveRect, InsideCurve
+from maskLib.junctionLib import JContact_slot
 import numpy as np
 from dxfwrite import DXFEngine as dxf
 from dxfwrite import const
@@ -27,7 +28,7 @@ w.sawWidth = 203.2 #8 mils
 w.chipY = 7000 + w.sawWidth
 w.chipX = 7000 + w.sawWidth
 w.frame = 1   #draw frame layer?
-w.solid = 1   #draw things solid?
+w.solid = 0   #draw things solid?
 w.multiLayer = 1  #draw in multiple layers?
 if w.multiLayer:
     w.addLayer('BASEMETAL',4)
@@ -35,19 +36,12 @@ if w.multiLayer:
     w.defaultLayer = 'BASEMETAL'
 
 #initialize the wafer
-w.init()
+w.initChipOnly()
 
-w.thin=5      #thin section of crosshair
-w.thick=20    #thick section of crosshair AND dash thickness
-w.short=40    #short section of crosshair
-w.long=100    #long section of crosshair
-w.dash=400    #spacing between dashes
 curve_pts = 30  #point resolution of all curves
 
 #do dicing border
 w.DicingBorder()
-
-print('solid? ',w.solid)
 
 
 
@@ -147,8 +141,72 @@ class FancyChip(m.Chip7mm):
         CPW_directTo(self,s2,self.structures[5],radius=200)
         CPW_directTo(self,s3,self.structures[4],radius=200)
         
-        pline = SolidPline(self.centered((300,0)),points = [(3000,0)],color=2,bgcolor=w.bg(),rotation=30,flags=0)#1
-        pline.add_vertices([(3000,600),(2800,800),(2600,1000),(0,1000),(0,0)])
+        #>>>>>>>>>>> test cpw_tee functions <<<<<<<<<<<<<<<
+        
+        s4=m.Structure(self,start=self.centered((-100,-2800)),direction=15,defaults={'w':10, 's':5, 'radius':50,'r_out':5})
+        CPW_stub_open(self,s4,flipped=True,w=20,s=10)
+        CPW_straight(self,s4,100,w=20,s=10)
+        CPW_taper(self,s4,w0=20,s0=10)
+        CPW_straight(self,s4,80)
+        s4a,s4b = CPW_tee(self,s4,radius=3)#continue CPW off of each tee end
+        CPW_straight(self,s4a,30)
+        CPW_straight(self,s4b,50)
+        
+        s4.shiftPos(60)#flipped
+        s4a,s4b =CPW_tee(self,s4,hflip=True)
+        CPW_straight(self,s4,20)
+        CPW_straight(self,s4a,30)
+        CPW_straight(self,s4b,40)
+        
+        s4.shiftPos(40)#w different
+        CPW_straight(self,s4,20)
+        s4a,s4b = CPW_tee(self,s4,w1=20)
+        CPW_straight(self,s4a,30) #branching structure defaults are automatically redefined
+        CPW_taper(self,s4b,30,w1=10,s1=3)
+        
+        s4.shiftPos(60)#s1<s
+        CPW_straight(self,s4,20)
+        s4a,s4b = CPW_tee(self,s4,w1=4,s1=3)
+        CPW_straight(self,s4a,30) #branching structure defaults are automatically redefined
+        CPW_straight(self,s4b,20)
+        
+        s4.shiftPos(40)#s1>s
+        CPW_straight(self,s4,20)
+        s4a,s4b = CPW_tee(self,s4,w1=15,s1=15,r_ins=0)
+        CPW_straight(self,s4a,30) #branching structure defaults are automatically redefined
+        CPW_straight(self,s4b,20)
+        
+        s4.shiftPos(80)#flipped AND s1<s
+        s4a,s4b = CPW_tee(self,s4,w1=4,s1=3,hflip=True,r_ins=20)
+        CPW_straight(self,s4,20)
+        CPW_straight(self,s4a,30) #branching structure defaults are automatically redefined
+        CPW_straight(self,s4b,20)
+        
+        s4.shiftPos(60)#flipped AND s1>s
+        s4a,s4b = CPW_tee(self,s4,w1=15,s1=15,hflip=True)
+        CPW_straight(self,s4,20)
+        CPW_straight(self,s4a,30) #branching structure defaults are automatically redefined
+        CPW_straight(self,s4b,20)
+        #test left oriented CPW tee
+        s4a=CPW_tee(self,s4,branch_off=const.LEFT)
+        CPW_straight(self,s4,30)
+        CPW_straight(self,s4a,50) #continue off left branch
+        CPW_straight(self,s4,30)
+        
+        s4b=CPW_tee(self,s4,branch_off=const.RIGHT)
+        CPW_straight(self,s4b,50) #continue off right branch
+        CPW_straight(self,s4,30)
+        
+        #>>>>>>>>>>> test junction pad functions <<<<<<<<<<<<<<<
+        
+        s5=m.Structure(self,start=self.centered((100,2800)),direction=0,defaults={'w':20, 's':10, 'radius':100,'r_out':1.5,'r_ins':1.5})
+        JContact_slot(self,s5,gapl=1,tabl=1,taboffs=1.5)
+        self.add(dxf.rectangle(s5.getPos((9.5,0)),20,13,valign=const.MIDDLE,bgcolor=self.bg()))
+        
+        #>>>>>>>>>>> test solid pline functions <<<<<<<<<<<<<<<
+        
+        pline = SolidPline(self.centered((1000,500)),points = [(0,0)],color=2,bgcolor=2,rotation=30,flags=0)#1
+        pline.add_vertices([(1000,0),(1000,500),(800,600),(0,600)])
         #don't need to close
         self.add(pline)
         
@@ -223,7 +281,6 @@ class FancyChip(m.Chip7mm):
         
 myFancyChip = FancyChip(w,'FANCYCHIP','BASEMETAL')
 
-print('solid? ',myFancyChip.wafer.solid)
 
 waffle(myFancyChip, 176.3, width=80,bleedRadius=1,padx=500,layer='MARKERS')
 
