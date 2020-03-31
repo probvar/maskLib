@@ -19,31 +19,23 @@ from dxfwrite.vector2d import vadd
 # wafer setup
 # ===============================================================================
 
-w = m.Wafer('StructureTest01','DXF/')
-#set wafer properties
+w = m.Wafer('StructureTest01','DXF/',7000,7000,waferDiameter=m.waferDiameters['2in'],sawWidth=m.sawWidths['8A'],
+                frame=1,solid=0,multiLayer=1)
+# w.frame: draw frame layer?
+# w.solid: draw things solid?
+# w.multiLayer: draw in multiple layers?
 
-w.waferDiameter = 50800 #2 inches
-w.padding = 2500
-w.sawWidth = 203.2 #8 mils
-w.chipY = 7000 + w.sawWidth
-w.chipX = 7000 + w.sawWidth
-w.frame = 1   #draw frame layer?
-w.solid = 0   #draw things solid?
-w.multiLayer = 1  #draw in multiple layers?
-if w.multiLayer:
-    w.addLayer('BASEMETAL',4)
-    #w.addLayer('EBEAM',3)
-    w.defaultLayer = 'BASEMETAL'
+w.SetupLayers([
+    ['BASEMETAL',4]
+    ])
 
 #initialize the wafer
-w.initChipOnly()
-
-curve_pts = 30  #point resolution of all curves
+w.init()
 
 #do dicing border
 w.DicingBorder()
 
-
+curve_pts = 30  #point resolution of all curves
 
 #=============================
 class FancyChip(m.Chip7mm):
@@ -280,16 +272,35 @@ class FancyChip(m.Chip7mm):
    
         
 myFancyChip = FancyChip(w,'FANCYCHIP','BASEMETAL')
-
-
 waffle(myFancyChip, 176.3, width=80,bleedRadius=1,padx=500,layer='MARKERS')
 
 
-myFancyChip.save(w)
+myFancyChip.save(w,drawCopyDXF=True,dicingBorder=True)
 
-for i in range(len(w.chips)):
+for i in range(8,16):
     w.chips[i]=myFancyChip
 
 # write all chips
 w.populate()
 w.save()
+'''
+w1 = m.Wafer('StructureTest01_CHIP','DXF/')
+w1.setProperties(7000,7000)
+if w1.multiLayer:
+    w1.addLayer('BASEMETAL',4)
+    w1.defaultLayer = 'BASEMETAL'
+
+myFancyChip.save(w1)
+w1.defaultChip=myFancyChip
+print(len(w1.chips))
+print(len(w1.chipPts))
+
+w1.initChipOnly()
+w1.DicingBorder()
+
+
+print(len(w1.chips))
+print(len(w1.chipPts))
+w1.populate()
+w1.save()
+'''

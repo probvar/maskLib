@@ -18,7 +18,7 @@ from dxfwrite.algebra import rotate_2d
 # ===============================================================================
 #  LOOKUP DICTIONARIES FOR COMMON TERMS 
 # ===============================================================================
-waferDiameters = {'2in':50800,'3in':76200,'4in':101600,'6in',152400}
+waferDiameters = {'2in':50800,'3in':76200,'4in':101600,'6in':152400}
 sawWidths = {'4A':101.6,'8A':203.2}
 
 # ===============================================================================
@@ -88,44 +88,65 @@ def skewRect(corner,width,height,offset,newLength,edge=1,**kwargs):
 #       master class designed to handle all layers, main dxf drawing and stores chips
 # ===============================================================================
 class Wafer:
-    #====================wafer properties======================
-    fileName = 'Test'
-    path = ''
-    waferDiameter = 50800
-    padding = 2500
-    sawWidth = 203.2
-    chipY = 1870 + sawWidth
-    chipX = 3140 + sawWidth
-    frame = True   #draw frame layer?
-    solid = True   #draw things solid?
-    multiLayer = True  #draw in multiple layers?
-    singleChipRow = False #draw only one row of chips? (vertical)
-    chipPts = [] #chip offsets, measuring from lower left corner
-    chipColumns = [] #chip columns
-    chips = [] #cached chip references
-    defaultChip = None
-    layerColors = {'0':7} #colors corresponding to layers
-    layerNames = ['0']
-    defaultLayer = '0' #default layer to draw chips on
-    
-    def __init__(self,name,path):
-        #keep all settings default
-        #initialize drawing]
+
+    def __init__(self,name,path,chipWidth,chipHeight,waferDiameter=50800,padding=2500,sawWidth=203.2,frame=True,solid=False,multiLayer=True,singleChipRow=False):
+        # initialize drawing
         self.fileName = name
         self.path = path
         self.drawing = dxf.drawing(path + name + '.dxf')
         
-    def setProperties(self,chipWidth,chipHeight,waferDiameter=50800,padding=2500,sawWidth=203.2,frame=True,solid=False,multiLayer=True):
-        #set the basic properties of the wafer
+        # set default wafer properties
         self.waferDiameter = waferDiameter
         self.padding = padding
         self.sawWidth = sawWidth
         self.chipY = chipWidth + sawWidth
         self.chipX = chipHeight + sawWidth
-        self.frame = frame
-        self.solid = solid
-        self.multiLayer = multiLayer
+        self.frame = frame              #draw frame layer?
+        self.solid = solid              #draw things solid?
+        self.multiLayer = multiLayer    #draw in multiple layers?
+        self.singleChipRow = singleChipRow #draw only one row of chips? (vertical)
         
+        # initialize default layers
+        self.layerColors = {'0':7} #colors corresponding to layers
+        self.layerNames = ['0']
+        self.defaultLayer = '0' #default layer to draw chips on
+        
+        # initialize private variables
+        self.chipPts = [] #chip offsets, measuring from lower left corner
+        self.chipColumns = [] #chip columns
+        self.chips = [] #cached chip references
+        self.defaultChip = None
+        
+        
+    # for changing wafer properties later
+    def setProperties(self,chipWidth,chipHeight,waferDiameter=50800,padding=2500,sawWidth=203.2,frame=True,solid=False,multiLayer=True):
+        # set the basic properties of the wafer
+        self.waferDiameter = waferDiameter
+        self.padding = padding
+        self.sawWidth = sawWidth
+        self.chipY = chipWidth + sawWidth
+        self.chipX = chipHeight + sawWidth
+        self.frame = frame              #draw frame layer?
+        self.solid = solid              #draw things solid?
+        self.multiLayer = multiLayer    #draw in multiple layers?
+    
+    #copy properties from a parent wafer
+    def copyPropertiesFrom(self,wafer):
+        self.waferDiameter = wafer.waferDiameter
+        self.padding = wafer.padding
+        self.sawWidth = wafer.sawWidth
+        self.chipY = wafer.chipY
+        self.chipX = wafer.chipX
+        self.frame = wafer.frame              #draw frame layer?
+        self.solid = wafer.solid              #draw things solid?
+        self.multiLayer = wafer.multiLayer    #draw in multiple layers?
+        
+        self.layerColors = wafer.layerColors
+        self.layerNames = wafer.layerNames
+        self.defaultLayer = wafer.defaultLayer 
+        
+        #ignore private vars
+    
     def save(self):
         self.drawing.save()
         print('Saved as: '+ '\x1b[36m' + self.path + self.fileName + '.dxf'+'\x1b[0m')
@@ -134,7 +155,7 @@ class Wafer:
         return self.multiLayer and layerName or '0'
     
     def bg(self,layerName=None):
-        #return the fill color
+        # return the fill color
         if layerName is None:
             return self.solid and const.BYLAYER or None
         else:
@@ -143,6 +164,28 @@ class Wafer:
     def addLayer(self,layerName,layerColor):
         self.layerNames.append(layerName)
         self.layerColors[layerName]=layerColor
+    
+    def setDefaultChip(self,chip=None):
+        # update default chip and chip list
+        
+        if chip is None: 
+            if self.defaultChip is None:
+                self.defaultChip = Chip(self,'BLANK',self.defaultLayer)
+                self.defaultChip.save(self)
+            else:
+                print('Default chip already set in '+self.fileName)
+        else:
+            self.defaultChip = chip
+            self.defaultChip.save(self)
+        
+        #populate wafer with default chips
+        print('len chips:' + str(len(self.chips)))
+        if len(self.chips)>0:
+            for i in range(len(self.chips)):
+                self.chips[i]=self.defaultChip
+        else:
+            for i in range(len(self.chipPts)):
+                self.chips.append(self.defaultChip)
     
     def init(self):
         #verify frame is off is multilayer is off
@@ -189,12 +232,7 @@ class Wafer:
         #reverse column counts to go from left to center
         self.chipColumns = self.chipColumns[::-1]
         
-        #setup the default chip
-        self.defaultChip = Chip(self,'BLANK',self.defaultLayer)
-        self.defaultChip.save(self)
-        #populate wafer with default chips
-        for i in range(len(self.chipPts)):
-            self.chips.append(self.defaultChip)
+        self.setDefaultChip()
         
         #setup the viewport
         self.drawing.add_vport('*ACTIVE',ucs_icon=0,circle_zoom=1000,grid_on=1,center_point=(0,0),aspect_ratio=2*(self.waferDiameter))
@@ -216,13 +254,25 @@ class Wafer:
         else:
             self.chipPts =[[0,0]]
             
+        self.setDefaultChip()
+        '''
         #setup the default chip
         self.defaultChip = Chip(self,'BLANK',self.defaultLayer)
         self.defaultChip.save(self)
         #populate with the default chip
         self.chips = [self.defaultChip]
+        '''
         #setup the viewport
         self.drawing.add_vport('*ACTIVE',ucs_icon=0,circle_zoom=1000,grid_on=1,center_point=(0,0),aspect_ratio=2*(max(self.chipX,self.chipY)))
+    
+    def SetupLayers(self,layers):
+        #format: ['layername',color_int]
+        #first layer is default
+        if self.multiLayer:
+            for l in layers:
+                self.addLayer(l[0], l[1])
+            self.defaultLayer=layers[0][0]
+            
     
     #dicing saw border
     def DicingBorder(self,maxpts=0,minpts=0,thin=5,thick=20,short=40,long=100,dash=400):
@@ -276,7 +326,6 @@ class Wafer:
         for index,pt in enumerate(self.chipPts):
             if (maxpts==0 or index<maxpts) and index>=minpts:
                 self.drawing.add(dxf.insert('DICINGBORDER',insert=(pt[0],pt[1]),layer=self.lyr('MARKERS')))
-
                 
     def writeChip(self,chip,index):
         #insert a chip at specified index
@@ -363,8 +412,20 @@ class Chip:
         if wafer.frame:
             self.add(dxf.rectangle((0,0),self.width,self.height,layer=wafer.lyr('FRAME')))
     
-    def save(self,wafer):
+    def save(self,wafer,drawCopyDXF=False,dicingBorder=True):
         wafer.drawing.blocks.add(self.chipBlock)
+        if drawCopyDXF:
+            #make a copy DXF with only the chip
+            temp_wafer = Wafer(wafer.fileName+'_'+self.ID,wafer.path,10,10)
+            #height and width don't matter since the next line copies all settings
+            temp_wafer.copyPropertiesFrom(wafer)
+            temp_wafer.drawing.blocks.add(self.chipBlock)
+            temp_wafer.initChipOnly()
+            if dicingBorder:
+                temp_wafer.DicingBorder()
+            temp_wafer.setDefaultChip(self)
+            temp_wafer.populate()
+            temp_wafer.save()
         
     def add(self,obj,structure=None,length=None,offsetVector=None,absolutePos=None,angle=0,newDir=None):
         self.chipBlock.add(obj)
