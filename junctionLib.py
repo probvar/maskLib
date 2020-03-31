@@ -22,7 +22,7 @@ import math
 # contact pad functions (for ground plane)
 # ===============================================================================
 
-def JContact_slot(chip,structure,gapw=3,gapl=0,tabw=2,tabl=0,taboffs=0,r_out=None,r_ins=None,ptDensity=60,bgcolor=None,**kwargs):
+def JContact_slot(chip,structure,rotation=0,gapw=3,gapl=0,tabw=2,tabl=0,taboffs=0,r_out=None,r_ins=None,ptDensity=60,hflip=False,bgcolor=None,debug=False,**kwargs):
     '''
     Creates shapes forming a negative space puzzle piece slot (tab) with rounded corners, and adjustable angles. 
     No overlap : XOR mode compatible
@@ -35,6 +35,8 @@ def JContact_slot(chip,structure,gapw=3,gapl=0,tabw=2,tabl=0,taboffs=0,r_out=Non
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,start=structure,direction=rotation)
         else:
             return chip.structure(structure)
     if r_out is None:
@@ -55,22 +57,50 @@ def JContact_slot(chip,structure,gapw=3,gapl=0,tabw=2,tabl=0,taboffs=0,r_out=Non
     tot_length=2*r_out+gapl+taboffs+2*r_ins+tabl
     half_width=gapw/2+r_out+tabw+r_ins
     
-    theta = math.degrees(math.atan2( tabw*(-r_ins - r_out)+abs(tabw)/tabw *(taboffs + r_ins + r_out)*math.sqrt(tabw**2 + taboffs*(taboffs + 2*(r_ins + r_out))) , (r_ins + r_out)*(taboffs + r_ins + r_out)+ abs(tabw)*math.sqrt(tabw**2 + taboffs*(taboffs + 2*(r_ins + r_out)))))
+    if hflip:
+        struct().shiftPos(tot_length,angle=180)
+    
+    if taboffs==0:
+        theta=90
+    else:
+        theta = math.degrees(math.atan2(
+            (r_ins + r_out)*(taboffs + r_ins + r_out)+ abs(tabw)*math.sqrt(tabw**2 + taboffs*(taboffs + 2*(r_ins + r_out))),
+            tabw*(-r_ins - r_out)+(taboffs + r_ins + r_out)*math.sqrt(tabw**2 + taboffs*(taboffs + 2*(r_ins + r_out)))*abs(tabw)/tabw))
+    inside_ptx = tot_length-tabl-r_ins*(1+math.sin(math.radians(theta))- (1- math.cos(math.radians(theta)))/math.tan(math.radians(theta)))
+    
+    chip.add(SolidPline(struct().getPos(),rotation=struct().direction,points=[(gapl+r_out,gapw/2+r_out),
+                                                                              (gapl+r_out*(1+math.sin(math.radians(theta))),gapw/2+r_out*(1-math.cos(math.radians(theta)))),
+                                                                              (inside_ptx,half_width),(0,half_width),(0,gapw/2+r_out)],bgcolor=bgcolor,**kwargs))
+    chip.add(SolidPline(struct().getPos(),rotation=struct().direction,points=[(gapl+r_out,-gapw/2-r_out),
+                                                                              (gapl+r_out*(1+math.sin(math.radians(theta))),-gapw/2-r_out*(1-math.cos(math.radians(theta)))),
+                                                                              (inside_ptx,-half_width),(0,-half_width),(0,-gapw/2-r_out)],bgcolor=bgcolor,**kwargs))
     
     if r_out>0:
-        chip.add(CurveRect(struct().getPos((r_out,gapw/2+r_out)), r_out, r_out,ralign=const.TOP,hflip=True,vflip=True,bgcolor=bgcolor, **kwargs))
-        chip.add(CurveRect(struct().getPos((r_out,-gapw/2-r_out)), r_out, r_out,ralign=const.TOP,hflip=True,bgcolor=bgcolor, **kwargs))
+        if debug:
+            chip.add(dxf.circle(r_out,struct().getPos((r_out+gapl,gapw/2+r_out)),layer='FRAME',**kwargs))
+            chip.add(dxf.circle(r_out,struct().getPos((r_out+gapl,-gapw/2-r_out)),layer='FRAME',**kwargs))
+        chip.add(CurveRect(struct().getPos((r_out,gapw/2+r_out)), r_out, r_out,ralign=const.TOP,hflip=True,vflip=True,rotation=struct().direction,bgcolor=bgcolor, **kwargs))
+        chip.add(CurveRect(struct().getPos((r_out,-gapw/2-r_out)), r_out, r_out,ralign=const.TOP,hflip=True,rotation=struct().direction,bgcolor=bgcolor, **kwargs))
         if gapl > 0:
-            chip.add(dxf.rectangle(struct().getPos((r_out,gapw/2)),gapl,r_out,bgcolor=bgcolor,**kwargs))
-            chip.add(dxf.rectangle(struct().getPos((r_out,-gapw/2)),gapl,-r_out,bgcolor=bgcolor,**kwargs))
-        chip.add(CurveRect(struct().getPos((r_out+gapl,gapw/2+r_out)), r_out, r_out,ralign=const.TOP,angle=theta,vflip=True,bgcolor=bgcolor, **kwargs))
-        chip.add(CurveRect(struct().getPos((r_out+gapl,-gapw/2-r_out)), r_out, r_out,ralign=const.TOP,angle=theta,bgcolor=bgcolor, **kwargs))
+            chip.add(dxf.rectangle(struct().getPos((r_out,gapw/2)),gapl,r_out,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().getPos((r_out,-gapw/2)),gapl,-r_out,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+        chip.add(CurveRect(struct().getPos((r_out+gapl,gapw/2+r_out)), r_out, r_out,ralign=const.TOP,angle=theta,vflip=True,rotation=struct().direction,bgcolor=bgcolor, **kwargs))
+        chip.add(CurveRect(struct().getPos((r_out+gapl,-gapw/2-r_out)), r_out, r_out,ralign=const.TOP,angle=theta,rotation=struct().direction,bgcolor=bgcolor, **kwargs))
     
     if r_ins>0:
-        chip.add(InsideCurve(struct().getPos((tot_length,half_width)), r_ins, bgcolor=bgcolor,**kwargs))
-        chip.add(InsideCurve(struct().getPos((tot_length,-half_width)), r_ins, vflip=True,bgcolor=bgcolor,**kwargs))
-    
+        if debug:
+            chip.add(dxf.circle(r_ins,struct().getPos((tot_length-r_ins-tabl,half_width-r_ins)),layer='FRAME',**kwargs))
+            chip.add(dxf.circle(r_ins,struct().getPos((tot_length-r_ins-tabl,-half_width+r_ins)),layer='FRAME',**kwargs))
+        chip.add(InsideCurve(struct().getPos((tot_length,half_width)), r_ins, rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+        chip.add(InsideCurve(struct().getPos((tot_length,-half_width)), r_ins, vflip=True,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
         
+        chip.add(InsideCurve(struct().getPos((inside_ptx,half_width)), r_ins,angle=180-theta,hflip=True, rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+        chip.add(InsideCurve(struct().getPos((inside_ptx,-half_width)), r_ins,angle=180-theta,hflip=True, vflip=True,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+    
+    if hflip:
+        struct().shiftPos(0,angle=180)
+    else:
+        struct().shiftPos(tot_length)
     
     #chip.add(CurveRect(struct().start,s,radius,angle=angle,ptDensity=ptDensity,roffset=w/2,ralign=const.BOTTOM,rotation=struct().direction,vflip=not CCW,bgcolor=bgcolor,**kwargs))
     #chip.add(CurveRect(struct().start,s,radius,angle=angle,ptDensity=ptDensity,roffset=-w/2,ralign=const.TOP,valign=const.TOP,rotation=struct().direction,vflip=not CCW,bgcolor=bgcolor,**kwargs))

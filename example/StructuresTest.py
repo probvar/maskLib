@@ -191,9 +191,21 @@ class FancyChip(m.Chip7mm):
         
         #>>>>>>>>>>> test junction pad functions <<<<<<<<<<<<<<<
         
-        s5=m.Structure(self,start=self.centered((100,2800)),direction=0,defaults={'w':20, 's':10, 'radius':100,'r_out':1.5,'r_ins':1.5})
-        JContact_slot(self,s5,gapl=1,tabl=1,taboffs=1.5)
-        self.add(dxf.rectangle(s5.getPos((9.5,0)),20,13,valign=const.MIDDLE,bgcolor=self.bg()))
+        s5=m.Structure(self,start=self.centered((100,2800)),direction=-15,defaults={'w':20, 's':10, 'radius':100,'r_out':1.5,'r_ins':1.5})
+        self.add(dxf.rectangle(s5.getPos((0,0)),-100,13,valign=const.MIDDLE,rotation=s5.direction,bgcolor=w.bg()))
+        self.add(dxf.rectangle(s5.getPos((8.5,6.5)),-100-8.5,50,rotation=s5.direction,bgcolor=w.bg()))
+        self.add(dxf.rectangle(s5.getPos((8.5,-6.5)),-100-8.5,-50,rotation=s5.direction,bgcolor=w.bg()))
+        JContact_slot(self,s5,gapl=1,tabl=2,tabw=2,taboffs=-0.5,hflip=True)
+        s5.shiftPos(50)
+
+        JContact_slot(self,s5,gapl=1,tabl=1,tabw=2,taboffs=1.5)
+        self.add(dxf.rectangle(s5.getPos((0,0)),100,13,valign=const.MIDDLE,rotation=s5.direction,bgcolor=w.bg()))
+        self.add(dxf.rectangle(s5.getPos((-9.5,6.5)),100+9.5,50,rotation=s5.direction,bgcolor=w.bg()))
+        self.add(dxf.rectangle(s5.getPos((-9.5,-6.5)),100+9.5,-50,rotation=s5.direction,bgcolor=w.bg()))
+        
+        #works without structure as well
+        JContact_slot(self,self.centered((100,2600)),gapl=1,tabl=1,tabw=2,taboffs=0,r_out=1.5,r_ins=1.5)
+        self.add(dxf.rectangle(self.centered((109.5,2600)),20,13,valign=const.MIDDLE,bgcolor=self.bg()))
         
         #>>>>>>>>>>> test solid pline functions <<<<<<<<<<<<<<<
         
@@ -267,7 +279,7 @@ class FancyChip(m.Chip7mm):
         self.add(InsideCurve(self.centered((-300 + x1 + x2,50)),50,angle=50,bgcolor=2,hflip=True,vflip=True))
         
         
-        #----------------------- test CPW launcher
+        #----------------------- test CPW launcher ---------------
         
    
         
@@ -283,24 +295,3 @@ for i in range(8,16):
 # write all chips
 w.populate()
 w.save()
-'''
-w1 = m.Wafer('StructureTest01_CHIP','DXF/')
-w1.setProperties(7000,7000)
-if w1.multiLayer:
-    w1.addLayer('BASEMETAL',4)
-    w1.defaultLayer = 'BASEMETAL'
-
-myFancyChip.save(w1)
-w1.defaultChip=myFancyChip
-print(len(w1.chips))
-print(len(w1.chipPts))
-
-w1.initChipOnly()
-w1.DicingBorder()
-
-
-print(len(w1.chips))
-print(len(w1.chipPts))
-w1.populate()
-w1.save()
-'''

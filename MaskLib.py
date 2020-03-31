@@ -179,7 +179,6 @@ class Wafer:
             self.defaultChip.save(self)
         
         #populate wafer with default chips
-        print('len chips:' + str(len(self.chips)))
         if len(self.chips)>0:
             for i in range(len(self.chips)):
                 self.chips[i]=self.defaultChip
