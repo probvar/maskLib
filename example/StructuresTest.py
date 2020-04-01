@@ -8,7 +8,7 @@ Created on Fri Aug 31 16:45:06 2018
 import maskLib.MaskLib as m
 from maskLib.microwaveLib import *
 from maskLib.Entities import SolidPline, SkewRect, CurveRect, InsideCurve
-from maskLib.junctionLib import JContact_slot
+from maskLib.junctionLib import JContact_slot,JContact_tab,JcalcTabDims
 import numpy as np
 from dxfwrite import DXFEngine as dxf
 from dxfwrite import const
@@ -20,7 +20,7 @@ from dxfwrite.vector2d import vadd
 # ===============================================================================
 
 w = m.Wafer('StructureTest01','DXF/',7000,7000,waferDiameter=m.waferDiameters['2in'],sawWidth=m.sawWidths['8A'],
-                frame=1,solid=0,multiLayer=1)
+                frame=1,solid=1,multiLayer=1)
 # w.frame: draw frame layer?
 # w.solid: draw things solid?
 # w.multiLayer: draw in multiple layers?
@@ -190,7 +190,7 @@ class FancyChip(m.Chip7mm):
         CPW_straight(self,s4,30)
         
         #>>>>>>>>>>> test junction pad functions <<<<<<<<<<<<<<<
-        
+        # slot functions
         s5=m.Structure(self,start=self.centered((100,2800)),direction=-15,defaults={'w':20, 's':10, 'radius':100,'r_out':1.5,'r_ins':1.5})
         self.add(dxf.rectangle(s5.getPos((0,0)),-100,13,valign=const.MIDDLE,rotation=s5.direction,bgcolor=w.bg()))
         self.add(dxf.rectangle(s5.getPos((8.5,6.5)),-100-8.5,50,rotation=s5.direction,bgcolor=w.bg()))
@@ -206,6 +206,15 @@ class FancyChip(m.Chip7mm):
         #works without structure as well
         JContact_slot(self,self.centered((100,2600)),gapl=1,tabl=1,tabw=2,taboffs=0,r_out=1.5,r_ins=1.5)
         self.add(dxf.rectangle(self.centered((109.5,2600)),20,13,valign=const.MIDDLE,bgcolor=self.bg()))
+        
+        # tab functons
+        s6=m.Structure(self,start=self.centered((600,2800)),direction=-15,defaults={'w':20, 's':10, 'radius':100,'r_out':1.5,'r_ins':1.0})
+        self.add(dxf.rectangle(s6.getPos((0,0)),-100,100,valign=const.MIDDLE,rotation=s5.direction,bgcolor=w.bg()))
+        JContact_tab(self,s6,steml=1,tabl=2,tabw=2,taboffs=-0.5)
+        s6.shiftPos(40)
+
+        JContact_tab(self,s6,steml=1,tabl=1,tabw=2,taboffs=1.5,hflip=True)
+        self.add(dxf.rectangle(s6.getPos((0,0)),100,100,valign=const.MIDDLE,rotation=s5.direction,bgcolor=w.bg()))
         
         #>>>>>>>>>>> test solid pline functions <<<<<<<<<<<<<<<
         
@@ -284,7 +293,7 @@ class FancyChip(m.Chip7mm):
    
         
 myFancyChip = FancyChip(w,'FANCYCHIP','BASEMETAL')
-waffle(myFancyChip, 176.3, width=80,bleedRadius=1,padx=500,layer='MARKERS')
+#waffle(myFancyChip, 176.3, width=80,bleedRadius=1,padx=500,layer='MARKERS')
 
 
 myFancyChip.save(w,drawCopyDXF=True,dicingBorder=True)
