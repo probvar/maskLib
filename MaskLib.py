@@ -468,7 +468,7 @@ class Chip:
         return self.structures[i].direction
     
     def bg(self,layerName=None):
-        self.wafer.bg(layerName)
+        return self.wafer.bg(layerName)
 
    
 # ===============================================================================

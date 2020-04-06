@@ -229,7 +229,10 @@ class FancyChip(m.Chip7mm):
         self.add(pline)
         
         #>>>>>>>>>>> test roundRect functions <<<<<<<<<<<<<<<<<<
+        self.add(dxf.line(self.centered((-10,2300)),self.centered((210,2300)),color=1))
         self.add(RoundRect(self.centered((0,2300)),200,130,radius=40,roundCorners=[1,1,0,1],rotation=15,valign=const.MIDDLE,bgcolor=w.bg()))
+        self.add(RoundRect(self.centered((-10,2300)),200,130,radius=40,roundCorners=[1,1,0,1],rotation=15,hflip=True,valign=const.MIDDLE,bgcolor=w.bg()))
+        self.add(RoundRect(self.centered((210,2300)),200,130,radius=40,roundCorners=[1,1,0,1],rotation=15,vflip=True,valign=const.MIDDLE,bgcolor=self.bg()))
         
         #demonstrate skewrect
         self.add(SkewRect(self.centered((-1600,-650)),100,80,(20,-30),10,bgcolor=w.bg(),valign=const.MIDDLE))

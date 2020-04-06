@@ -289,68 +289,45 @@ class CurveRect(SubscriptAttributes):
         return self._build() 
 
     
-class RoundRect(SubscriptAttributes):
+class RoundRect(SolidPline):
     ''' Rectangle with rounded edges. Consists of a closed polyline and multiple solids faces.
     '''
     name = 'ROUNDRECT'
 
-    def __init__(self, insert, width, height, radius, roundCorners=[1,1,1,1],rotation=0.,
+    def __init__(self, insert, width, height, radius, roundCorners=[1,1,1,1],
                  halign=const.LEFT, valign=const.TOP,
-                 color=const.BYLAYER, bgcolor=None,
-                 layer='0', linetype=None):
-        self.insert = insert
+                 hflip=False, vflip = False,**kwargs):
         self.width = float(width)
         self.height = float(height)
         self.radius = float(radius)
-        self.rotation = math.radians(rotation)
         
         self.halign = halign
         self.valign = valign
-        self.color = color
-        self.bgcolor = bgcolor
-        self.layer = layer
-        self.linetype = linetype
-        self.points = None
+        self.hflip = hflip
+        self.vflip = vflip
         
         #boolean array with corresponding to which corners to round
         self.roundCorners=roundCorners
-
-    def _build(self):
-        data = DXFList()
-        self._calc_corners(self.radius)
-        self.transformed_points = self._transform_points(self.points)
-        if self.color is not None:
-            data.append(self._build_polyline())
-        if self.bgcolor is not None:
-            if len(self.points) <= 4:
-                data.append(self._build_solid())
-            else:
-                for i in range(len(self.points)-2):
-                    data.append(self._build_solid_triangle(i))
-            
-        return data
         
-    def _transform_points(self,points):
-        return [vadd(self.insert,  # move to insert point
-                            rotate_2d(  # rotate at origin
-                                point, self.rotation))
-                       for point in points]
+        SolidPline.__init__(self,insert,points=self._calc_corners(), **kwargs)
+        
 
-    def _calc_corners(self,radius):
+    def _calc_corners(self):
         square_points = [(0., 0.), (self.width, 0.), (self.width, self.height),
                   (0., self.height)]
+        align_vector=self._get_align_vector()
         
-        points = [(0.,self.height/2)]
+        points = [self._get_flipped_point(vadd((0.,self.height/2),align_vector))]
         quadrants = [3,4,1,2]
         
         for i,sqpt in enumerate(square_points):
             if self.roundCorners[i]:
                 for p in cornerRound(sqpt, quadrants[i], self.radius,clockwise=False):
-                    points.append(p)
+                    points.append(self._get_flipped_point(vadd(align_vector,p)))
             else:
-                points.append(sqpt)
+                points.append(self._get_flipped_point(vadd(align_vector,sqpt)))
         
-        self.points = points
+        return points
 
     def _get_align_vector(self):
         if self.halign == const.CENTER:
@@ -369,32 +346,13 @@ class RoundRect(SubscriptAttributes):
             dy = 0.
 
         return (dx, dy)
-
-    def _build_polyline(self):
-        """ build the rectangle with a polyline """
-        polyline = Polyline(self.transformed_points, color=self.color, layer=self.layer)
-        polyline.close()
-        if self.linetype is not None:
-            polyline['linetype'] = self.linetype
-        return polyline
-
-    def _build_solid(self):
-        """ build the background solid, ONLY if there are 4 points """
-        if len(self.points)<=4:
-            return Solid(self.points, color=self.bgcolor, layer=self.layer)
     
-    def _build_solid_triangle(self,i):
-        ''' build a single background solid triangle segment '''
-        solidpts = [self.transformed_points[j] for j in [0,i+1,i+2]]
-        return Solid(solidpts, color=self.bgcolor, layer=self.layer) 
-
-    def __dxf__(self):
-        """ get the dxf string """
-        return dxfstr(self.__dxftags__())
-
-    def __dxftags__(self):
-        return self._build()    
+    def _get_flipped_point(self,point):
+        cx = self.hflip and -1 or 1
+        cy = self.vflip and -1 or 1
         
+        return ((point[0]*cx,point[1]*cy))
+
 
 class InsideCurve(SubscriptAttributes):
     ''' Filled inside corner rounded to radius r consisting of a single Polyline and a number of background solids
