@@ -20,7 +20,7 @@ from dxfwrite.vector2d import vadd
 # ===============================================================================
 
 w = m.Wafer('StructureTest01','DXF/',7000,7000,waferDiameter=m.waferDiameters['2in'],sawWidth=m.sawWidths['8A'],
-                frame=1,solid=1,multiLayer=1)
+                frame=1,solid=0,multiLayer=1)
 # w.frame: draw frame layer?
 # w.solid: draw things solid?
 # w.multiLayer: draw in multiple layers?
