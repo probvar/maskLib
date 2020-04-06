@@ -33,9 +33,11 @@ def Marker09(dwg,xpos,ypos,number,width,bg=None,**kwargs):
     number = number % len(shapes)
     for v in shapes[number]:
         dwg.add(dxf.rectangle((xpos+v[0]*width,ypos+v[1]*width),width,width,bgcolor=bg,**kwargs))
-     
+   
 
 def curveAB(a,b,clockwise,angleDeg,ptdensity):
+    #>>>>>>>> Deprecated, use utilities.curveAB instead <<<<<<<<<<
+    
     #generate a segmented curve from A to B specified by angle. Point density = #pts / revolution
     #return list of points
     angle = math.radians(angleDeg)
@@ -47,6 +49,8 @@ def curveAB(a,b,clockwise,angleDeg,ptdensity):
     return points
 
 def corner(vertex,quadrant,clockwise,L,ptdensity):
+    #>>>>>>>> Deprecated, use utilities.cornerRound instead <<<<<<<<<<
+    
     #quadrant corresponds to quadrants 1-4
     #generate a curve to replace the vertex
     ptA = vadd(vertex,rotate_2d((0,L),quadrant * math.pi/2))
@@ -55,11 +59,12 @@ def corner(vertex,quadrant,clockwise,L,ptdensity):
     return clockwise>0 and curveAB(ptA,ptB,1,90,ptdensity) or curveAB(ptB,ptA,-1,90,ptdensity)
 
 def transformedQuadrants(UD=1,LR=1):
+    #>>>>>>>> Deprecated, use utilities.transformedQuadrants instead <<<<<<<<<<
+    
     #return quadrant list with up/down left/right flips applied
     return UD==1 and (LR==1 and [0,1,2,3,4] or [0,2,1,4,3]) or (LR==1 and [0,4,3,2,1] or [0,3,4,1,2])
 
 def skewRect(corner,width,height,offset,newLength,edge=1,**kwargs):
-    
     #>>>>>>>> Deprecated, use Entities.SkewRect instead <<<<<<<<<<
     
     #quadrangle drawn counterclockwise starting from bottom left
@@ -80,8 +85,7 @@ def skewRect(corner,width,height,offset,newLength,edge=1,**kwargs):
     taper = dxf.polyline(points = pts,flags=0,**kwargs)
     taper.close()
     return taper
-    
-        
+         
 
 # ===============================================================================
 #  WAFER CLASS  
@@ -369,8 +373,7 @@ class Wafer:
     #coordinates centered on corner of actual chip
     def chipSpace(self,xy):
         return (xy[0]+self.sawWidth/2,xy[1]+self.sawWidth/2)
-    
-    
+       
 
     
 # ===============================================================================

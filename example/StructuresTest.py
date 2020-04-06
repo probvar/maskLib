@@ -210,7 +210,7 @@ class FancyChip(m.Chip7mm):
         # tab functons
         s6=m.Structure(self,start=self.centered((600,2800)),direction=-15,defaults={'w':20, 's':10, 'radius':100,'r_out':1.5,'r_ins':1.0})
         self.add(dxf.rectangle(s6.getPos((0,0)),-100,100,valign=const.MIDDLE,rotation=s5.direction,bgcolor=w.bg()))
-        JContact_tab(self,s6,steml=1,tabl=2,tabw=2,taboffs=-0.5)
+        JContact_tab(self,s6,steml=1,tabw=2,taboffs=-0.5)
         s6.shiftPos(40)
 
         JContact_tab(self,s6,steml=1,tabl=1,tabw=2,taboffs=1.5,hflip=True)
