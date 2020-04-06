@@ -22,7 +22,7 @@ waferDiameters = {'2in':50800,'3in':76200,'4in':101600,'6in':152400}
 sawWidths = {'4A':101.6,'8A':203.2}
 
 # ===============================================================================
-#  UTILITY FUNCTIONS  
+#  UTILITY FUNCTIONS  (Deprecated)
 # ===============================================================================
 #Define Marker Function for numbers 0-9
 #High visibility markers composed of a grid of six squares
@@ -98,6 +98,11 @@ class Wafer:
         self.fileName = name
         self.path = path
         self.drawing = dxf.drawing(path + name + '.dxf')
+        
+        #get rid of extra layers (we still want '0', and 'VIEWPORTS')
+        self.drawing.tables.layers.clear()
+        self.drawing.add_layer('0')
+        self.drawing.add_layer('VIEWPORTS',color=8)
         
         # set default wafer properties
         self.waferDiameter = waferDiameter

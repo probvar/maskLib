@@ -13,6 +13,8 @@ from dxfwrite.base import DXFList,dxfstr
 from dxfwrite.entities import Polyline, Solid
 from dxfwrite.vector2d import vadd, vsub
 
+from maskLib.utilities import cornerRound
+
 class SolidPline(SubscriptAttributes):
     ''' Shape consisting of a Polyline and solid background** if polyline has 4 points or less
             acts like a Polyline, quacks like a Polyline, but generates a polyline + solid when dxf tags are called
@@ -97,6 +99,12 @@ class SkewRect(SolidPline):
             quadrangle drawn counterclockwise starting from bottom left
             edges are indexed 0-3 correspondingly
             edge 1 is default (east edge )
+            
+            (3)-2-(2)
+             |     |
+             3     1*
+             |     |
+            (0)-0-(1)
     '''
     name = 'SKEWRECT'
     #corner,width,height,offset,newLength,edge=1,**kwargs
@@ -160,6 +168,7 @@ class SkewRect(SolidPline):
     
 class CurveRect(SubscriptAttributes):
     ''' Curved rectangle consisting of a single Polyline and a number of background solids
+        Connects two flat edges separated by an angle: one or two connecting edges may be curved
     '''
     name = 'CURVERECT'
     
@@ -277,7 +286,91 @@ class CurveRect(SubscriptAttributes):
         return dxfstr(self.__dxftags__())
     
     def __dxftags__(self):
-        return self._build()    
+        return self._build() 
+
+    
+class RoundRect(SubscriptAttributes):
+    ''' Rectangle with rounded edges. Consists of a closed polyline and multiple solids faces.
+    '''
+    name = 'ROUNDRECT'
+
+    def __init__(self, insert, width, height, radius, rotation=0.,
+                 halign=const.LEFT, valign=const.TOP,
+                 color=const.BYLAYER, bgcolor=None,
+                 layer='0', linetype=None):
+        self.insert = insert
+        self.width = float(width)
+        self.height = float(height)
+        self.radius = float(radius)
+        self.rotation = math.radians(rotation)
+        
+        self.halign = halign
+        self.valign = valign
+        self.color = color
+        self.bgcolor = bgcolor
+        self.layer = layer
+        self.linetype = linetype
+        self.points = None
+
+    def _build_rect(self):
+        data = DXFList()
+        self._calc_corners(self.radius)
+        if self.color is not None:
+            data.append(self._build_polyline())
+        if self.bgcolor is not None:
+            data.append(self._build_solid())
+        return data
+
+    def _calc_corners(self,radius):
+        points = [(0., 0.), (self.width, 0.), (self.width, self.height),
+                  (0., self.height)]
+        align_vector = self._get_align_vector()
+        self.points = [vadd(self.insert,  # move to insert point
+                            rotate_2d(  # rotate at origin
+                                vadd(point, align_vector), self.rotation))
+                       for point in points]
+
+    def _get_align_vector(self):
+        if self.halign == const.CENTER:
+            dx = -self.width/2.
+        elif self.halign == const.RIGHT:
+            dx = -self.width
+        else:  # const.LEFT
+            dx = 0.
+
+        #note: vertical alignment is flipped from regular rectangle
+        if self.valign == const.MIDDLE:
+            dy = -self.height/2.
+        elif self.valign == const.TOP:
+            dy = -self.height
+        else:  # const.BOTTOM
+            dy = 0.
+
+        return (dx, dy)
+
+    def _build_polyline(self):
+        """ build the rectangle with a polyline """
+        polyline = Polyline(self.points, color=self.color, layer=self.layer)
+        polyline.close()
+        if self.linetype is not None:
+            polyline['linetype'] = self.linetype
+        return polyline
+    
+    def _build_solid_triangle(self,i):
+        ''' build a single background solid triangle segment '''
+        solidpts = [self.transformed_points[j] for j in [0,i+1,i+2]]
+        return Solid(solidpts, color=self.bgcolor, layer=self.layer) 
+
+    def _build_solid(self):
+        """ build the background solid """
+        return Solid(self.points, color=self.bgcolor, layer=self.layer)
+
+    def __dxf__(self):
+        """ get the dxf string """
+        return dxfstr(self.__dxftags__())
+
+    def __dxftags__(self):
+        return self._build_rect()    
         
 
 class InsideCurve(SubscriptAttributes):

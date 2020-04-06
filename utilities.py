@@ -29,11 +29,11 @@ def curveAB(a,b,clockwise=True,angleDeg=90,ptdensity=120):
         points.append(vadd(center,rotate_2d(vsub(a,center),-clockwise*i*angle/segments)))
     return points
 
-def cornerRound(vertex,quadrant,clockwise=True,radius,ptdensity=120):
+def cornerRound(vertex,quadrant,radius,clockwise=True,ptdensity=120):
     #quadrant corresponds to quadrants 1-4
     #generate a curve to replace the vertex
-    ptA = vadd(vertex,rotate_2d((0,L),quadrant * math.pi/2))
-    ptB = vadd(vertex,rotate_2d((0,L),(quadrant+1) * math.pi/2))
+    ptA = vadd(vertex,rotate_2d((0,radius),quadrant * math.pi/2))
+    ptB = vadd(vertex,rotate_2d((0,radius),(quadrant+1) * math.pi/2))
 
     return clockwise>0 and curveAB(ptA,ptB,1,ptdensity=ptdensity) or curveAB(ptB,ptA,-1,ptdensity=ptdensity)
 
