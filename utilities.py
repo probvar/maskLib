@@ -15,9 +15,10 @@ import math
      
 
 def curveAB(a,b,clockwise=True,angleDeg=90,ptdensity=120):
-    #generate a segmented curve from A to B specified by angle. Point density = #pts / revolution
-    #return list of points
-    #clockwise can be boolean {1,0} or sign type {1,-1}
+    # generate a segmented curve from A to B specified by angle. Point density = #pts / revolution
+    # return list of points
+    # clockwise can be boolean {1,0} or sign type {1,-1}
+    
     if clockwise == 0:
         clockwise = -1
         

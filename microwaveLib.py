@@ -14,7 +14,7 @@ from dxfwrite.entities import Polyline
 from dxfwrite.vector2d import vadd, midpoint ,vsub, vector2angle, magnitude, distance
 from dxfwrite.algebra import rotate_2d
 
-from maskLib.Entities import SolidPline, SkewRect, CurveRect, InsideCurve
+from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideCurve
 
 from copy import deepcopy
 from matplotlib.path import Path
@@ -193,23 +193,9 @@ def CPW_stub_short(chip,structure,flipped=False,curve_ins=True,curve_out=True,r_
             dx = min(s/2,r_out)
         
         l=min(s/2,r_out)
-        
-        if l<s/2:
-            chip.add(dxf.rectangle(struct().getPos((dx,w/2+l)),l,s-2*l,halign=flipped and const.RIGHT or const.LEFT,valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-            chip.add(dxf.rectangle(struct().getPos((dx,-w/2-l)),l,s-2*l,halign=flipped and const.RIGHT or const.LEFT,valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-        if curve_out:
-            chip.add(CurveRect(struct().getPos((dx,w/2+s-l)),l,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs))
-            chip.add(CurveRect(struct().getPos((dx,-w/2-s+l)),l,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
-        else:
-            chip.add(dxf.rectangle(struct().getPos((dx,w/2+s-l)),l,l,halign=flipped and const.RIGHT or const.LEFT,valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-            chip.add(dxf.rectangle(struct().getPos((dx,-w/2-s+l)),l,l,halign=flipped and const.RIGHT or const.LEFT,valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-        if curve_ins:
-            chip.add(CurveRect(struct().getPos((dx,w/2+l)),l,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
-            chip.add(CurveRect(struct().getPos((dx,-w/2-l)),l,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs),structure=structure,length=l)
-        else:
-            chip.add(dxf.rectangle(struct().getPos((dx,w/2+l)),l,l,halign=flipped and const.RIGHT or const.LEFT,valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-            chip.add(dxf.rectangle(struct().getPos((dx,-w/2-l)),l,l,halign=flipped and const.RIGHT or const.LEFT,valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=l)
 
+        chip.add(RoundRect(struct().getPos((dx,w/2)),l,s,r_out,roundCorners=[0,curve_ins,curve_out,0],hflip=flipped,valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+        chip.add(RoundRect(struct().getPos((dx,-w/2)),l,s,r_out,roundCorners=[0,curve_out,curve_ins,0],hflip=flipped,valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=l)
     else:
         CPW_straight(chip,structure,s/2,w=w,s=s,bgcolor=bgcolor,**kwargs)
         
@@ -251,12 +237,8 @@ def CPW_stub_open(chip,structure,r_out=None,r_ins=None,w=None,s=None,flipped=Fal
     if r_ins > 0:
         chip.add(InsideCurve(struct().getPos((dx,w/2)),r_ins,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs))
         chip.add(InsideCurve(struct().getPos((dx,-w/2)),r_ins,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
-    if r_out >0:
-        chip.add(CurveRect(struct().getPos((dx,w/2)),s,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs))
-        chip.add(dxf.rectangle(struct().getPos((dx,0)),flipped and -s or s,w,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-        chip.add(CurveRect(struct().getPos((dx,-w/2)),s,r_out,ralign=const.TOP,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs),structure=structure,length=s)
-    else:
-        chip.add(dxf.rectangle(struct().start,s,w+2*s,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=s)
+
+    chip.add(RoundRect(struct().getPos((dx,0)),s,w+2*s,r_out,roundCorners=[0,1,1,0],hflip=flipped,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=s)
         
 def CPW_stub_round(chip,structure,w=None,s=None,round_left=True,round_right=True,flipped=False,bgcolor=None,**kwargs):
     #same as stub_open, but preserves gap width along turn (so radii are defined by w, s)

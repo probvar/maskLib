@@ -291,15 +291,16 @@ class CurveRect(SubscriptAttributes):
     
 class RoundRect(SolidPline):
     ''' Rectangle with rounded edges. Consists of a closed polyline and multiple solids faces.
+        NOTE: does not cover negative width / height like rectangle()
     '''
     name = 'ROUNDRECT'
 
     def __init__(self, insert, width, height, radius, roundCorners=[1,1,1,1],
                  halign=const.LEFT, valign=const.TOP,
                  hflip=False, vflip = False,**kwargs):
-        self.width = float(width)
-        self.height = float(height)
-        self.radius = float(radius)
+        self.width = abs(float(width))
+        self.height = abs(float(height))
+        self.radius = abs(float(radius))
         
         self.halign = halign
         self.valign = valign
@@ -308,6 +309,10 @@ class RoundRect(SolidPline):
         
         #boolean array with corresponding to which corners to round
         self.roundCorners=roundCorners
+        
+        #make all corners square if radius is zero
+        if self.radius <=0:
+            self.roundCorners = [0,0,0,0]
         
         SolidPline.__init__(self,insert,points=self._calc_corners(), **kwargs)
         
