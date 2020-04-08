@@ -224,6 +224,7 @@ class FancyChip(m.Chip7mm):
         
         #one function probe pads
         JProbePads(self, self.centered((1200,2000)), rotation=15)
+        JProbePads(self, self.centered((1200,1600)),rotation=15,tab=True,tabShoulder=True)
         
         #>>>>>>>>>>> test solid pline functions <<<<<<<<<<<<<<<
         

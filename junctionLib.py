@@ -249,7 +249,7 @@ def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,stem
         struct().shiftPos(tot_length)
         
     
-def JSingleProbePad(chip,pos,padwidth=250,padheight=None,padradius=25,tab=False,flipped=False,rotation=0,bgcolor=None,**kwargs):
+def JSingleProbePad(chip,pos,padwidth=250,padheight=None,padradius=25,tab=False,tabShoulder = False,tabShoulderWidth=30,tabShoulderLength=80,tabShoulderRadius=None,flipped=False,rotation=0,bgcolor=None,**kwargs):
     def struct():
         if isinstance(pos,m.Structure):
             return pos
@@ -257,6 +257,12 @@ def JSingleProbePad(chip,pos,padwidth=250,padheight=None,padradius=25,tab=False,
             return m.Structure(chip,start=pos,direction=rotation)
         else:
             return chip.structure(pos)
+    if tabShoulderRadius is None:
+        try:
+            tabShoulderRadius = struct().defaults['r_out']
+        except KeyError:
+            #print('\x1b[33mr_out not defined in ',chip.chipID,'!\x1b[0m')
+            tabShoulderRadius = 0
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
     
@@ -267,7 +273,15 @@ def JSingleProbePad(chip,pos,padwidth=250,padheight=None,padradius=25,tab=False,
     
     if tab:
         #positive tab
-        print('tab')
+        if not flipped:
+            chip.add(RoundRect(struct().start,padwidth,padheight,padradius,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=struct(),length=padwidth)
+            if tabShoulder:
+                chip.add(RoundRect(struct().start,tabShoulderLength,tabShoulderWidth,tabShoulderRadius,roundCorners=[0,1,1,0],valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=struct(),length=tabShoulderLength)
+        JContact_tab(chip,struct(),hflip = flipped,**kwargs)
+        if flipped:
+            if tabShoulder:
+                chip.add(RoundRect(struct().start,tabShoulderLength,tabShoulderWidth,tabShoulderRadius,roundCorners=[1,0,0,1],valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=struct(),length=tabShoulderLength)
+            chip.add(RoundRect(struct().start,padwidth,padheight,padradius,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
     else:
         #slot
         if not flipped:
