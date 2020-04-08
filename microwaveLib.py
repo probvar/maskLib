@@ -882,10 +882,14 @@ def DoubleJellyfishResonator(chip,structure,width,height,l_ind,w_cap=None,s_cap=
         chip.add(dxf.rectangle(s_l.start,-inductor_pad-s_cap-w_cap/2,2*s_cap+w_cap,rotation=s_l.direction,valign=const.MIDDLE,bgcolor=bgcolor,**kwargs),structure=s_l,length=-inductor_pad-s_cap-w_cap/2)
         chip.add(dxf.rectangle(s_r.start,-inductor_pad-s_cap-w_cap/2,2*s_cap+w_cap,rotation=s_r.direction,valign=const.MIDDLE,bgcolor=bgcolor,**kwargs),structure=s_r,length=-inductor_pad-s_cap-w_cap/2)
     if inductor_pad < 0:
+        '''
         chip.add(dxf.rectangle(s_l.start,w_cap/2+s_cap,-s_cap-w_cap/2,rotation=s_l.direction,bgcolor=bgcolor,**kwargs))
         chip.add(dxf.rectangle(s_r.start,w_cap/2+s_cap,s_cap+w_cap/2,rotation=s_r.direction,bgcolor=bgcolor,**kwargs))
         chip.add(CurveRect(s_l.start,w_cap/2+s_cap,w_cap/2+s_cap,ralign=const.TOP,rotation=s_l.direction,bgcolor=bgcolor,**kwargs),structure=s_l,length=s_cap+w_cap/2)
         chip.add(CurveRect(s_r.start,w_cap/2+s_cap,w_cap/2+s_cap,ralign=const.TOP,rotation=s_r.direction,vflip=True,bgcolor=bgcolor,**kwargs),structure=s_r,length=s_cap+w_cap/2)
+        '''
+        chip.add(RoundRect(s_l.start,w_cap/2+s_cap,2*s_cap+w_cap,w_cap/2+s_cap,roundCorners=[0,0,1,0],valign=const.MIDDLE,rotation=s_l.direction,bgcolor=bgcolor,**kwargs))
+        chip.add(RoundRect(s_r.start,w_cap/2+s_cap,2*s_cap+w_cap,w_cap/2+s_cap,roundCorners=[0,1,0,0],valign=const.MIDDLE,rotation=s_l.direction,bgcolor=bgcolor,**kwargs))
         inductor_pad = inductor_pad + s_cap + w_cap/2 #in case extra length from capacitor stub is too much length
     
     if inductor_pad > 0:
