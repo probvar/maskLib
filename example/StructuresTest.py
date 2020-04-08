@@ -8,7 +8,7 @@ Created on Fri Aug 31 16:45:06 2018
 import maskLib.MaskLib as m
 from maskLib.microwaveLib import *
 from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideCurve
-from maskLib.junctionLib import JContact_slot,JContact_tab,JcalcTabDims
+from maskLib.junctionLib import JContact_slot,JContact_tab,JcalcTabDims,JSingleProbePad,JProbePads
 import numpy as np
 from dxfwrite import DXFEngine as dxf
 from dxfwrite import const
@@ -215,6 +215,15 @@ class FancyChip(m.Chip7mm):
 
         JContact_tab(self,s6,steml=1,tabl=1,tabw=2,taboffs=1.5,hflip=True)
         self.add(dxf.rectangle(s6.getPos((0,0)),100,100,valign=const.MIDDLE,rotation=s5.direction,bgcolor=w.bg()))
+        
+        #probe pad functions
+        s7=m.Structure(self,start=self.centered((1200,2400)),direction=15,defaults={'w':20, 's':10, 'radius':100,'r_out':1.0,'r_ins':1.0})
+        JSingleProbePad(self,s7,flipped=False)
+        s7.shiftPos(40)
+        JSingleProbePad(self,s7,flipped=True,padradius=0)
+        
+        #one function probe pads
+        JProbePads(self, self.centered((1200,2000)), rotation=15)
         
         #>>>>>>>>>>> test solid pline functions <<<<<<<<<<<<<<<
         

@@ -14,19 +14,50 @@ from dxfwrite import const
 from dxfwrite.vector2d import vadd, midpoint ,vsub, vector2angle, magnitude, distance
 from dxfwrite.algebra import rotate_2d
 
-from maskLib.Entities import SolidPline, SkewRect, CurveRect, InsideCurve
+from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideCurve
 
 import math
 
 # ===============================================================================
 # contact pad functions (for ground plane)
 # ===============================================================================
-
-def JcalcTabDims(gapw=3,gapl=0,tabw=2,tabl=0,taboffs=0,r_out=None,r_ins=None):
+                                #stemw=3,steml=0.5,tabw=2,tabl=0.5,taboffs=-0.5,r_out=1.5,r_ins=1.5
+def JcalcTabDims(chip,structure,gapw=3,gapl=0.5,tabw=2,tabl=0.5,taboffs=-0.5,r_out=1.5,r_ins=1.5,absoluteDimensions=False,stemw=None,steml=None,**kwargs):
+    if stemw is not None:
+        gapw = stemw
+    if steml is not None:
+        gapl = steml
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,start=structure,direction=0)
+        else:
+            return chip.structure(structure)
+    if r_out is None:
+        try:
+            r_out = struct().defaults['r_out']
+        except KeyError:
+            #print('\x1b[33mr_out not defined in ',chip.chipID,'!\x1b[0m')
+            r_out = 0
+    if r_ins is None:
+        try:
+            r_ins = struct().defaults['r_ins']
+        except KeyError:
+            #print('\x1b[33mr_out not defined in ',chip.chipID,'!\x1b[0m')
+            r_ins = 0
+    #determine stem and tab lengths
+    if absoluteDimensions:
+        if gapl >= 2*r_out:
+            gapl = gapl-2*r_out
+        if tabl >= 2*r_ins:
+            tabl = tabl-2*r_ins
+            
     #returns length, half width
     return 2*r_out+gapl+taboffs+2*r_ins+tabl,(gapw/2+r_out+tabw+r_ins)
-
-def JContact_slot(chip,structure,rotation=0,absoluteDimensions=False,gapw=3,gapl=0,tabw=2,tabl=0,taboffs=0,r_out=None,r_ins=None,hflip=False,bgcolor=None,debug=False,**kwargs):
+    
+                                                                    #stemw=3,steml=0.5,tabw=2,tabl=0.5,taboffs=-0.5,r_out=1.5,r_ins=1.5
+def JContact_slot(chip,structure,rotation=0,absoluteDimensions=False,gapw=3,gapl=0.5,tabw=2,tabl=0.5,taboffs=-0.5,r_out=1.5,r_ins=1.5,hflip=False,bgcolor=None,debug=False,**kwargs):
     '''
     Creates shapes forming a negative space puzzle piece slot (tab) with rounded corners, and adjustable angles. 
     No overlap : XOR mode compatible
@@ -34,7 +65,11 @@ def JContact_slot(chip,structure,rotation=0,absoluteDimensions=False,gapw=3,gapl
     
     gap: {width (gapw),height (gapl),r_out}
     tab: {slot width, (tabw),height (tabl), height offset (taboffs),r_ins}
-
+    
+    by default, absolute dimensions are off, so gap / tab lengths are determined by radii. gapl and tabl will then determine extra space between rounded corners.
+    if absolute dimensions are on, then tab / gap lengths are determined only by gapl and tabl.
+    
+    set r_ins or r_out to None to inherit defaults from chip/structure
     '''
     def struct():
         if isinstance(structure,m.Structure):
@@ -57,6 +92,8 @@ def JContact_slot(chip,structure,rotation=0,absoluteDimensions=False,gapw=3,gapl
             r_ins = 0
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
+    
+    tot_length,half_width = JcalcTabDims(chip,structure,gapw,gapl,tabw,tabl,taboffs,r_out,r_ins,absoluteDimensions)
     #determine stem and tab lengths
     if absoluteDimensions:
         if gapl >= 2*r_out:
@@ -67,9 +104,6 @@ def JContact_slot(chip,structure,rotation=0,absoluteDimensions=False,gapw=3,gapl
             tabl = tabl-2*r_ins
         else:
             print('\x1b[33mWarning:\x1b[0m tab too short in ',chip.chipID,'!')
-    
-    
-    tot_length,half_width = JcalcTabDims(gapw,gapl,tabw,tabl,taboffs,r_out,r_ins)
     
     if hflip:
         struct().shiftPos(tot_length,angle=180)
@@ -117,7 +151,7 @@ def JContact_slot(chip,structure,rotation=0,absoluteDimensions=False,gapw=3,gapl
         struct().shiftPos(tot_length)
     
     
-def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,steml=0,tabw=2,tabl=0,taboffs=0,r_out=None,r_ins=None,hflip=False,bgcolor=None,debug=False,**kwargs):
+def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,steml=0.5,tabw=2,tabl=0.5,taboffs=-0.5,r_out=1.5,r_ins=1.5,hflip=False,bgcolor=None,debug=False,**kwargs):
     '''
     Creates shapes forming a puzzle piece tab with rounded corners, and adjustable angles. 
     No overlap : XOR mode compatible
@@ -128,7 +162,8 @@ def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,stem
     
     by default, absolute dimensions are off, so stem / tab lengths are determined by radii. steml and tabl will then determine extra space between rounded corners.
     if absolute dimensions are on, then tab / stem lengths are determined only by steml and tabl.
-
+    
+    set r_ins or r_out to None to inherit defaults from chip/structure
     '''
     def struct():
         if isinstance(structure,m.Structure):
@@ -151,6 +186,8 @@ def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,stem
             r_ins = 0
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
+    
+    tot_length,half_width = JcalcTabDims(chip,structure,stemw,steml,tabw,tabl,taboffs,r_out,r_ins,absoluteDimensions)
     #determine stem and tab lengths
     if absoluteDimensions:
         if steml >= 2*r_ins:
@@ -161,8 +198,6 @@ def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,stem
             tabl = tabl-2*r_out
         else:
             print('\x1b[33mWarning:\x1b[0m tab too short in ',chip.chipID,'!')
-    
-    tot_length,half_width = JcalcTabDims(stemw,steml,tabw,tabl,taboffs,r_out,r_ins)
     
     if hflip:
         struct().shiftPos(tot_length,angle=180)
@@ -212,3 +247,54 @@ def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,stem
         struct().shiftPos(0,angle=180)
     else:
         struct().shiftPos(tot_length)
+        
+    
+def JSingleProbePad(chip,pos,padwidth=250,padheight=None,padradius=25,tab=False,flipped=False,rotation=0,bgcolor=None,**kwargs):
+    def struct():
+        if isinstance(pos,m.Structure):
+            return pos
+        elif isinstance(pos,tuple):
+            return m.Structure(chip,start=pos,direction=rotation)
+        else:
+            return chip.structure(pos)
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+    
+    if padheight is None:
+        padheight=padwidth
+    
+    tablength,tabhwidth = JcalcTabDims(chip,pos,**kwargs)    
+    
+    if tab:
+        #positive tab
+        print('tab')
+    else:
+        #slot
+        if not flipped:
+            chip.add(RoundRect(struct().getPos((0,tabhwidth)),padwidth,padheight/2 - tabhwidth,padradius,roundCorners=[0,0,1,1],rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(RoundRect(struct().getPos((0,-tabhwidth)),padwidth,padheight/2 - tabhwidth,padradius,roundCorners=[1,1,0,0],valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().start,padwidth-tablength,2*tabhwidth,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=struct(),length=padwidth-tablength)
+        JContact_slot(chip,struct(),hflip = not flipped,**kwargs)
+        if flipped:
+            chip.add(RoundRect(struct().getPos((-tablength,tabhwidth)),padwidth,padheight/2 - tabhwidth,padradius,roundCorners=[0,0,1,1],rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(RoundRect(struct().getPos((-tablength,-tabhwidth)),padwidth,padheight/2 - tabhwidth,padradius,roundCorners=[1,1,0,0],valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().start,padwidth-tablength,2*tabhwidth,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            
+            
+def JProbePads(chip,pos,padwidth=250,separation=40,rotation=0,**kwargs):
+    thisStructure = None
+    def struct():
+        nonlocal thisStructure
+        if isinstance(pos,m.Structure):
+            return pos
+        elif isinstance(pos,tuple):
+            if thisStructure is None:
+                thisStructure = m.Structure(chip,start=pos,direction=rotation)
+            return thisStructure
+        else:
+            return chip.structure(pos)
+    
+    struct().shiftPos(-separation/2-padwidth)
+    JSingleProbePad(chip,struct(),padwidth=padwidth,flipped=False,**kwargs)
+    struct().shiftPos(separation)
+    JSingleProbePad(chip,struct(),flipped=True,**kwargs)          

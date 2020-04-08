@@ -296,7 +296,7 @@ class RoundRect(SolidPline):
     name = 'ROUNDRECT'
 
     def __init__(self, insert, width, height, radius, roundCorners=[1,1,1,1],
-                 halign=const.LEFT, valign=const.TOP,
+                 halign=const.LEFT, valign=const.BOTTOM,
                  hflip=False, vflip = False,**kwargs):
         self.width = abs(float(width))
         self.height = abs(float(height))
