@@ -336,8 +336,8 @@ def JProbePads(chip,pos,padwidth=250,separation=40,rotation=0,**kwargs):
     JSingleProbePad(chip,struct(),padwidth=padwidth,flipped=True,**kwargs)          
     
     
-def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=None,jpadOverhang=5,
-                      jpadTaper=0,jfingerw=0.13,jfingerl=5.0,jfingerex=1.0,
+def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=None,jpadOverhang=5,jpadTaper=0,
+                      jfingerw=0.13,jfingerl=5.0,jfingerex=1.0,
                       leadw=2.0,leadr=0.5,
                       undercutdist=0.6,
                       JANGLE1=None,JANGLE2=None,directionFlipAlowed=False,
@@ -443,6 +443,10 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
         left_top = True
         right_top = True
         right_switch = True
+        
+    # adjust overhang to account for taper
+    if jpadTaper > 0:
+        jpadOverhang = jpadOverhang + jpadTaper
     
     # -------------------- junction leads --------------------
     # do undercut layer
@@ -460,6 +464,15 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
             rotate_2d((-separation/2+jpadOverhang,
                        -(jfingerl-jfingerex)*math.sin(math.radians(angle))-jfingerw*math.cos(math.radians(angle))/2),math.radians(struct().direction))
             ],bgcolor=bgcolor,layer=JLAYER))
+        if jpadTaper > 0:
+            chip.add(SolidPline(centerPos, points=[
+                rotate_2d((-separation/2+jpadOverhang-jpadTaper,jpadh/2),math.radians(struct().direction)),
+                rotate_2d((-separation/2+jpadOverhang-jpadTaper,-jpadh/2),math.radians(struct().direction)),
+                rotate_2d((-separation/2+jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(math.radians(angle))-leadw-jfingerw*math.cos(math.radians(angle))/2),math.radians(struct().direction)),
+                rotate_2d((-separation/2+jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(math.radians(angle))-jfingerw*math.cos(math.radians(angle))/2),math.radians(struct().direction))
+                ],bgcolor=bgcolor,layer=JLAYER))
     else:
         # j finger stems from bottom of left lead
         chip.add(SolidPline(centerPos, points=[
@@ -472,6 +485,15 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
             rotate_2d((-separation/2+jpadOverhang,
                        (jfingerl-jfingerex)*math.cos(math.radians(angle))+leadw+jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction))
             ],bgcolor=bgcolor,layer=JLAYER))
+        if jpadTaper > 0:
+            chip.add(SolidPline(centerPos, points=[
+                rotate_2d((-separation/2+jpadOverhang-jpadTaper,jpadh/2),math.radians(struct().direction)),
+                rotate_2d((-separation/2+jpadOverhang-jpadTaper,-jpadh/2),math.radians(struct().direction)),
+                rotate_2d((-separation/2+jpadOverhang,
+                       (jfingerl-jfingerex)*math.cos(math.radians(angle))+jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction)),
+                rotate_2d((-separation/2+jpadOverhang,
+                       (jfingerl-jfingerex)*math.cos(math.radians(angle))+leadw+jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction))
+                ],bgcolor=bgcolor,layer=JLAYER))
     
     if right_top:
         # j finger stems from top of right lead
@@ -487,6 +509,15 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
                 rotate_2d((separation/2-jpadOverhang,
                            -(jfingerl-jfingerex)*math.sin(math.radians(angle))+jfingerw*math.cos(math.radians(angle))/2),math.radians(struct().direction))
                 ],bgcolor=bgcolor,layer=JLAYER))
+            if jpadTaper > 0:
+                chip.add(SolidPline(centerPos, points=[
+                    rotate_2d((separation/2-jpadOverhang+jpadTaper,jpadh/2),math.radians(struct().direction)),
+                    rotate_2d((separation/2-jpadOverhang+jpadTaper,-jpadh/2),math.radians(struct().direction)),
+                    rotate_2d((separation/2-jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(math.radians(angle))-leadw+jfingerw*math.cos(math.radians(angle))/2),math.radians(struct().direction)),
+                    rotate_2d((separation/2-jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(math.radians(angle))+jfingerw*math.cos(math.radians(angle))/2),math.radians(struct().direction))
+                    ],bgcolor=bgcolor,layer=JLAYER))
         else:
             # JANGLE2 is our finger
             chip.add(SolidPline(centerPos, points=[
@@ -499,6 +530,15 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
                 rotate_2d((separation/2-jpadOverhang,
                            (jfingerl-jfingerex)*math.cos(math.radians(angle))+jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction))
                 ],bgcolor=bgcolor,layer=JLAYER))
+            if jpadTaper > 0:
+                chip.add(SolidPline(centerPos, points=[
+                    rotate_2d((separation/2-jpadOverhang+jpadTaper,jpadh/2),math.radians(struct().direction)),
+                    rotate_2d((separation/2-jpadOverhang+jpadTaper,-jpadh/2),math.radians(struct().direction)),
+                    rotate_2d((separation/2-jpadOverhang,
+                           (jfingerl-jfingerex)*math.cos(math.radians(angle))-leadw+jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction)),
+                    rotate_2d((separation/2-jpadOverhang,
+                           (jfingerl-jfingerex)*math.cos(math.radians(angle))+jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction))
+                    ],bgcolor=bgcolor,layer=JLAYER))
     else:
         # j finger stems from bottom of right lead
         # JANGLE2 is our finger
