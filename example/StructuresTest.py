@@ -234,17 +234,17 @@ class FancyChip(m.Chip7mm):
         for i,ang in enumerate(range(0,140,20)):
             jpos =self.centered((2400,800+300*i))
             JProbePads(self, jpos,padwidth=100, padradius=15, rotation=ang)
-            ManhattanJunction(self, jpos,rotation=ang,jpadTaper=10)
+            ManhattanJunction(self, jpos,rotation=ang)
             self.add(dxf.text(str(ang)+'%%d',vadd(jpos,rotate_2d((-5,40),math.radians(ang))),height=8.0,layer=self.wafer.defaultLayer))
         for i,ang in enumerate(range(140,280,20)):
             jpos = self.centered((2800,800+300*i))
             JProbePads(self, jpos,padwidth=100,padradius=15, rotation=ang)
-            ManhattanJunction(self, jpos,rotation=ang,jpadTaper=10)
+            ManhattanJunction(self, jpos,rotation=ang)
             self.add(dxf.text(str(ang)+'%%d',vadd(jpos,rotate_2d((5,40),math.radians(ang))),height=8.0,layer=self.wafer.defaultLayer))
         for i,ang in enumerate(range(280,360,20)):
             jpos = self.centered((3200,800+300*i))
             JProbePads(self, jpos,padwidth=100,padradius=15, rotation=ang)
-            ManhattanJunction(self, jpos,rotation=ang,jpadTaper=10)
+            ManhattanJunction(self, jpos,rotation=ang)
             self.add(dxf.text(str(ang)+'%%d',vadd(jpos,rotate_2d((-5,40),math.radians(ang))),height=8.0,layer=self.wafer.defaultLayer))
         
         #>>>>>>>>>>> test solid pline functions <<<<<<<<<<<<<<<
