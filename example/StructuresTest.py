@@ -8,7 +8,8 @@ Created on Fri Aug 31 16:45:06 2018
 import maskLib.MaskLib as m
 from maskLib.microwaveLib import *
 from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideCurve
-from maskLib.junctionLib import JContact_slot,JContact_tab,JcalcTabDims,JSingleProbePad,JProbePads
+from maskLib.junctionLib import setupJunctionLayers,JContact_slot,JContact_tab,JcalcTabDims,JSingleProbePad,JProbePads
+from maskLib.junctionLib import ManhattanJunction
 import numpy as np
 from dxfwrite import DXFEngine as dxf
 from dxfwrite import const
@@ -26,8 +27,10 @@ w = m.Wafer('StructureTest01','DXF/',7000,7000,waferDiameter=m.waferDiameters['2
 # w.multiLayer: draw in multiple layers?
 
 w.SetupLayers([
-    ['BASEMETAL',4]
+    ['BASEMETAL',4],
     ])
+
+setupJunctionLayers(w)
 
 #initialize the wafer
 w.init()
@@ -225,6 +228,24 @@ class FancyChip(m.Chip7mm):
         #one function probe pads
         JProbePads(self, self.centered((1200,2000)), rotation=15)
         JProbePads(self, self.centered((1200,1600)),rotation=15,tab=True,tabShoulder=True)
+        
+        #>>>>>>>>>>> test manhattan junction functions <<<<<<<<<<<<<<<
+        
+        for i,ang in enumerate(range(0,140,20)):
+            jpos =self.centered((2400,800+300*i))
+            JProbePads(self, jpos,padwidth=100, padradius=15, rotation=ang)
+            ManhattanJunction(self, jpos,rotation=ang)
+            self.add(dxf.text(str(ang)+'%%d',vadd(jpos,rotate_2d((-5,40),math.radians(ang))),height=8.0,layer=self.wafer.defaultLayer))
+        for i,ang in enumerate(range(140,280,20)):
+            jpos = self.centered((2800,800+300*i))
+            JProbePads(self, jpos,padwidth=100,padradius=15, rotation=ang)
+            ManhattanJunction(self, jpos,rotation=ang)
+            self.add(dxf.text(str(ang)+'%%d',vadd(jpos,rotate_2d((5,40),math.radians(ang))),height=8.0,layer=self.wafer.defaultLayer))
+        for i,ang in enumerate(range(280,360,20)):
+            jpos = self.centered((3200,800+300*i))
+            JProbePads(self, jpos,padwidth=100,padradius=15, rotation=ang)
+            ManhattanJunction(self, jpos,rotation=ang)
+            self.add(dxf.text(str(ang)+'%%d',vadd(jpos,rotate_2d((-5,40),math.radians(ang))),height=8.0,layer=self.wafer.defaultLayer))
         
         #>>>>>>>>>>> test solid pline functions <<<<<<<<<<<<<<<
         

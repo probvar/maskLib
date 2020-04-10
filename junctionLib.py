@@ -19,6 +19,28 @@ from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideC
 import math
 
 # ===============================================================================
+# functions to setup global variables in wafer object
+# ===============================================================================
+
+def setupJunctionLayers(wafer,JLAYER='JUNCTION',jcolor=1,ULAYER='UNDERCUT',ucolor=2,bandaid=False,BLAYER='BANDAID',bcolor=3):
+    #add correct layers to wafer, and cache layer
+    wafer.addLayer(JLAYER,jcolor)
+    wafer.JLAYER=JLAYER
+    wafer.addLayer(ULAYER,ucolor)
+    wafer.ULAYER=ULAYER
+    if bandaid:
+        wafer.addLayer(BLAYER,bcolor)
+        wafer.BLAYER=BLAYER
+
+def setupJunctionAngles(wafer,JANGLES=[0,90]):
+    '''
+    Angles are defined as the angle in degrees *from which the evaporation is coming*.
+    For example, if the first evaporation comes from the East, and the second from the north,
+    the angles would be [0,90]. Add more angles to the list as needed.
+    '''
+    wafer.JANGLES = [angle % 360 for angle in JANGLES]
+
+# ===============================================================================
 # contact pad functions (for ground plane)
 # ===============================================================================
                                 #stemw=3,steml=0.5,tabw=2,tabl=0.5,taboffs=-0.5,r_out=1.5,r_ins=1.5
@@ -297,13 +319,13 @@ def JSingleProbePad(chip,pos,padwidth=250,padheight=None,padradius=25,tab=False,
             
 def JProbePads(chip,pos,padwidth=250,separation=40,rotation=0,**kwargs):
     thisStructure = None
+    if isinstance(pos,tuple):
+        thisStructure = m.Structure(chip,start=pos,direction=rotation)
+        
     def struct():
-        nonlocal thisStructure
         if isinstance(pos,m.Structure):
             return pos
         elif isinstance(pos,tuple):
-            if thisStructure is None:
-                thisStructure = m.Structure(chip,start=pos,direction=rotation)
             return thisStructure
         else:
             return chip.structure(pos)
@@ -311,4 +333,182 @@ def JProbePads(chip,pos,padwidth=250,separation=40,rotation=0,**kwargs):
     struct().shiftPos(-separation/2-padwidth)
     JSingleProbePad(chip,struct(),padwidth=padwidth,flipped=False,**kwargs)
     struct().shiftPos(separation)
-    JSingleProbePad(chip,struct(),flipped=True,**kwargs)          
+    JSingleProbePad(chip,struct(),padwidth=padwidth,flipped=True,**kwargs)          
+    
+    
+def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=None,jpadOverhang=5,
+                      jpadTaper=0,jfingerw=0.13,jfingerl=5.0,jfingerex=1.0,
+                      leadw=2.0,leadr=0.5,
+                      undercutdist=0.6,
+                      JANGLE1=None,JANGLE2=None,directionFlipAlowed=False,
+                      JLAYER=None,ULAYER=None,bgcolor=None,**kwargs):
+    '''
+    Set jpadr to None to use chip-wide defaults (r_out)
+    '''
+    thisStructure = None
+    if isinstance(pos,tuple):
+        thisStructure = m.Structure(chip,start=pos,direction=rotation)
+        
+    def struct():
+        if isinstance(pos,m.Structure):
+            return pos
+        elif isinstance(pos,tuple):
+            return thisStructure
+        else:
+            return chip.structure(pos)
+    if jpadr is None:
+        try:
+            jpadr = struct().defaults['r_out']
+        except KeyError:
+            #print('\x1b[33mr_out not defined in ',chip.chipID,'!\x1b[0m')
+            jpadr = 0
+    if jpadh is None:
+        jpadh = jpadw
+    if bgcolor is None: #color for junction, not undercut
+        bgcolor = chip.wafer.bg()
+    #get layers from wafer
+    if JLAYER is None:
+        try:
+            JLAYER = chip.wafer.JLAYER
+        except AttributeError:
+            setupJunctionLayers(chip.wafer)
+            JLAYER = chip.wafer.JLAYER
+    if ULAYER is None:
+        try:
+            ULAYER = chip.wafer.ULAYER
+        except AttributeError:
+            setupJunctionLayers(chip.wafer)
+            ULAYER = chip.wafer.ULAYER
+    
+    #cache start position and figure out if we're using structures or not
+    if thisStructure is None:
+        #using structures
+        struct().shiftPos(separation/2)
+    centerPos = struct().start
+    
+    # -------------------- junction pads --------------------
+    # do undercut layer
+    
+    # do junction layer
+    chip.add(RoundRect(struct().getPos((-separation/2+jpadOverhang,0)),jpadw,jpadh,jpadr,roundCorners = (jpadTaper > 0) and [1,0,0,1] or [1,1,1,1],
+                       valign=const.MIDDLE,halign=const.RIGHT,rotation=struct().direction,bgcolor=bgcolor,layer=JLAYER,**kwargs))
+    chip.add(RoundRect(struct().getPos((separation/2-jpadOverhang,0)),jpadw,jpadh,jpadr,roundCorners = (jpadTaper > 0) and [0,1,1,0] or [1,1,1,1],
+                       valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,layer=JLAYER,**kwargs))
+    
+    if JANGLE2 is None:
+        try:
+            JANGLE2 = chip.wafer.JANGLES[1]
+        except AttributeError:
+            setupJunctionAngles(chip.wafer)
+            JANGLE2 = chip.wafer.JANGLES[1]
+    else:
+        JANGLE2 = JANGLE2 % 360
+    JANGLE1 = JANGLE2-90
+        
+    
+    # -------------------- junction fingers --------------------
+    # do undercut layer
+    chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
+                                                    math.radians(JANGLE2))), -undercutdist, min(3*jfingerw,2*jfingerex), rotation=JANGLE2,
+                           valign=const.MIDDLE,layer=ULAYER,bgcolor=bgcolor,**kwargs))
+    chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
+                                                    math.radians(JANGLE1))), -undercutdist, min(3*jfingerw,2*jfingerex), rotation=JANGLE1,
+                           valign=const.MIDDLE,layer=ULAYER,bgcolor=bgcolor,**kwargs))
+    # do junction layer
+    chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
+                                                    math.radians(JANGLE2))), jfingerl, jfingerw, rotation=JANGLE2,
+                           valign=const.MIDDLE,layer=JLAYER,bgcolor=bgcolor,**kwargs))
+    chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
+                                                    math.radians(JANGLE1))), jfingerex-jfingerw/2, jfingerw, rotation = JANGLE1,
+                           valign=const.MIDDLE,layer=JLAYER,bgcolor=bgcolor,**kwargs))
+    chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((jfingerw/2,0),#rotate about center
+                                                    math.radians(JANGLE1))), jfingerl-jfingerex-jfingerw/2, jfingerw, rotation = JANGLE1,
+                           valign=const.MIDDLE,layer=JLAYER,bgcolor=bgcolor,**kwargs))
+    
+    # determine angle of structure relative to junction fingers
+    angle = (struct().direction - (JANGLE2 - 90)) % 360
+    if angle > 180:
+        struct().shiftPos(0,angle=180)
+        angle = angle % 180
+    #angle should now be between [0,180)
+    if angle <= 45:
+        left_top = False
+        right_top = True
+        right_switch = False
+    elif angle <= 90:
+        left_top = True
+        right_top = False
+        right_switch = False
+    else:
+        left_top = True
+        right_top = True
+        right_switch = True
+    
+    # -------------------- junction leads --------------------
+    # do undercut layer
+    
+    # do junction layer
+    if left_top:
+        # j finger stems from top of left lead
+        chip.add(SolidPline(centerPos, points=[
+            rotate_2d((-separation/2+jpadOverhang,
+                       -(jfingerl-jfingerex)*math.sin(math.radians(angle))-leadw-jfingerw*math.cos(math.radians(angle))/2),math.radians(struct().direction)),
+            rotate_2d(((jfingerl-jfingerex)*math.cos(math.radians(angle))+jfingerw*math.sin(math.radians(angle))/2,
+                       -(jfingerl-jfingerex)*math.sin(math.radians(angle))-leadw-jfingerw*math.cos(math.radians(angle))/2),math.radians(struct().direction)),
+            rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE1)),
+            rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE1)),
+            rotate_2d((-separation/2+jpadOverhang,
+                       -(jfingerl-jfingerex)*math.sin(math.radians(angle))-jfingerw*math.cos(math.radians(angle))/2),math.radians(struct().direction))
+            ],bgcolor=bgcolor,layer=JLAYER))
+    else:
+        # j finger stems from bottom of left lead
+        chip.add(SolidPline(centerPos, points=[
+            rotate_2d((-separation/2+jpadOverhang,
+                       (jfingerl-jfingerex)*math.cos(math.radians(angle))+jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction)),
+            rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE2)),
+            rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE2)),
+            rotate_2d(((jfingerl-jfingerex)*math.sin(math.radians(angle))+jfingerw*math.cos(math.radians(angle))/2,
+                       (jfingerl-jfingerex)*math.cos(math.radians(angle))+leadw+jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction)),
+            rotate_2d((-separation/2+jpadOverhang,
+                       (jfingerl-jfingerex)*math.cos(math.radians(angle))+leadw+jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction))
+            ],bgcolor=bgcolor,layer=JLAYER))
+    
+    if right_top:
+        # j finger stems from top of right lead
+        if not right_switch:
+            # JANGLE1 is our finger
+            chip.add(SolidPline(centerPos, points=[
+                rotate_2d((separation/2-jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(math.radians(angle))-leadw+jfingerw*math.cos(math.radians(angle))/2),math.radians(struct().direction)),
+                rotate_2d(((jfingerl-jfingerex)*math.cos(math.radians(angle))-jfingerw*math.sin(math.radians(angle))/2,
+                           -(jfingerl-jfingerex)*math.sin(math.radians(angle))-leadw+jfingerw*math.cos(math.radians(angle))/2),math.radians(struct().direction)),
+                rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE1)),
+                rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE1)),
+                rotate_2d((separation/2-jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(math.radians(angle))+jfingerw*math.cos(math.radians(angle))/2),math.radians(struct().direction))
+                ],bgcolor=bgcolor,layer=JLAYER))
+        else:
+            # JANGLE2 is our finger
+            chip.add(SolidPline(centerPos, points=[
+                rotate_2d((separation/2-jpadOverhang,
+                           (jfingerl-jfingerex)*math.cos(math.radians(angle))-leadw+jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction)),
+                rotate_2d(((jfingerl-jfingerex)*math.sin(math.radians(angle))+jfingerw*math.cos(math.radians(angle))/2,
+                           (jfingerl-jfingerex)*math.cos(math.radians(angle))-leadw+jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction)),
+                rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE2)),
+                rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE2)),
+                rotate_2d((separation/2-jpadOverhang,
+                           (jfingerl-jfingerex)*math.cos(math.radians(angle))+jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction))
+                ],bgcolor=bgcolor,layer=JLAYER))
+    else:
+        # j finger stems from bottom of right lead
+        # JANGLE2 is our finger
+        chip.add(SolidPline(centerPos, points=[
+            rotate_2d((separation/2-jpadOverhang,
+                       (jfingerl-jfingerex)*math.cos(math.radians(angle))+leadw-jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction)),
+            rotate_2d(((jfingerl-jfingerex)*math.sin(math.radians(angle))-jfingerw*math.cos(math.radians(angle))/2,
+                       (jfingerl-jfingerex)*math.cos(math.radians(angle))+leadw-jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction)),
+            rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE2)),
+            rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE2)),
+            rotate_2d((separation/2-jpadOverhang,
+                       (jfingerl-jfingerex)*math.cos(math.radians(angle))-jfingerw*math.sin(math.radians(angle))/2),math.radians(struct().direction))
+            ],bgcolor=bgcolor,layer=JLAYER))
