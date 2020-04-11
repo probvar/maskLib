@@ -428,12 +428,13 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
     
     # -------------------- junction fingers --------------------
     chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
-                                                    math.radians(JANGLE2))), -ucdist, min(3*jfingerw,2*jfingerex), rotation=JANGLE2,
+                                                    math.radians(JANGLE2))), jfingerex<=0 and 2*jfingerex or -ucdist, min(3*jfingerw,2*jfingerex), rotation=JANGLE2,
                            valign=const.MIDDLE,layer=ULAYER,bgcolor=chip.bg(ULAYER),**kwargs))
-    chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
-                                                    math.radians(JANGLE1))), -ucdist, min(3*jfingerw,2*jfingerex), rotation=JANGLE1,
-                           valign=const.MIDDLE,layer=ULAYER,bgcolor=chip.bg(ULAYER),**kwargs))
-    
+    if jfingerex >0:
+        chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
+                                                        math.radians(JANGLE1))), -ucdist, min(3*jfingerw,2*jfingerex), rotation=JANGLE1,
+                               valign=const.MIDDLE,layer=ULAYER,bgcolor=chip.bg(ULAYER),**kwargs))
+        
     # -------------------- junction leads ---------------------
     if left_top: 
         # j finger stems from top of left lead
@@ -509,18 +510,7 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
         if not right_switch:
             # JANGLE1 is our finger
             # angle is 0-45 deg
-            '''
-            chip.add(SolidPline(centerPos, points=[
-                rotate_2d((separation/2-jpadOverhang,
-                           -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
-                rotate_2d(((jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2,
-                           -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
-                rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE1)),
-                rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE1)),
-                rotate_2d((separation/2-jpadOverhang,
-                           -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2),math.radians(struct().direction))
-                ],bgcolor=bgcolor,layer=JLAYER))
-            '''
+            
             # ANGLE 1 undercut
             chip.add(SolidPline(centerPos, points=[
                 rotate_2d((jfingerl-jfingerex-ucdist,-jfingerw/2),math.radians(JANGLE1)),
@@ -556,18 +546,6 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
         else:
             # JANGLE2 is our finger
             # angle is 91-180 deg
-            '''
-            chip.add(SolidPline(centerPos, points=[
-                rotate_2d((separation/2-jpadOverhang,
-                           (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
-                rotate_2d(((jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2,
-                           (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
-                rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE2)),
-                rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE2)),
-                rotate_2d((separation/2-jpadOverhang,
-                           (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2),math.radians(struct().direction))
-                ],bgcolor=bgcolor,layer=JLAYER))
-            '''
             if angle < 180:
                 # ANGLE 2 undercut
                 chip.add(SolidPline(centerPos, points=[
@@ -602,18 +580,6 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
         # j finger stems from bottom of right lead
         # JANGLE2 is our finger
         # angle is 46-90 deg
-        '''
-        chip.add(SolidPline(centerPos, points=[
-            rotate_2d((separation/2-jpadOverhang,
-                       (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
-            rotate_2d(((jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2,
-                       (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
-            rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE2)),
-            rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE2)),
-            rotate_2d((separation/2-jpadOverhang,
-                       (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2),math.radians(struct().direction))
-            ],bgcolor=bgcolor,layer=JLAYER))
-        '''
         if angle < 90:
             # ANGLE 2 undercut
             chip.add(SolidPline(centerPos, points=[
@@ -663,11 +629,12 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
     chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
                                                     math.radians(JANGLE2))), jfingerl, jfingerw, rotation=JANGLE2,
                            valign=const.MIDDLE,layer=JLAYER,bgcolor=bgcolor,**kwargs))
-    chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
-                                                    math.radians(JANGLE1))), jfingerex-jfingerw/2, jfingerw, rotation = JANGLE1,
-                           valign=const.MIDDLE,layer=JLAYER,bgcolor=bgcolor,**kwargs))
-    chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((jfingerw/2,0),#rotate about center
-                                                    math.radians(JANGLE1))), jfingerl-jfingerex-jfingerw/2, jfingerw, rotation = JANGLE1,
+    if jfingerex >0:
+        chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
+                                                        math.radians(JANGLE1))), jfingerex-jfingerw/2, jfingerw, rotation = JANGLE1,
+                               valign=const.MIDDLE,layer=JLAYER,bgcolor=bgcolor,**kwargs))
+    chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((max(jfingerw/2,-jfingerex),0),#rotate about center
+                                                    math.radians(JANGLE1))), min(jfingerl-jfingerex-jfingerw/2,jfingerl), jfingerw, rotation = JANGLE1,
                            valign=const.MIDDLE,layer=JLAYER,bgcolor=bgcolor,**kwargs))
     
     # -------------------- junction leads --------------------    
