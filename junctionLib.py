@@ -15,6 +15,7 @@ from dxfwrite.vector2d import vadd, midpoint ,vsub, vector2angle, magnitude, dis
 from dxfwrite.algebra import rotate_2d
 
 from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideCurve
+from maskLib.utilities import curveAB, cornerRound
 
 import math
 
@@ -339,7 +340,7 @@ def JProbePads(chip,pos,padwidth=250,separation=40,rotation=0,**kwargs):
 def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=None,jpadOverhang=5,jpadTaper=0,
                       jfingerw=0.13,jfingerl=5.0,jfingerex=1.0,
                       leadw=2.0,leadr=0.5,
-                      ucdist=0.6,
+                      ucdist=1.6,
                       JANGLE1=None,JANGLE2=None,directionFlipAlowed=False,
                       JLAYER=None,ULAYER=None,bgcolor=None,**kwargs):
     '''
@@ -415,7 +416,7 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
         left_top = True
         right_top = True
         right_switch = True
-        
+    
     # adjust overhang to account for taper
     if jpadTaper > 0:
         jpadOverhang = jpadOverhang + jpadTaper
@@ -424,195 +425,479 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
     # ==================== UNDERCUT LAYER ====================
     # do this first so undercut lines don't obscure junction lines
     '''
-    # -------------------- junction pads -----------------------
-    
-    # -------------------- junction fingers --------------------
-    chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
-                                                    math.radians(JANGLE2))), jfingerex<=0 and 2*jfingerex or -ucdist, min(3*jfingerw,2*jfingerex), rotation=JANGLE2,
-                           valign=const.MIDDLE,layer=ULAYER,bgcolor=chip.bg(ULAYER),**kwargs))
-    if jfingerex >0:
-        chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
-                                                        math.radians(JANGLE1))), -ucdist, min(3*jfingerw,2*jfingerex), rotation=JANGLE1,
-                               valign=const.MIDDLE,layer=ULAYER,bgcolor=chip.bg(ULAYER),**kwargs))
+    if ucdist > 0:
+        # -------------------- junction pads -----------------------
+        rot0 = min(max(math.radians(angle),0),math.radians(90))
+        rot90 = min(max(math.radians(angle)-math.radians(90),0),math.radians(90))
+        rot180 = min(max(math.radians(angle)-math.radians(180),0),math.radians(90))
         
-    # -------------------- junction leads ---------------------
-    if left_top: 
-        # j finger stems from top of left lead
-        # angle is 46-180 deg
-        if angle < 180:
-            # ANGLE 1 undercut
-            chip.add(SolidPline(centerPos, points=[
-                rotate_2d((-separation/2+jpadOverhang,
-                       -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
-                rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE1)),
-                rotate_2d((jfingerl-jfingerex-ucdist,-jfingerw/2),math.radians(JANGLE1)),
-                rotate_2d((-separation/2+jpadOverhang,
-                       -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction))
-                ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
-        if math.sin(rot) < -math.cos(rot):
-            # ANGLE 2 undercut
-            chip.add(SolidPline(centerPos, points=[
-                rotate_2d((jfingerl-jfingerex,-jfingerw/2-ucdist),math.radians(JANGLE1)),
-                rotate_2d((jfingerl-jfingerex,-jfingerw/2+ucdist*math.tan(rot)),math.radians(JANGLE1)),
-                rotate_2d((-separation/2+jpadOverhang,
-                       -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
-                rotate_2d((-separation/2+jpadOverhang,
-                       -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))
-                ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
-        if angle <90:
-            # ANGLE 2 undercut
-            chip.add(SolidPline(centerPos, points=[
-                rotate_2d(((jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2,
-                       -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
-                rotate_2d((-separation/2+jpadOverhang,
-                       -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
-                rotate_2d((-separation/2+jpadOverhang,
-                       -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
-                rotate_2d(((jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2-ucdist*math.sin(rot),
-                       -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))
-                ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
-        elif angle > 90:
-            # ANGLE 1 undercut
-            chip.add(SolidPline(centerPos, points=[
-                rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE1)),
-                rotate_2d((jfingerl-jfingerex-ucdist,jfingerw/2),math.radians(JANGLE1)),
-                rotate_2d(((jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2 - ucdist*math.cos(rot),
-                       -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2 + ucdist*math.sin(rot)),math.radians(struct().direction)),
-                rotate_2d(((jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2,
-                       -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2),math.radians(struct().direction))
-                ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
-    else:# angle is 0-45 deg
-        # j finger stems from bottom of left lead
+        '''
+        = = = = = = = = = = = LEFT LEAD = = = = = = = = = = = = =
+        '''
+        
+        jpadUCL=SolidPline(centerPos,rotation=struct().direction,bgcolor=chip.bg(ULAYER),layer=ULAYER,solidFillQuads=True)
+        # - - - - - - - hug pad - - - - - - - 
+        if angle < 90:
+            if jpadTaper > 0:
+                jpadUCL.add_vertex((-separation/2+jpadOverhang-jpadTaper,-jpadh/2))
+            else: # corner 1
+                jpadUCL.add_vertices(curveAB((-separation/2+jpadOverhang-jpadTaper-jpadr*(1-math.cos(rot)),-jpadh/2+jpadr*(1-math.sin(rot))),
+                                             (-separation/2+jpadOverhang-jpadTaper-jpadr,-jpadh/2),
+                                             clockwise=True,angleDeg=90-angle))
+        if angle < 180: # corner 2
+            jpadUCL.add_vertices(curveAB((-separation/2+jpadOverhang-jpadTaper-jpadw+jpadr*(1-math.sin(rot90)),-jpadh/2+jpadr*(1-math.cos(rot90))),
+                                         (-separation/2+jpadOverhang-jpadTaper-jpadw,-jpadh/2+jpadr),
+                                         clockwise=True,angleDeg=min(180-angle,90)))
+        
+        # corner 3 (this one never goes away)
+        jpadUCL.add_vertices(curveAB((-separation/2+jpadOverhang-jpadTaper-jpadw,jpadh/2-jpadr),
+                                     (-separation/2+jpadOverhang-jpadTaper-jpadw+jpadr,jpadh/2),
+                                     clockwise=True))
+        
+        # corner 4
         if angle > 0:
-            # ANGLE 1 undercut
-            chip.add(SolidPline(centerPos, points=[
-                rotate_2d((-separation/2+jpadOverhang,
-                           (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
-                rotate_2d((-separation/2+jpadOverhang,
-                           (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
-                rotate_2d(((jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2-ucdist*math.cos(rot),
-                           (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
-                rotate_2d(((jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2,
-                           (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2),math.radians(struct().direction))
-                ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
-        # ANGLE 2 undercut
-        chip.add(SolidPline(centerPos, points=[
-            rotate_2d((-separation/2+jpadOverhang,
-                       (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
-            rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE2)),
-            rotate_2d((jfingerl-jfingerex-ucdist,jfingerw/2),math.radians(JANGLE2)),
-            rotate_2d((-separation/2+jpadOverhang,
-                       (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2- ucdist*math.cos(rot)),math.radians(struct().direction))
-            ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
-    
-    if right_top:
-        # j finger stems from top of right lead
-        if not right_switch:
-            # JANGLE1 is our finger
-            # angle is 0-45 deg
+            if jpadTaper >0:
+                jpadUCL.add_vertex((-separation/2+jpadOverhang-jpadTaper,jpadh/2))
+            else:
+                jpadUCL.add_vertices(curveAB((-separation/2+jpadOverhang-jpadTaper-jpadr,jpadh/2),
+                                             (-separation/2+jpadOverhang-jpadTaper-jpadr*(1-math.sin(rot0)),jpadh/2-jpadr*(1-math.cos(rot0))),
+                                             clockwise=True,angleDeg=min(angle,90)))
+        if angle > 90:
+            jpadUCL.add_vertex((-separation/2+jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2+ucdist*max(-math.cos(rot),math.sin(rot))))
+        # - - - - - - - extend pad - - - - - -
+        
+        if angle > 90:
+            jpadUCL.add_vertex((-separation/2+jpadOverhang-ucdist*math.cos(rot),
+                           -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2+ucdist*max(-math.cos(rot),math.sin(rot))))
+        # corner 4
+        if angle > 0:
+            if jpadTaper >0:
+                jpadUCL.add_vertex((-separation/2+jpadOverhang-jpadTaper-ucdist*math.cos(rot),jpadh/2 + ucdist* max(math.sin(rot),-math.cos(rot))))
+            else:
+                jpadUCL.add_vertices(curveAB((-separation/2+jpadOverhang-jpadTaper-jpadr*(1-math.sin(rot0))-ucdist*math.cos(rot),jpadh/2 -jpadr*(1-math.cos(rot0)) + ucdist* max(math.sin(rot),-math.cos(rot))),
+                                             (-separation/2+jpadOverhang-jpadTaper-jpadr-ucdist*math.cos(rot),jpadh/2 + ucdist* max(math.sin(rot),-math.cos(rot))),
+                                             clockwise=False,angleDeg=min(angle,90)))
+        
+        
+        # corner 3 (this one never goes away)
+        jpadUCL.add_vertices(curveAB((-separation/2+jpadOverhang-jpadTaper-jpadw+jpadr + (math.cos(rot)>math.sin(rot) and -ucdist*math.cos(rot) or -ucdist*math.sin(rot)),jpadh/2+ucdist*max(math.sin(rot),-math.cos(rot))),
+                                     (-separation/2+jpadOverhang-jpadTaper-jpadw -ucdist*max(math.sin(rot),math.cos(rot)),jpadh/2-jpadr + ucdist*math.sin(rot0)),
+                                     clockwise=False))
+        if angle < 180: # corner 2
+            jpadUCL.add_vertices(curveAB((-separation/2+jpadOverhang-jpadTaper-jpadw-ucdist*max(math.sin(rot),math.cos(rot)),-jpadh/2+jpadr -ucdist*math.cos(rot)),
+                                         (-separation/2+jpadOverhang-jpadTaper-jpadw+jpadr*(1-math.sin(rot90))-ucdist*max(math.sin(rot),math.cos(rot)),-jpadh/2+jpadr*(1-math.cos(rot90))-ucdist*math.cos(rot)),
+                                         clockwise=False,angleDeg=min(180-angle,90)))
+        
+        if angle < 90: 
+            if jpadTaper > 0:
+                jpadUCL.add_vertex((-separation/2+jpadOverhang-jpadTaper-ucdist*math.sin(rot),-jpadh/2-ucdist*math.cos(rot)))
+            else: # corner 1
+                jpadUCL.add_vertices(curveAB((-separation/2+jpadOverhang-jpadTaper-jpadr-ucdist*math.sin(rot),-jpadh/2-ucdist*math.cos(rot)),
+                                             (-separation/2+jpadOverhang-jpadTaper-jpadr*(1-math.cos(rot))-ucdist*math.sin(rot),-jpadh/2+jpadr*(1-math.sin(rot))-ucdist*math.cos(rot)),
+                                             clockwise=False,angleDeg=90-angle))
+        chip.add(jpadUCL)
+        
+        if angle > 90:
+            jpadUCL2=SolidPline(centerPos,rotation=struct().direction,bgcolor=chip.bg(ULAYER),layer=ULAYER,solidFillQuads=True)
+            # - - - - - - - hug pad - - - - - - -
+            jpadUCL2.add_vertex((-separation/2+jpadOverhang,
+                       -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2))
+            # corner 1
+            jpadUCL2.add_vertices(curveAB((-separation/2+jpadOverhang-jpadTaper,-jpadh/2+jpadr),
+                                         (-separation/2+jpadOverhang-jpadTaper-jpadr*(1-math.cos(rot90)),-jpadh/2+jpadr*(1-math.sin(rot90))),
+                                             clockwise=True,angleDeg=min(angle-90,90)))
+            # - - - - - - - extend pad - - - - - - -
+            # corner 1
+            jpadUCL2.add_vertices(curveAB((-separation/2+jpadOverhang-jpadTaper-jpadr*(1-math.cos(rot90))-ucdist*math.cos(rot),
+                                          -jpadh/2+jpadr*(1-math.sin(rot90))+ucdist*math.sin(rot)),
+                                         (-separation/2+jpadOverhang-jpadTaper-ucdist*math.cos(rot),-jpadh/2+jpadr+ucdist*math.sin(rot)),
+                                             clockwise=False,angleDeg=min(angle-90,90)))
+            jpadUCL2.add_vertex((-separation/2+jpadOverhang-ucdist*math.cos(rot),
+                           -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2))
+            chip.add(jpadUCL2)
+        '''
+        = = = = = = = = = = = RIGHT LEAD = = = = = = = = = = = = =
+        '''
+        if angle < 180: 
+            jpadUCR=SolidPline(centerPos,rotation=struct().direction,bgcolor=chip.bg(ULAYER),layer=ULAYER,solidFillQuads=True)
+            # - - - - - - - hug pad - - - - - - - 
+            if angle < 90: # corner 1
+                jpadUCR.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.cos(rot)),-jpadh/2+jpadr*(1-math.sin(rot))),
+                                             (jpadw+separation/2-jpadOverhang+jpadTaper-jpadr,-jpadh/2),
+                                             clockwise=True,angleDeg=90-angle))
+            if jpadTaper > 0:
+                pass
+            elif angle < 180: # corner 2
+                jpadUCR.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw+jpadr*(1-math.sin(rot90)),-jpadh/2+jpadr*(1-math.cos(rot90))),
+                                             (jpadw+separation/2-jpadOverhang+jpadTaper-jpadw,-jpadh/2+jpadr),
+                                             clockwise=True,angleDeg=min(180-angle,90)))
+            if right_top:
+                # j finger stems from top of right lead
+                if not right_switch:
+                    # angle is 0-45 deg
+                    jpadUCR.add_vertices([(separation/2-jpadOverhang,
+                                       -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),
+                                          (separation/2-jpadOverhang-ucdist*math.cos(rot),
+                                       -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2-ucdist*math.cos(rot))])
+                else:
+                    # angle is 91-180 deg
+                    jpadUCR.add_vertices([
+                        (separation/2-jpadOverhang,
+                                       (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2),
+                        (separation/2-jpadOverhang-ucdist*math.sin(rot),
+                                       (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2)
+                        ])
+            else:
+                # angle is 46-90 deg
+                jpadUCR.add_vertices([(separation/2-jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),
+                                      (separation/2-jpadOverhang-ucdist*math.sin(rot),
+                                   (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot))
+                                      ])
+            # - - - - - - - extend pad - - - - - -
             
-            # ANGLE 1 undercut
+            if jpadTaper > 0:
+                pass
+            elif angle < 180: # corner 2
+                jpadUCR.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw-ucdist*max(math.sin(rot),math.cos(rot)),-jpadh/2+jpadr -ucdist*math.cos(rot)),
+                                             (jpadw+separation/2-jpadOverhang+jpadTaper-jpadw+jpadr*(1-math.sin(rot90))-ucdist*max(math.sin(rot),math.cos(rot)),-jpadh/2+jpadr*(1-math.cos(rot90))-ucdist*math.cos(rot)),
+                                             clockwise=False,angleDeg=min(180-angle,90)))
+            
+            if angle < 90: # corner 1
+                jpadUCR.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadr-ucdist*math.sin(rot),-jpadh/2-ucdist*math.cos(rot)),
+                                             (jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.cos(rot))-ucdist*math.sin(rot),-jpadh/2+jpadr*(1-math.sin(rot))-ucdist*math.cos(rot)),
+                                             clockwise=False,angleDeg=90-angle))
+            chip.add(jpadUCR)
+            
+        jpadUCR2=SolidPline(centerPos,rotation=struct().direction,bgcolor=chip.bg(ULAYER),layer=ULAYER,solidFillQuads=True)
+        # - - - - - - - hug pad - - - - - - - 
+        if right_top:
+            # j finger stems from top of right lead
+            if not right_switch:
+                # angle is 0-45 deg
+                jpadUCR2.add_vertex((separation/2-jpadOverhang,
+                                   -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)))
+            else:
+                # angle is 91-180 deg
+                jpadUCR2.add_vertex((separation/2-jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))))
+                pass
+        else:
+            # angle is 46-90 deg
+            jpadUCR2.add_vertex((separation/2-jpadOverhang,
+                               (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)))
+            pass
+            
+        # corner 3 (this one never goes away)
+        jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw,jpadh/2-jpadr),
+                                     (jpadw+separation/2-jpadOverhang+jpadTaper-jpadw+jpadr,jpadh/2),
+                                     clockwise=True))
+        
+        # corner 4
+        if angle > 0:
+            jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadr,jpadh/2),
+                                             (jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.sin(rot0)),jpadh/2-jpadr*(1-math.cos(rot0))),
+                                             clockwise=True,angleDeg=min(angle,90)))
+        
+        # corner 1
+        jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper,-jpadh/2+jpadr),
+                                     (jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.cos(rot90)),-jpadh/2+jpadr*(1-math.sin(rot90))),
+                                         clockwise=True,angleDeg=min(angle-90,90)))
+        # - - - - - - - extend pad - - - - - - -
+        # corner 1
+        jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.cos(rot90))-ucdist*math.cos(rot),
+                                      -jpadh/2+jpadr*(1-math.sin(rot90))+ucdist*math.sin(rot)),
+                                     (jpadw+separation/2-jpadOverhang+jpadTaper-ucdist*math.cos(rot),-jpadh/2+jpadr+ucdist*math.sin(rot)),
+                                         clockwise=False,angleDeg=min(angle-90,90)))
+        
+        # corner 4
+        if angle > 0:
+            jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.sin(rot0))-ucdist*math.cos(rot),jpadh/2 -jpadr*(1-math.cos(rot0)) + ucdist* max(math.sin(rot),-math.cos(rot))),
+                                             (jpadw+separation/2-jpadOverhang+jpadTaper-jpadr-ucdist*math.cos(rot),jpadh/2 + ucdist* max(math.sin(rot),-math.cos(rot))),
+                                             clockwise=False,angleDeg=min(angle,90)))
+        
+        
+        # corner 3 (this one never goes away)
+        jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw+jpadr + (math.cos(rot)>math.sin(rot) and -ucdist*math.cos(rot) or -ucdist*math.sin(rot)),jpadh/2+ucdist*max(math.sin(rot),-math.cos(rot))),
+                                     (jpadw+separation/2-jpadOverhang+jpadTaper-jpadw -ucdist*max(math.sin(rot),math.cos(rot)),jpadh/2-jpadr + ucdist*math.sin(rot0)),
+                                     clockwise=False))
+        if right_top:
+            # j finger stems from top of right lead
+            if not right_switch:
+                # angle is 0-45 deg
+                jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.cos(rot),
+                                   -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)))
+            else:
+                # angle is 91-180 deg
+                jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.sin(rot),
+                                   (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))))
+        else:
+            # angle is 46-90 deg
+            jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.sin(rot),
+                               (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)))
+            pass
+        chip.add(jpadUCR2)
+
+        # -------------------- junction taper ----------------------
+        '''
+    if left_top:
+        if jpadTaper > 0:
             chip.add(SolidPline(centerPos, points=[
-                rotate_2d((jfingerl-jfingerex-ucdist,-jfingerw/2),math.radians(JANGLE1)),
-                rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE1)),
-                rotate_2d(((jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2,
-                           -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
-                rotate_2d(((jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot),
-                           -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction))
-                ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                rotate_2d((-separation/2+jpadOverhang-jpadTaper,jpadh/2),math.radians(struct().direction)),
+                rotate_2d((-separation/2+jpadOverhang-jpadTaper,-jpadh/2),math.radians(struct().direction)),
+                rotate_2d((-separation/2+jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
+                rotate_2d((-separation/2+jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2),math.radians(struct().direction))
+                ],bgcolor=bgcolor,layer=JLAYER))
+    else:
+        if jpadTaper > 0:
+            chip.add(SolidPline(centerPos, points=[
+                rotate_2d((-separation/2+jpadOverhang-jpadTaper,jpadh/2),math.radians(struct().direction)),
+                rotate_2d((-separation/2+jpadOverhang-jpadTaper,-jpadh/2),math.radians(struct().direction)),
+                rotate_2d((-separation/2+jpadOverhang,
+                       (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                rotate_2d((-separation/2+jpadOverhang,
+                       (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2),math.radians(struct().direction))
+                ],bgcolor=bgcolor,layer=JLAYER))
+        '''
+        if jpadTaper >0:
+            # left taper
+            if left_top:
+                l_tap_rot_0 = math.atan(jpadTaper/(jpadh/2-(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2))
+                if  l_tap_rot_0 > rot: # bottom angle 2
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((-separation/2+jpadOverhang-ucdist*math.sin(rot),
+                                   -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang-jpadTaper-ucdist*math.sin(rot),-jpadh/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang-jpadTaper,-jpadh/2),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                elif angle < 90:
+                    # bottom angle 2
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((-separation/2+jpadOverhang-ucdist*math.cos(rot)*math.tan(l_tap_rot_0),
+                                   -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+            else:
+                l_tap_rot_0 = math.atan(jpadTaper/(jpadh/2+(jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2))
+                if  l_tap_rot_0 > rot: # bottom angle 2
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((-separation/2+jpadOverhang-ucdist*math.sin(rot),
+                                   (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang-jpadTaper-ucdist*math.sin(rot),-jpadh/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang-jpadTaper,-jpadh/2),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))     
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                elif angle < 90:
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((-separation/2+jpadOverhang-ucdist*math.cos(rot)*math.tan(l_tap_rot_0),
+                                   (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))     
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                
+        
+        # -------------------- junction fingers --------------------
+        chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
+                                                        math.radians(JANGLE2))), jfingerex<=0 and 2*jfingerex or -ucdist, min(3*jfingerw,2*jfingerex), rotation=JANGLE2,
+                               valign=const.MIDDLE,layer=ULAYER,bgcolor=chip.bg(ULAYER),**kwargs))
+        if jfingerex >0:
+            chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
+                                                            math.radians(JANGLE1))), -ucdist, min(3*jfingerw,2*jfingerex), rotation=JANGLE1,
+                                   valign=const.MIDDLE,layer=ULAYER,bgcolor=chip.bg(ULAYER),**kwargs))
+            
+        # -------------------- junction leads ---------------------
+        if left_top: 
+            # j finger stems from top of left lead
+            # angle is 46-180 deg
+            if angle < 180:
+                # ANGLE 1 undercut
+                chip.add(SolidPline(centerPos, points=[
+                    rotate_2d((-separation/2+jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
+                    rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE1)),
+                    rotate_2d((jfingerl-jfingerex-ucdist,-jfingerw/2),math.radians(JANGLE1)),
+                    rotate_2d((-separation/2+jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction))
+                    ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+            if math.sin(rot) < -math.cos(rot):
+                # ANGLE 2 undercut
+                chip.add(SolidPline(centerPos, points=[
+                    rotate_2d((jfingerl-jfingerex,-jfingerw/2-ucdist),math.radians(JANGLE1)),
+                    rotate_2d((jfingerl-jfingerex,-jfingerw/2+ucdist*math.tan(rot)),math.radians(JANGLE1)),
+                    rotate_2d((-separation/2+jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                    rotate_2d((-separation/2+jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))
+                    ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+            if angle <90:
+                # ANGLE 2 undercut
+                chip.add(SolidPline(centerPos, points=[
+                    rotate_2d(((jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2,
+                           -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
+                    rotate_2d((-separation/2+jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
+                    rotate_2d((-separation/2+jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                    rotate_2d(((jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2-ucdist*math.sin(rot),
+                           -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))
+                    ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+            elif angle > 90:
+                # ANGLE 1 undercut
+                chip.add(SolidPline(centerPos, points=[
+                    rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE1)),
+                    rotate_2d((jfingerl-jfingerex-ucdist,jfingerw/2),math.radians(JANGLE1)),
+                    rotate_2d(((jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2 - ucdist*math.cos(rot),
+                           -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2 + ucdist*math.sin(rot)),math.radians(struct().direction)),
+                    rotate_2d(((jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2,
+                           -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2),math.radians(struct().direction))
+                    ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+        else:# angle is 0-45 deg
+            # j finger stems from bottom of left lead
             if angle > 0:
                 # ANGLE 1 undercut
                 chip.add(SolidPline(centerPos, points=[
-                    rotate_2d((jfingerl-jfingerex-ucdist,jfingerw/2),math.radians(JANGLE1)),
-                    rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE1)),
-                    rotate_2d((separation/2-jpadOverhang,
-                           -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
-                    rotate_2d((separation/2-jpadOverhang,
-                           -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction))
+                    rotate_2d((-separation/2+jpadOverhang,
+                               (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                    rotate_2d((-separation/2+jpadOverhang,
+                               (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                    rotate_2d(((jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2-ucdist*math.cos(rot),
+                               (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                    rotate_2d(((jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2,
+                               (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2),math.radians(struct().direction))
                     ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
             # ANGLE 2 undercut
             chip.add(SolidPline(centerPos, points=[
-                rotate_2d(((jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2,
-                       -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
-                rotate_2d((separation/2-jpadOverhang,
-                       -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
-                rotate_2d((separation/2-jpadOverhang,
-                       -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
-                rotate_2d(((jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.sin(rot),
-                       -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
-                rotate_2d(((jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)*math.tan(rot),
-                       -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)*math.tan(rot)),math.radians(struct().direction))
+                rotate_2d((-separation/2+jpadOverhang,
+                           (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE2)),
+                rotate_2d((jfingerl-jfingerex-ucdist,jfingerw/2),math.radians(JANGLE2)),
+                rotate_2d((-separation/2+jpadOverhang,
+                           (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2- ucdist*math.cos(rot)),math.radians(struct().direction))
                 ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
-        else:
-            # JANGLE2 is our finger
-            # angle is 91-180 deg
-            if angle < 180:
-                # ANGLE 2 undercut
-                chip.add(SolidPline(centerPos, points=[
-                    rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE2)),
-                    rotate_2d((jfingerl-jfingerex-ucdist,-jfingerw/2),math.radians(JANGLE2)),
-                    rotate_2d(((jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2-ucdist*math.sin(rot),
-                           (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
-                    rotate_2d(((jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2,
-                           (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2),math.radians(struct().direction))
-                    ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
-            if angle > 90:
-                # ANGLE 2 undercut
-                chip.add(SolidPline(centerPos, points=[
-                    rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE2)),
-                    rotate_2d((jfingerl-jfingerex-ucdist,jfingerw/2),math.radians(JANGLE2)),
-                    rotate_2d((separation/2-jpadOverhang,
-                           (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
-                    rotate_2d((separation/2-jpadOverhang,
-                               (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2),math.radians(struct().direction))
-                    ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
-            if math.sin(rot)>-math.cos(rot):
+        
+        if right_top:
+            # j finger stems from top of right lead
+            if not right_switch:
+                # JANGLE1 is our finger
+                # angle is 0-45 deg
+                
                 # ANGLE 1 undercut
                 chip.add(SolidPline(centerPos, points=[
-                    rotate_2d((separation/2-jpadOverhang,
-                           (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
-                    rotate_2d((jfingerl-jfingerex,jfingerw/2-ucdist/math.tan(rot)),math.radians(JANGLE2)),
-                    rotate_2d((jfingerl-jfingerex,jfingerw/2+ucdist),math.radians(JANGLE2)),
-                    rotate_2d((separation/2-jpadOverhang,
-                           (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction))
+                    rotate_2d((jfingerl-jfingerex-ucdist,-jfingerw/2),math.radians(JANGLE1)),
+                    rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE1)),
+                    rotate_2d(((jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2,
+                               -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
+                    rotate_2d(((jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot),
+                               -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction))
                     ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
-    else:
-        # j finger stems from bottom of right lead
-        # JANGLE2 is our finger
-        # angle is 46-90 deg
-        if angle < 90:
+                if angle > 0:
+                    # ANGLE 1 undercut
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((jfingerl-jfingerex-ucdist,jfingerw/2),math.radians(JANGLE1)),
+                        rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE1)),
+                        rotate_2d((separation/2-jpadOverhang,
+                               -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
+                        rotate_2d((separation/2-jpadOverhang,
+                               -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction))
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                # ANGLE 2 undercut
+                chip.add(SolidPline(centerPos, points=[
+                    rotate_2d(((jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2,
+                           -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
+                    rotate_2d((separation/2-jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
+                    rotate_2d((separation/2-jpadOverhang,
+                           -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                    rotate_2d(((jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.sin(rot),
+                           -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                    rotate_2d(((jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)*math.tan(rot),
+                           -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)*math.tan(rot)),math.radians(struct().direction))
+                    ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+            else:
+                # JANGLE2 is our finger
+                # angle is 91-180 deg
+                if angle < 180:
+                    # ANGLE 2 undercut
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE2)),
+                        rotate_2d((jfingerl-jfingerex-ucdist,-jfingerw/2),math.radians(JANGLE2)),
+                        rotate_2d(((jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2-ucdist*math.sin(rot),
+                               (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                        rotate_2d(((jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2,
+                               (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2),math.radians(struct().direction))
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                if angle > 90:
+                    # ANGLE 2 undercut
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE2)),
+                        rotate_2d((jfingerl-jfingerex-ucdist,jfingerw/2),math.radians(JANGLE2)),
+                        rotate_2d((separation/2-jpadOverhang,
+                               (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                        rotate_2d((separation/2-jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2),math.radians(struct().direction))
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                if math.sin(rot)>-math.cos(rot):
+                    # ANGLE 1 undercut
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((separation/2-jpadOverhang,
+                               (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                        rotate_2d((jfingerl-jfingerex,jfingerw/2-ucdist/math.tan(rot)),math.radians(JANGLE2)),
+                        rotate_2d((jfingerl-jfingerex,jfingerw/2+ucdist),math.radians(JANGLE2)),
+                        rotate_2d((separation/2-jpadOverhang,
+                               (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction))
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+        else:
+            # j finger stems from bottom of right lead
+            # JANGLE2 is our finger
+            # angle is 46-90 deg
+            if angle < 90:
+                # ANGLE 2 undercut
+                chip.add(SolidPline(centerPos, points=[
+                    rotate_2d((jfingerl-jfingerex-ucdist,-jfingerw/2),math.radians(JANGLE2)),
+                    rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE2)),
+                    rotate_2d((separation/2-jpadOverhang,
+                       (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                    rotate_2d((separation/2-jpadOverhang,
+                       (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))
+                    ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
             # ANGLE 2 undercut
             chip.add(SolidPline(centerPos, points=[
-                rotate_2d((jfingerl-jfingerex-ucdist,-jfingerw/2),math.radians(JANGLE2)),
-                rotate_2d((jfingerl-jfingerex,-jfingerw/2),math.radians(JANGLE2)),
-                rotate_2d((separation/2-jpadOverhang,
-                   (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
-                rotate_2d((separation/2-jpadOverhang,
-                   (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))
+                rotate_2d((jfingerl-jfingerex-ucdist,jfingerw/2),math.radians(JANGLE2)),
+                rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE2)),
+                rotate_2d(((jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2,
+                           (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                rotate_2d(((jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2-ucdist*math.sin(rot),
+                           (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))
                 ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
-        # ANGLE 2 undercut
-        chip.add(SolidPline(centerPos, points=[
-            rotate_2d((jfingerl-jfingerex-ucdist,jfingerw/2),math.radians(JANGLE2)),
-            rotate_2d((jfingerl-jfingerex,jfingerw/2),math.radians(JANGLE2)),
-            rotate_2d(((jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2,
-                       (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
-            rotate_2d(((jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2-ucdist*math.sin(rot),
-                       (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))
-            ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
-        # ANGLE 1 undercut
-        chip.add(SolidPline(centerPos, points=[
-            rotate_2d(((jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2,
-                       (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
-            rotate_2d((separation/2-jpadOverhang,
-                       (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
-            rotate_2d((separation/2-jpadOverhang,
-                       (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
-            rotate_2d(((jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2-ucdist*math.cos(rot),
-                       (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
-            rotate_2d(((jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2-ucdist*math.sin(rot)/math.tan(rot),
-                       (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)/math.tan(rot)),math.radians(struct().direction))
-            ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
-    
+            # ANGLE 1 undercut
+            chip.add(SolidPline(centerPos, points=[
+                rotate_2d(((jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2,
+                           (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                rotate_2d((separation/2-jpadOverhang,
+                           (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                rotate_2d((separation/2-jpadOverhang,
+                           (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                rotate_2d(((jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2-ucdist*math.cos(rot),
+                           (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                rotate_2d(((jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2-ucdist*math.sin(rot)/math.tan(rot),
+                           (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)/math.tan(rot)),math.radians(struct().direction))
+                ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+        
     '''
     # ==================== JUNCTION LAYER ====================
     '''

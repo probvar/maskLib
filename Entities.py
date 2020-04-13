@@ -22,7 +22,7 @@ class SolidPline(SubscriptAttributes):
     '''
     name = 'SOLIDPLINE'
     
-    def __init__(self,insert,rotation=0.,color=const.BYLAYER,bgcolor=None,layer='0',linetype=None, points=None, **kwargs):
+    def __init__(self,insert,rotation=0.,color=const.BYLAYER,bgcolor=None,layer='0',linetype=None, points=None, solidFillQuads=False, **kwargs):
         self.insert = insert
         self.rotation = math.radians(rotation)
         self.color = color
@@ -35,6 +35,8 @@ class SolidPline(SubscriptAttributes):
         self.points = points
         
         self.transformed_points = self.points
+        
+        self.solidFillQuads = solidFillQuads
 
     
     def _build(self):
@@ -45,6 +47,9 @@ class SolidPline(SubscriptAttributes):
         if self.bgcolor is not None:
             if len(self.points) <= 4:
                 data.append(self._build_solid())
+            elif self.solidFillQuads:
+                for i in range(len(self.points)//2 -1):
+                    data.append(self._build_solid_quad(i))
             else:
                 for i in range(len(self.points)-2):
                     data.append(self._build_solid_triangle(i))
@@ -82,6 +87,11 @@ class SolidPline(SubscriptAttributes):
     def _build_solid_triangle(self,i):
         ''' build a single background solid triangle segment '''
         solidpts = [self.transformed_points[j] for j in [0,i+1,i+2]]
+        return Solid(solidpts, color=self.bgcolor, layer=self.layer) 
+    
+    def _build_solid_quad(self,i,center=None):
+        ''' build a single background solid quadrangle segment '''
+        solidpts = [self.transformed_points[j] for j in [i,i+1,-i-2,-i-1]]
         return Solid(solidpts, color=self.bgcolor, layer=self.layer) 
     
     def __dxf__(self):
@@ -166,7 +176,7 @@ class SkewRect(SolidPline):
 
         return dy
     
-class CurveRect(SubscriptAttributes):
+class CurveRect(SolidPline):
     ''' Curved rectangle consisting of a single Polyline and a number of background solids
         Connects two flat edges separated by an angle: one or two connecting edges may be curved
     '''
