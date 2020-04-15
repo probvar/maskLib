@@ -462,14 +462,15 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
                 jpadUCL.add_vertices(curveAB((-separation/2+jpadOverhang-jpadTaper-jpadr,jpadh/2),
                                              (-separation/2+jpadOverhang-jpadTaper-jpadr*(1-math.sin(rot0)),jpadh/2-jpadr*(1-math.cos(rot0))),
                                              clockwise=True,angleDeg=min(angle,90)))
-        if angle > 90:
-            jpadUCL.add_vertex((-separation/2+jpadOverhang,
-                           -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2+ucdist*max(-math.cos(rot),math.sin(rot))))
-        # - - - - - - - extend pad - - - - - -
-        
-        if angle > 90:
-            jpadUCL.add_vertex((-separation/2+jpadOverhang-ucdist*math.cos(rot),
-                           -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2+ucdist*max(-math.cos(rot),math.sin(rot))))
+        if jpadTaper <=0:
+            if angle > 90:
+                jpadUCL.add_vertex((-separation/2+jpadOverhang,
+                               -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2+ucdist*max(-math.cos(rot),math.sin(rot))))
+            # - - - - - - - extend pad - - - - - -
+            
+            if angle > 90:
+                jpadUCL.add_vertex((-separation/2+jpadOverhang-ucdist*math.cos(rot),
+                               -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2+ucdist*max(-math.cos(rot),math.sin(rot))))
         # corner 4
         if angle > 0:
             if jpadTaper >0:
@@ -498,7 +499,7 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
                                              clockwise=False,angleDeg=90-angle))
         chip.add(jpadUCL)
         
-        if angle > 90:
+        if angle > 90 and jpadTaper <=0:
             jpadUCL2=SolidPline(centerPos,rotation=struct().direction,bgcolor=chip.bg(ULAYER),layer=ULAYER,solidFillQuads=True)
             # - - - - - - - hug pad - - - - - - -
             jpadUCL2.add_vertex((-separation/2+jpadOverhang,
@@ -527,38 +528,41 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
                                              (jpadw+separation/2-jpadOverhang+jpadTaper-jpadr,-jpadh/2),
                                              clockwise=True,angleDeg=90-angle))
             if jpadTaper > 0:
-                pass
+                if angle < 90:
+                    jpadUCR.add_vertex((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw,-jpadh/2))
             elif angle < 180: # corner 2
                 jpadUCR.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw+jpadr*(1-math.sin(rot90)),-jpadh/2+jpadr*(1-math.cos(rot90))),
                                              (jpadw+separation/2-jpadOverhang+jpadTaper-jpadw,-jpadh/2+jpadr),
                                              clockwise=True,angleDeg=min(180-angle,90)))
-            if right_top:
-                # j finger stems from top of right lead
-                if not right_switch:
-                    # angle is 0-45 deg
-                    jpadUCR.add_vertices([(separation/2-jpadOverhang,
-                                       -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),
-                                          (separation/2-jpadOverhang-ucdist*math.cos(rot),
-                                       -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2-ucdist*math.cos(rot))])
+            if jpadTaper <=0:
+                if right_top:
+                    # j finger stems from top of right lead
+                    if not right_switch:
+                        # angle is 0-45 deg
+                        jpadUCR.add_vertices([(separation/2-jpadOverhang,
+                                           -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),
+                                              (separation/2-jpadOverhang-ucdist*math.cos(rot),
+                                           -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2-ucdist*math.cos(rot))])
+                    else:
+                        # angle is 91-180 deg
+                        jpadUCR.add_vertices([
+                            (separation/2-jpadOverhang,
+                                           (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2),
+                            (separation/2-jpadOverhang-ucdist*math.sin(rot),
+                                           (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2)
+                            ])
                 else:
-                    # angle is 91-180 deg
-                    jpadUCR.add_vertices([
-                        (separation/2-jpadOverhang,
-                                       (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2),
-                        (separation/2-jpadOverhang-ucdist*math.sin(rot),
-                                       (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2)
-                        ])
-            else:
-                # angle is 46-90 deg
-                jpadUCR.add_vertices([(separation/2-jpadOverhang,
-                                   (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),
-                                      (separation/2-jpadOverhang-ucdist*math.sin(rot),
-                                   (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot))
-                                      ])
+                    # angle is 46-90 deg
+                    jpadUCR.add_vertices([(separation/2-jpadOverhang,
+                                       (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),
+                                          (separation/2-jpadOverhang-ucdist*math.sin(rot),
+                                       (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot))
+                                          ])
             # - - - - - - - extend pad - - - - - -
             
             if jpadTaper > 0:
-                pass
+                if angle < 90:
+                    jpadUCR.add_vertex((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw-ucdist*max(math.sin(rot),math.cos(rot)),-jpadh/2 -ucdist*math.cos(rot)))
             elif angle < 180: # corner 2
                 jpadUCR.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw-ucdist*max(math.sin(rot),math.cos(rot)),-jpadh/2+jpadr -ucdist*math.cos(rot)),
                                              (jpadw+separation/2-jpadOverhang+jpadTaper-jpadw+jpadr*(1-math.sin(rot90))-ucdist*max(math.sin(rot),math.cos(rot)),-jpadh/2+jpadr*(1-math.cos(rot90))-ucdist*math.cos(rot)),
@@ -572,27 +576,31 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
             
         jpadUCR2=SolidPline(centerPos,rotation=struct().direction,bgcolor=chip.bg(ULAYER),layer=ULAYER,solidFillQuads=True)
         # - - - - - - - hug pad - - - - - - - 
-        if right_top:
-            # j finger stems from top of right lead
-            if not right_switch:
-                # angle is 0-45 deg
-                jpadUCR2.add_vertex((separation/2-jpadOverhang,
-                                   -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)))
-            else:
-                # angle is 91-180 deg
-                jpadUCR2.add_vertex((separation/2-jpadOverhang,
-                                   (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))))
-                pass
+        if jpadTaper >0:
+            if angle > 0:
+                jpadUCR2.add_vertex((separation/2-jpadOverhang+jpadTaper,jpadh/2))
         else:
-            # angle is 46-90 deg
-            jpadUCR2.add_vertex((separation/2-jpadOverhang,
-                               (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)))
-            pass
-            
-        # corner 3 (this one never goes away)
-        jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw,jpadh/2-jpadr),
-                                     (jpadw+separation/2-jpadOverhang+jpadTaper-jpadw+jpadr,jpadh/2),
-                                     clockwise=True))
+            if right_top:
+                # j finger stems from top of right lead
+                if not right_switch:
+                    # angle is 0-45 deg
+                    jpadUCR2.add_vertex((separation/2-jpadOverhang,
+                                       -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)))
+                else:
+                    # angle is 91-180 deg
+                    jpadUCR2.add_vertex((separation/2-jpadOverhang,
+                                       (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))))
+                    pass
+            else:
+                # angle is 46-90 deg
+                jpadUCR2.add_vertex((separation/2-jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)))
+                pass
+                
+            # corner 3 (this one never goes away)
+            jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw,jpadh/2-jpadr),
+                                         (jpadw+separation/2-jpadOverhang+jpadTaper-jpadw+jpadr,jpadh/2),
+                                         clockwise=True))
         
         # corner 4
         if angle > 0:
@@ -601,15 +609,16 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
                                              clockwise=True,angleDeg=min(angle,90)))
         
         # corner 1
-        jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper,-jpadh/2+jpadr),
-                                     (jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.cos(rot90)),-jpadh/2+jpadr*(1-math.sin(rot90))),
-                                         clockwise=True,angleDeg=min(angle-90,90)))
-        # - - - - - - - extend pad - - - - - - -
-        # corner 1
-        jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.cos(rot90))-ucdist*math.cos(rot),
-                                      -jpadh/2+jpadr*(1-math.sin(rot90))+ucdist*math.sin(rot)),
-                                     (jpadw+separation/2-jpadOverhang+jpadTaper-ucdist*math.cos(rot),-jpadh/2+jpadr+ucdist*math.sin(rot)),
-                                         clockwise=False,angleDeg=min(angle-90,90)))
+        if angle >90:
+            jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper,-jpadh/2+jpadr),
+                                         (jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.cos(rot90)),-jpadh/2+jpadr*(1-math.sin(rot90))),
+                                             clockwise=True,angleDeg=min(angle-90,90)))
+            # - - - - - - - extend pad - - - - - - -
+            # corner 1
+            jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.cos(rot90))-ucdist*math.cos(rot),
+                                          -jpadh/2+jpadr*(1-math.sin(rot90))+ucdist*math.sin(rot)),
+                                         (jpadw+separation/2-jpadOverhang+jpadTaper-ucdist*math.cos(rot),-jpadh/2+jpadr+ucdist*math.sin(rot)),
+                                             clockwise=False,angleDeg=min(angle-90,90)))
         
         # corner 4
         if angle > 0:
@@ -618,54 +627,39 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
                                              clockwise=False,angleDeg=min(angle,90)))
         
         
-        # corner 3 (this one never goes away)
-        jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw+jpadr + (math.cos(rot)>math.sin(rot) and -ucdist*math.cos(rot) or -ucdist*math.sin(rot)),jpadh/2+ucdist*max(math.sin(rot),-math.cos(rot))),
-                                     (jpadw+separation/2-jpadOverhang+jpadTaper-jpadw -ucdist*max(math.sin(rot),math.cos(rot)),jpadh/2-jpadr + ucdist*math.sin(rot0)),
-                                     clockwise=False))
-        if right_top:
-            # j finger stems from top of right lead
-            if not right_switch:
-                # angle is 0-45 deg
-                jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.cos(rot),
-                                   -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)))
-            else:
-                # angle is 91-180 deg
-                jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.sin(rot),
-                                   (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))))
+        if jpadTaper >0:
+            if angle > 0:
+                jpadUCR2.add_vertex((separation/2-jpadOverhang+jpadTaper+ (math.cos(rot)>math.sin(rot) and -ucdist*math.cos(rot) or -ucdist*math.sin(rot)),jpadh/2+ucdist*max(math.sin(rot),-math.cos(rot))))
         else:
-            # angle is 46-90 deg
-            jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.sin(rot),
-                               (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)))
-            pass
+            # corner 3 (this one never goes away)
+            jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw+jpadr + (math.cos(rot)>math.sin(rot) and -ucdist*math.cos(rot) or -ucdist*math.sin(rot)),jpadh/2+ucdist*max(math.sin(rot),-math.cos(rot))),
+                                         (jpadw+separation/2-jpadOverhang+jpadTaper-jpadw -ucdist*max(math.sin(rot),math.cos(rot)),jpadh/2-jpadr + ucdist*math.sin(rot0)),
+                                         clockwise=False))
+            if right_top:
+                # j finger stems from top of right lead
+                if not right_switch:
+                    # angle is 0-45 deg
+                    jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.cos(rot),
+                                       -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)))
+                else:
+                    # angle is 91-180 deg
+                    jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.sin(rot),
+                                       (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))))
+            else:
+                # angle is 46-90 deg
+                jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.sin(rot),
+                                   (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)))
+                pass
         chip.add(jpadUCR2)
 
         # -------------------- junction taper ----------------------
-        '''
-    if left_top:
-        if jpadTaper > 0:
-            chip.add(SolidPline(centerPos, points=[
-                rotate_2d((-separation/2+jpadOverhang-jpadTaper,jpadh/2),math.radians(struct().direction)),
-                rotate_2d((-separation/2+jpadOverhang-jpadTaper,-jpadh/2),math.radians(struct().direction)),
-                rotate_2d((-separation/2+jpadOverhang,
-                           -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
-                rotate_2d((-separation/2+jpadOverhang,
-                           -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2),math.radians(struct().direction))
-                ],bgcolor=bgcolor,layer=JLAYER))
-    else:
-        if jpadTaper > 0:
-            chip.add(SolidPline(centerPos, points=[
-                rotate_2d((-separation/2+jpadOverhang-jpadTaper,jpadh/2),math.radians(struct().direction)),
-                rotate_2d((-separation/2+jpadOverhang-jpadTaper,-jpadh/2),math.radians(struct().direction)),
-                rotate_2d((-separation/2+jpadOverhang,
-                       (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
-                rotate_2d((-separation/2+jpadOverhang,
-                       (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2),math.radians(struct().direction))
-                ],bgcolor=bgcolor,layer=JLAYER))
-        '''
+        
         if jpadTaper >0:
             # left taper
             if left_top:
                 l_tap_rot_0 = math.atan(jpadTaper/(jpadh/2-(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2))
+                l_tap_rot_1 = math.atan(jpadTaper/(jpadh/2+(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2))
+                
                 if  l_tap_rot_0 > rot: # bottom angle 2
                     chip.add(SolidPline(centerPos, points=[
                         rotate_2d((-separation/2+jpadOverhang-ucdist*math.sin(rot),
@@ -687,8 +681,31 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
                         rotate_2d((-separation/2+jpadOverhang,
                                    -(jfingerl-jfingerex)*math.sin(rot)-leadw-jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))
                         ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                if l_tap_rot_1 > math.pi/2 - rot:
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((-separation/2+jpadOverhang-ucdist*math.cos(rot),
+                                   -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang-jpadTaper,jpadh/2),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang-jpadTaper-ucdist*math.cos(rot),jpadh/2+ucdist*max(math.sin(rot),-math.cos(rot))),math.radians(struct().direction))
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                else:
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((-separation/2+jpadOverhang-ucdist*math.sin(rot)*math.tan(l_tap_rot_1),
+                                   -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   -(jfingerl-jfingerex)*math.sin(rot)-jfingerw*math.cos(rot)/2),math.radians(struct().direction))
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                    
             else:
                 l_tap_rot_0 = math.atan(jpadTaper/(jpadh/2+(jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2))
+                l_tap_rot_1 = math.atan(jpadTaper/(jpadh/2-(jfingerl-jfingerex)*math.cos(rot)-leadw-jfingerw*math.sin(rot)/2))
+                #print('taper angle ',math.degrees(l_tap_rot_1),',@',90-angle)
                 if  l_tap_rot_0 > rot: # bottom angle 2
                     chip.add(SolidPline(centerPos, points=[
                         rotate_2d((-separation/2+jpadOverhang-ucdist*math.sin(rot),
@@ -709,8 +726,130 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
                         rotate_2d((-separation/2+jpadOverhang,
                                    (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))     
                         ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                if l_tap_rot_1 > math.pi/2 - rot:
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((-separation/2+jpadOverhang-ucdist*math.cos(rot),
+                                   (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang-jpadTaper,jpadh/2),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang-jpadTaper-ucdist*math.cos(rot),jpadh/2+ucdist*math.sin(rot)),math.radians(struct().direction))
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                elif angle > 0:
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((-separation/2+jpadOverhang-ucdist*math.sin(rot)*math.tan(l_tap_rot_1),
+                                   (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                        rotate_2d((-separation/2+jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)+leadw+jfingerw*math.sin(rot)/2),math.radians(struct().direction))
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+            
+            # right taper
+            if right_top:
+                if not right_switch:
+                    # angle is 0-45 deg
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((separation/2-jpadOverhang,
+                               -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                        rotate_2d((separation/2-jpadOverhang,
+                               -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
+                        rotate_2d((separation/2-jpadOverhang+jpadTaper,-jpadh/2),math.radians(struct().direction)),
+                        rotate_2d((separation/2-jpadOverhang+jpadTaper-ucdist*math.cos(rot),-jpadh/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                        rotate_2d((separation/2-jpadOverhang-ucdist*math.cos(rot),
+                               -(jfingerl-jfingerex)*math.sin(rot)-leadw+jfingerw*math.cos(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                    if angle > 0:
+                        chip.add(SolidPline(centerPos, points=[
+                            rotate_2d((separation/2-jpadOverhang,
+                                       -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang,
+                                       -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang+jpadTaper,jpadh/2),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang+jpadTaper-ucdist*math.cos(rot),jpadh/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang-ucdist*math.cos(rot),
+                                       -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction))
+                            ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                    else:
+                        chip.add(SolidPline(centerPos, points=[
+                            rotate_2d((separation/2-jpadOverhang-ucdist*math.cos(rot),
+                                       -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang,
+                                       -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang+jpadTaper,jpadh/2),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang+jpadTaper-ucdist*math.cos(rot),jpadh/2+ucdist*math.sin(rot)),math.radians(struct().direction))
+                            ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                else:
+                    # angle is 91-180 deg
+                    r_tap_rot_0 = math.atan(jpadTaper/(jpadh/2 + (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2))
+                    
+                    if math.degrees(r_tap_rot_0) + angle < 180 and angle < 180:
+                        chip.add(SolidPline(centerPos, points=[
+                            rotate_2d((separation/2-jpadOverhang-ucdist*(math.sin(rot)+math.cos(rot)*math.tan(r_tap_rot_0)),
+                                       (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang,
+                                       (jfingerl-jfingerex)*math.cos(rot)-leadw+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang+jpadTaper,-jpadh/2),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang+jpadTaper-ucdist*math.sin(rot),-jpadh/2-ucdist*math.cos(rot)),math.radians(struct().direction))
+                            ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                    if angle < 180:
+                        chip.add(SolidPline(centerPos, points=[
+                            rotate_2d((separation/2-jpadOverhang,
+                               (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang,
+                               (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang+jpadTaper,jpadh/2),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang+jpadTaper-ucdist*math.sin(rot),jpadh/2+ucdist*max(math.sin(rot),-math.cos(rot))),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang-ucdist*math.sin(rot),
+                               (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))),math.radians(struct().direction))
+                            ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                    else:
+                        chip.add(SolidPline(centerPos, points=[
+                            rotate_2d((separation/2-jpadOverhang,
+                               (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang,
+                               (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang+jpadTaper,jpadh/2),math.radians(struct().direction)),
+                            rotate_2d((separation/2-jpadOverhang+jpadTaper-ucdist*math.sin(rot),jpadh/2+ucdist*max(math.sin(rot),-math.cos(rot))),math.radians(struct().direction))
+                            ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+            else:
+                # angle is 46 - 90 deg
+                if angle < 90:
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((separation/2-jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                        rotate_2d((separation/2-jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                        rotate_2d((separation/2-jpadOverhang+jpadTaper,-jpadh/2),math.radians(struct().direction)),
+                        rotate_2d((separation/2-jpadOverhang+jpadTaper-ucdist*math.sin(rot),-jpadh/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                        rotate_2d((separation/2-jpadOverhang-ucdist*math.sin(rot),
+                                   (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                else:
+                    chip.add(SolidPline(centerPos, points=[
+                        rotate_2d((separation/2-jpadOverhang,
+                                   (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                        rotate_2d((separation/2-jpadOverhang+jpadTaper,-jpadh/2),math.radians(struct().direction)),
+                        rotate_2d((separation/2-jpadOverhang+jpadTaper-ucdist*math.sin(rot),-jpadh/2-ucdist*math.cos(rot)),math.radians(struct().direction)),
+                        rotate_2d((separation/2-jpadOverhang-ucdist*math.sin(rot),
+                                   (jfingerl-jfingerex)*math.cos(rot)-jfingerw*math.sin(rot)/2-ucdist*math.cos(rot)),math.radians(struct().direction))
+                        ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
                 
-        
+                chip.add(SolidPline(centerPos, points=[
+                    rotate_2d((separation/2-jpadOverhang,
+                               (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                    rotate_2d((separation/2-jpadOverhang,
+                               (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2),math.radians(struct().direction)),
+                    rotate_2d((separation/2-jpadOverhang+jpadTaper,jpadh/2),math.radians(struct().direction)),
+                    rotate_2d((separation/2-jpadOverhang+jpadTaper-ucdist*math.sin(rot),jpadh/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                    rotate_2d((separation/2-jpadOverhang-ucdist*math.sin(rot),
+                               (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)),math.radians(struct().direction)),
+                    
+                    ],bgcolor=chip.bg(ULAYER),layer=ULAYER))
+                
+                
         # -------------------- junction fingers --------------------
         chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
                                                         math.radians(JANGLE2))), jfingerex<=0 and 2*jfingerex or -ucdist, min(3*jfingerw,2*jfingerex), rotation=JANGLE2,
