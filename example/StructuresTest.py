@@ -8,7 +8,7 @@ Created on Fri Aug 31 16:45:06 2018
 import maskLib.MaskLib as m
 from maskLib.microwaveLib import *
 from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideCurve
-from maskLib.junctionLib import setupJunctionLayers,JContact_slot,JContact_tab,JcalcTabDims,JSingleProbePad,JProbePads
+from maskLib.junctionLib import setupJunctionLayers,setupManhattanJAngles,JContact_slot,JContact_tab,JcalcTabDims,JSingleProbePad,JProbePads
 from maskLib.junctionLib import ManhattanJunction
 import numpy as np
 from dxfwrite import DXFEngine as dxf
@@ -231,10 +231,13 @@ class FancyChip(m.Chip7mm):
         
         #>>>>>>>>>>> test manhattan junction functions <<<<<<<<<<<<<<<
         
+        setupManhattanJAngles(self.wafer,40,True)
+        print(self.wafer.JANGLES)
+        
         for i,ang in enumerate(range(0,140,20)):
             jpos =self.centered((2400,800+300*i))
             JProbePads(self, jpos,padwidth=100, padradius=15, rotation=ang)
-            ManhattanJunction(self, jpos,rotation=ang,jpadTaper=6)
+            ManhattanJunction(self, jpos,rotation=ang,jpadTaper=6,JANGLE2=40)
             self.add(dxf.text(str(ang)+'%%d',vadd(jpos,rotate_2d((-5,40),math.radians(ang))),height=8.0,layer=self.wafer.defaultLayer))
         for i,ang in enumerate(range(140,280,20)):
             jpos = self.centered((2800,800+300*i))

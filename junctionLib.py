@@ -40,6 +40,15 @@ def setupJunctionAngles(wafer,JANGLES=[0,90]):
     the angles would be [0,90]. Add more angles to the list as needed.
     '''
     wafer.JANGLES = [angle % 360 for angle in JANGLES]
+    
+def setupManhattanJAngles(wafer,JANGLE1=0,flip=False):
+    '''
+    Sets up angles specifically for manhattan junction
+    '''
+    JANGLE2 = JANGLE1 + 90
+    if flip:
+        JANGLE2 = JANGLE1 - 90
+    setupJunctionAngles(wafer,[JANGLE1 % 360,JANGLE2 % 360])
 
 # ===============================================================================
 # contact pad functions (for ground plane)
@@ -340,8 +349,8 @@ def JProbePads(chip,pos,padwidth=250,separation=40,rotation=0,**kwargs):
 def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=None,jpadOverhang=5,jpadTaper=0,
                       jfingerw=0.13,jfingerl=5.0,jfingerex=1.0,
                       leadw=2.0,leadr=0.5,
-                      ucdist=1.6,
-                      JANGLE1=None,JANGLE2=None,directionFlipAlowed=False,
+                      ucdist=0.6,
+                      JANGLE1=None,JANGLE2=None,
                       JLAYER=None,ULAYER=None,bgcolor=None,**kwargs):
     '''
     Set jpadr to None to use chip-wide defaults (r_out)
@@ -388,14 +397,25 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
     centerPos = struct().start
     
     if JANGLE2 is None:
-        try:
-            JANGLE2 = chip.wafer.JANGLES[1]
-        except AttributeError:
-            setupJunctionAngles(chip.wafer)
-            JANGLE2 = chip.wafer.JANGLES[1]
+        if JANGLE1 is None:
+            try:
+                JANGLE2 = chip.wafer.JANGLES[1] % 360
+                JANGLE1 = chip.wafer.JANGLES[0] % 360
+                if (JANGLE1 + 90) % 360 != JANGLE2:
+                    #switch angle 1 and 2
+                    JANGLE2 = JANGLE1
+                    JANGLE1 = JANGLE2-90
+
+            except AttributeError:
+                setupManhattanJAngles(chip.wafer)
+                JANGLE2 = chip.wafer.JANGLES[1] % 360
+                JANGLE1 = chip.wafer.JANGLES[0] % 360
+        else:
+            JANGLE2 = JANGLE1 % 360
+            JANGLE1 = JANGLE2-90
     else:
         JANGLE2 = JANGLE2 % 360
-    JANGLE1 = JANGLE2-90
+        JANGLE1 = JANGLE2-90
     
     # determine angle of structure relative to junction fingers
     angle = (struct().direction - (JANGLE2 - 90)) % 360
@@ -429,7 +449,6 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
         # -------------------- junction pads -----------------------
         rot0 = min(max(math.radians(angle),0),math.radians(90))
         rot90 = min(max(math.radians(angle)-math.radians(90),0),math.radians(90))
-        rot180 = min(max(math.radians(angle)-math.radians(180),0),math.radians(90))
         
         '''
         = = = = = = = = = = = LEFT LEAD = = = = = = = = = = = = =
