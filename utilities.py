@@ -48,3 +48,7 @@ def transformedQuadrants(vflip=False,hflip=False):
     #  3 | 4
     
     return vflip==False and (hflip==False and [0,1,2,3,4] or [0,2,1,4,3]) or (hflip==False and [0,4,3,2,1] or [0,3,4,1,2])
+
+def kwargStrip(kwargs,keys=['layer']):
+    # return kwargs with only entries specified by keys
+    return {k:kwargs[k] for k in keys if k in kwargs}

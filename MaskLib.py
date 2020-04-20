@@ -284,6 +284,7 @@ class Wafer:
     
     #dicing saw border
     def DicingBorder(self,maxpts=0,minpts=0,thin=5,thick=20,short=40,long=100,dash=400):
+        '''
         # maxpts:     where in chip list to stop putting a dicing border 
         # minpts:     where in chip list to start putting dicing border
         # thin:5      #thin section of crosshair
@@ -291,6 +292,7 @@ class Wafer:
         # short:40    #short section of crosshair
         # long:100    #long section of crosshair
         # dash:400    #spacing between dashes
+        '''
         
         #determine filling
         bg = self.bg('MARKERS')

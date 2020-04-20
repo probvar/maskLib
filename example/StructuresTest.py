@@ -128,7 +128,7 @@ class FancyChip(m.Chip7mm):
         CPW_taper(self,s3,w0=20,s0=10)
         #CPW_bend(self,s3,30,radius=200)
         
-        CPW_launcher(self,8)
+        CPW_launcher(self,8,l_pad=360,l_gap=320,layer='MARKERS',r_ins=30,ptDensity=8)
         CPW_launcher(self,5)
         CPW_launcher(self,4)
         #>>>>>>>>>>> test directTo functions <<<<<<<<<<<<<<<
@@ -140,7 +140,7 @@ class FancyChip(m.Chip7mm):
         
         CPW_cap(self, s1, 4)
         CPW_straight(self, s1, 6)
-        CPW_taper_cap(self, s1, 2, 60, l_taper=100)
+        CPW_taper_cap(self, s1, 2, 60, l_straight=25, l_taper=100)
         CPW_directTo(self,s1,self.structures[8],radius=200)
         
         #>>>>>>>>>>> test cpw_tee functions <<<<<<<<<<<<<<<

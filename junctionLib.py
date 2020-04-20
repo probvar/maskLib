@@ -15,7 +15,7 @@ from dxfwrite.vector2d import vadd, midpoint ,vsub, vector2angle, magnitude, dis
 from dxfwrite.algebra import rotate_2d
 
 from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideCurve
-from maskLib.utilities import curveAB, cornerRound
+from maskLib.utilities import curveAB, cornerRound, kwargStrip
 
 import math
 
@@ -162,8 +162,8 @@ def JContact_slot(chip,structure,rotation=0,absoluteDimensions=False,gapw=3,gapl
         chip.add(CurveRect(struct().getPos((r_out,gapw/2+r_out)), r_out, r_out,ralign=const.TOP,hflip=True,vflip=True,rotation=struct().direction,bgcolor=bgcolor, **kwargs))
         chip.add(CurveRect(struct().getPos((r_out,-gapw/2-r_out)), r_out, r_out,ralign=const.TOP,hflip=True,rotation=struct().direction,bgcolor=bgcolor, **kwargs))
         if gapl > 0:
-            chip.add(dxf.rectangle(struct().getPos((r_out,gapw/2)),gapl,r_out,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-            chip.add(dxf.rectangle(struct().getPos((r_out,-gapw/2)),gapl,-r_out,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().getPos((r_out,gapw/2)),gapl,r_out,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
+            chip.add(dxf.rectangle(struct().getPos((r_out,-gapw/2)),gapl,-r_out,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
         chip.add(CurveRect(struct().getPos((r_out+gapl,gapw/2+r_out)), r_out, r_out,ralign=const.TOP,angle=theta,vflip=True,rotation=struct().direction,bgcolor=bgcolor, **kwargs))
         chip.add(CurveRect(struct().getPos((r_out+gapl,-gapw/2-r_out)), r_out, r_out,ralign=const.TOP,angle=theta,rotation=struct().direction,bgcolor=bgcolor, **kwargs))
     
@@ -249,7 +249,7 @@ def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,stem
                                                                               (tot_length-tabl-r_out*(1+math.sin(math.radians(theta))),-half_width+r_out*(1-math.cos(math.radians(theta)))),
                                                                               (inside_ptx,-stemw/2),(tot_length,-stemw/2),(tot_length,-half_width+r_out)],bgcolor=bgcolor,**kwargs))
     
-    chip.add(dxf.rectangle(struct().getPos(),tot_length,stemw,valign=const.MIDDLE,bgcolor=bgcolor,rotation=struct().direction,**kwargs))
+    chip.add(dxf.rectangle(struct().getPos(),tot_length,stemw,valign=const.MIDDLE,bgcolor=bgcolor,rotation=struct().direction,**kwargStrip(kwargs)))
     
     if r_out>0:
         if debug:
@@ -259,8 +259,8 @@ def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,stem
         chip.add(CurveRect(struct().getPos((tot_length-r_out,half_width-r_out)), r_out, r_out,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor, **kwargs))
         chip.add(CurveRect(struct().getPos((tot_length-r_out,-half_width+r_out)), r_out, r_out,ralign=const.TOP,vflip=True,rotation=struct().direction,bgcolor=bgcolor, **kwargs))
         if tabl > 0:
-            chip.add(dxf.rectangle(struct().getPos((tot_length-r_out,half_width-r_out)),-tabl,r_out,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-            chip.add(dxf.rectangle(struct().getPos((tot_length-r_out,-half_width+r_out)),-tabl,-r_out,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().getPos((tot_length-r_out,half_width-r_out)),-tabl,r_out,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
+            chip.add(dxf.rectangle(struct().getPos((tot_length-r_out,-half_width+r_out)),-tabl,-r_out,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
         chip.add(CurveRect(struct().getPos((2*r_ins + steml + taboffs + r_out,half_width-r_out)), r_out, r_out,ralign=const.TOP,angle=theta,hflip=True,rotation=struct().direction,bgcolor=bgcolor, **kwargs))
         chip.add(CurveRect(struct().getPos((2*r_ins + steml + taboffs + r_out,-half_width+r_out)), r_out, r_out,ralign=const.TOP,angle=theta,hflip=True,vflip=True,rotation=struct().direction,bgcolor=bgcolor, **kwargs))
         
@@ -319,12 +319,12 @@ def JSingleProbePad(chip,pos,padwidth=250,padheight=None,padradius=25,tab=False,
         if not flipped:
             chip.add(RoundRect(struct().getPos((0,tabhwidth)),padwidth,padheight/2 - tabhwidth,padradius,roundCorners=[0,0,1,1],rotation=struct().direction,bgcolor=bgcolor,**kwargs))
             chip.add(RoundRect(struct().getPos((0,-tabhwidth)),padwidth,padheight/2 - tabhwidth,padradius,roundCorners=[1,1,0,0],valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-            chip.add(dxf.rectangle(struct().start,padwidth-tablength,2*tabhwidth,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=struct(),length=padwidth-tablength)
+            chip.add(dxf.rectangle(struct().start,padwidth-tablength,2*tabhwidth,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)),structure=struct(),length=padwidth-tablength)
         JContact_slot(chip,struct(),hflip = not flipped,**kwargs)
         if flipped:
             chip.add(RoundRect(struct().getPos((-tablength,tabhwidth)),padwidth,padheight/2 - tabhwidth,padradius,roundCorners=[0,0,1,1],rotation=struct().direction,bgcolor=bgcolor,**kwargs))
             chip.add(RoundRect(struct().getPos((-tablength,-tabhwidth)),padwidth,padheight/2 - tabhwidth,padradius,roundCorners=[1,1,0,0],valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-            chip.add(dxf.rectangle(struct().start,padwidth-tablength,2*tabhwidth,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(struct().start,padwidth-tablength,2*tabhwidth,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
             
             
 def JProbePads(chip,pos,padwidth=250,separation=40,rotation=0,**kwargs):
@@ -874,11 +874,11 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
         # -------------------- junction fingers --------------------
         chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
                                                         math.radians(JANGLE2))), jfingerex<=0 and 2*jfingerex or -ucdist, min(3*jfingerw,2*jfingerex), rotation=JANGLE2,
-                               valign=const.MIDDLE,layer=ULAYER,bgcolor=chip.bg(ULAYER),**kwargs))
+                               valign=const.MIDDLE,layer=ULAYER,bgcolor=chip.bg(ULAYER),**kwargStrip(kwargs)))
         if jfingerex >0:
             chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
                                                             math.radians(JANGLE1))), -ucdist, min(3*jfingerw,2*jfingerex), rotation=JANGLE1,
-                                   valign=const.MIDDLE,layer=ULAYER,bgcolor=chip.bg(ULAYER),**kwargs))
+                                   valign=const.MIDDLE,layer=ULAYER,bgcolor=chip.bg(ULAYER),**kwargStrip(kwargs)))
             
         # -------------------- junction leads ---------------------
         if left_top: 
@@ -1073,14 +1073,14 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
     
     chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
                                                     math.radians(JANGLE2))), jfingerl, jfingerw, rotation=JANGLE2,
-                           valign=const.MIDDLE,layer=JLAYER,bgcolor=bgcolor,**kwargs))
+                           valign=const.MIDDLE,layer=JLAYER,bgcolor=bgcolor,**kwargStrip(kwargs)))
     if jfingerex >0:
         chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((-jfingerex,0),#rotate about center
                                                         math.radians(JANGLE1))), jfingerex-jfingerw/2, jfingerw, rotation = JANGLE1,
-                               valign=const.MIDDLE,layer=JLAYER,bgcolor=bgcolor,**kwargs))
+                               valign=const.MIDDLE,layer=JLAYER,bgcolor=bgcolor,**kwargStrip(kwargs)))
     chip.add(dxf.rectangle(vadd(centerPos,rotate_2d((max(jfingerw/2,-jfingerex),0),#rotate about center
                                                     math.radians(JANGLE1))), min(jfingerl-jfingerex-jfingerw/2,jfingerl), jfingerw, rotation = JANGLE1,
-                           valign=const.MIDDLE,layer=JLAYER,bgcolor=bgcolor,**kwargs))
+                           valign=const.MIDDLE,layer=JLAYER,bgcolor=bgcolor,**kwargStrip(kwargs)))
     
     # -------------------- junction leads --------------------    
     if left_top:
