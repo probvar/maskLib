@@ -539,7 +539,9 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
         '''
         = = = = = = = = = = = RIGHT LEAD = = = = = = = = = = = = =
         '''
-        if angle < 180: 
+        
+        if (angle < 90 and jpadTaper > 0) or (angle < 180 and jpadTaper <= 0): 
+            #BUG solid + jpadtaper error is here
             jpadUCR=SolidPline(centerPos,rotation=struct().direction,bgcolor=chip.bg(ULAYER),layer=ULAYER,solidFillQuads=True)
             # - - - - - - - hug pad - - - - - - - 
             if angle < 90: # corner 1
@@ -593,83 +595,83 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
                                              clockwise=False,angleDeg=90-angle))
             chip.add(jpadUCR)
             
-        jpadUCR2=SolidPline(centerPos,rotation=struct().direction,bgcolor=chip.bg(ULAYER),layer=ULAYER,solidFillQuads=True)
-        # - - - - - - - hug pad - - - - - - - 
-        if jpadTaper >0:
-            if angle > 0:
-                jpadUCR2.add_vertex((separation/2-jpadOverhang+jpadTaper,jpadh/2))
-        else:
-            if right_top:
-                # j finger stems from top of right lead
-                if not right_switch:
-                    # angle is 0-45 deg
-                    jpadUCR2.add_vertex((separation/2-jpadOverhang,
-                                       -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)))
-                else:
-                    # angle is 91-180 deg
-                    jpadUCR2.add_vertex((separation/2-jpadOverhang,
-                                       (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))))
-                    pass
+        if (jpadTaper > 0 and angle > 0) or jpadTaper <= 0:
+            jpadUCR2=SolidPline(centerPos,rotation=struct().direction,bgcolor=chip.bg(ULAYER),layer=ULAYER,solidFillQuads=True)
+            # - - - - - - - hug pad - - - - - - - 
+            if jpadTaper >0:
+                if angle > 0:
+                    jpadUCR2.add_vertex((separation/2-jpadOverhang+jpadTaper,jpadh/2))
             else:
-                # angle is 46-90 deg
-                jpadUCR2.add_vertex((separation/2-jpadOverhang,
-                                   (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)))
-                pass
-                
-            # corner 3 (this one never goes away)
-            jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw,jpadh/2-jpadr),
-                                         (jpadw+separation/2-jpadOverhang+jpadTaper-jpadw+jpadr,jpadh/2),
-                                         clockwise=True))
-        
-        # corner 4
-        if angle > 0:
-            jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadr,jpadh/2),
-                                             (jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.sin(rot0)),jpadh/2-jpadr*(1-math.cos(rot0))),
-                                             clockwise=True,angleDeg=min(angle,90)))
-        
-        # corner 1
-        if angle >90:
-            jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper,-jpadh/2+jpadr),
-                                         (jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.cos(rot90)),-jpadh/2+jpadr*(1-math.sin(rot90))),
-                                             clockwise=True,angleDeg=min(angle-90,90)))
-            # - - - - - - - extend pad - - - - - - -
+                if right_top:
+                    # j finger stems from top of right lead
+                    if not right_switch:
+                        # angle is 0-45 deg
+                        jpadUCR2.add_vertex((separation/2-jpadOverhang,
+                                           -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)))
+                    else:
+                        # angle is 91-180 deg
+                        jpadUCR2.add_vertex((separation/2-jpadOverhang,
+                                           (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))))
+                else:
+                    # angle is 46-90 deg
+                    jpadUCR2.add_vertex((separation/2-jpadOverhang,
+                                       (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)))
+                    
+                # corner 3 (this one never goes away)
+                jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw,jpadh/2-jpadr),
+                                             (jpadw+separation/2-jpadOverhang+jpadTaper-jpadw+jpadr,jpadh/2),
+                                             clockwise=True))
+            
+            # corner 4
+            if angle > 0:
+                jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadr,jpadh/2),
+                                                 (jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.sin(rot0)),jpadh/2-jpadr*(1-math.cos(rot0))),
+                                                 clockwise=True,angleDeg=min(angle,90)))
+            
             # corner 1
-            jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.cos(rot90))-ucdist*math.cos(rot),
-                                          -jpadh/2+jpadr*(1-math.sin(rot90))+ucdist*math.sin(rot)),
-                                         (jpadw+separation/2-jpadOverhang+jpadTaper-ucdist*math.cos(rot),-jpadh/2+jpadr+ucdist*math.sin(rot)),
-                                             clockwise=False,angleDeg=min(angle-90,90)))
-        
-        # corner 4
-        if angle > 0:
-            jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.sin(rot0))-ucdist*math.cos(rot),jpadh/2 -jpadr*(1-math.cos(rot0)) + ucdist* max(math.sin(rot),-math.cos(rot))),
-                                             (jpadw+separation/2-jpadOverhang+jpadTaper-jpadr-ucdist*math.cos(rot),jpadh/2 + ucdist* max(math.sin(rot),-math.cos(rot))),
-                                             clockwise=False,angleDeg=min(angle,90)))
-        
-        
-        if jpadTaper >0:
+            if angle >90:
+                jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper,-jpadh/2+jpadr),
+                                             (jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.cos(rot90)),-jpadh/2+jpadr*(1-math.sin(rot90))),
+                                                 clockwise=True,angleDeg=min(angle-90,90)))
+                # - - - - - - - extend pad - - - - - - -
+                # corner 1
+                jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.cos(rot90))-ucdist*math.cos(rot),
+                                              -jpadh/2+jpadr*(1-math.sin(rot90))+ucdist*math.sin(rot)),
+                                             (jpadw+separation/2-jpadOverhang+jpadTaper-ucdist*math.cos(rot),-jpadh/2+jpadr+ucdist*math.sin(rot)),
+                                                 clockwise=False,angleDeg=min(angle-90,90)))
+            
+            # corner 4
             if angle > 0:
-                jpadUCR2.add_vertex((separation/2-jpadOverhang+jpadTaper+ (math.cos(rot)>math.sin(rot) and -ucdist*math.cos(rot) or -ucdist*math.sin(rot)),jpadh/2+ucdist*max(math.sin(rot),-math.cos(rot))))
-        else:
-            # corner 3 (this one never goes away)
-            jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw+jpadr + (math.cos(rot)>math.sin(rot) and -ucdist*math.cos(rot) or -ucdist*math.sin(rot)),jpadh/2+ucdist*max(math.sin(rot),-math.cos(rot))),
-                                         (jpadw+separation/2-jpadOverhang+jpadTaper-jpadw -ucdist*max(math.sin(rot),math.cos(rot)),jpadh/2-jpadr + ucdist*math.sin(rot0)),
-                                         clockwise=False))
-            if right_top:
-                # j finger stems from top of right lead
-                if not right_switch:
-                    # angle is 0-45 deg
-                    jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.cos(rot),
-                                       -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)))
-                else:
-                    # angle is 91-180 deg
-                    jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.sin(rot),
-                                       (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))))
+                jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadr*(1-math.sin(rot0))-ucdist*math.cos(rot),jpadh/2 -jpadr*(1-math.cos(rot0)) + ucdist* max(math.sin(rot),-math.cos(rot))),
+                                                 (jpadw+separation/2-jpadOverhang+jpadTaper-jpadr-ucdist*math.cos(rot),jpadh/2 + ucdist* max(math.sin(rot),-math.cos(rot))),
+                                                 clockwise=False,angleDeg=min(angle,90)))
+            
+            
+            if jpadTaper >0:
+                if angle > 0:
+                    jpadUCR2.add_vertex((separation/2-jpadOverhang+jpadTaper+ (math.cos(rot)>math.sin(rot) and -ucdist*math.cos(rot) or -ucdist*math.sin(rot)),jpadh/2+ucdist*max(math.sin(rot),-math.cos(rot))))
             else:
-                # angle is 46-90 deg
-                jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.sin(rot),
-                                   (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)))
-                pass
-        chip.add(jpadUCR2)
+                # corner 3 (this one never goes away)
+                jpadUCR2.add_vertices(curveAB((jpadw+separation/2-jpadOverhang+jpadTaper-jpadw+jpadr + (math.cos(rot)>math.sin(rot) and -ucdist*math.cos(rot) or -ucdist*math.sin(rot)),jpadh/2+ucdist*max(math.sin(rot),-math.cos(rot))),
+                                             (jpadw+separation/2-jpadOverhang+jpadTaper-jpadw -ucdist*max(math.sin(rot),math.cos(rot)),jpadh/2-jpadr + ucdist*math.sin(rot0)),
+                                             clockwise=False))
+                if right_top:
+                    # j finger stems from top of right lead
+                    if not right_switch:
+                        # angle is 0-45 deg
+                        jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.cos(rot),
+                                           -(jfingerl-jfingerex)*math.sin(rot)+jfingerw*math.cos(rot)/2+ucdist*math.sin(rot)))
+                    else:
+                        # angle is 91-180 deg
+                        jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.sin(rot),
+                                           (jfingerl-jfingerex)*math.cos(rot)+jfingerw*math.sin(rot)/2+ucdist*max(math.sin(rot),-math.cos(rot))))
+                else:
+                    # angle is 46-90 deg
+                    jpadUCR2.add_vertex((separation/2-jpadOverhang-ucdist*math.sin(rot),
+                                       (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2+ucdist*math.sin(rot)))
+                    
+            chip.add(jpadUCR2)
+
 
         # -------------------- junction taper ----------------------
         

@@ -239,6 +239,40 @@ def CPW_stub_open(chip,structure,r_out=None,r_ins=None,w=None,s=None,flipped=Fal
         chip.add(InsideCurve(struct().getPos((dx,-w/2)),r_ins,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
 
     chip.add(RoundRect(struct().getPos((dx,0)),s,w+2*s,r_out,roundCorners=[0,1,1,0],hflip=flipped,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=s)
+
+def CPW_cap(chip,structure,gap,r_ins=None,w=None,s=None,bgcolor=None,angle=90,**kwargs):
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        else:
+            return chip.structure(structure)
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33mw not defined in ',chip.chipID,'!\x1b[0m')
+    if s is None:
+        try:
+            s = struct().defaults['s']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+    if r_ins is None:
+        try:
+            r_ins = struct().defaults['r_ins']
+        except KeyError:
+            #print('r_ins not defined in ',chip.chipID,'!\x1b[0m')
+            r_ins=0
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+
+    if r_ins > 0:
+        chip.add(InsideCurve(struct().getPos((0,w/2)),r_ins,rotation=struct().direction + 90,vflip=True,angle=angle,bgcolor=bgcolor,**kwargs))
+        chip.add(InsideCurve(struct().getPos((0,-w/2)),r_ins,rotation=struct().direction - 90,angle=angle,bgcolor=bgcolor,**kwargs))
+        chip.add(InsideCurve(struct().getPos((gap,w/2)),r_ins,rotation=struct().direction + 90,angle=angle,bgcolor=bgcolor,**kwargs))
+        chip.add(InsideCurve(struct().getPos((gap,-w/2)),r_ins,rotation=struct().direction - 90,vflip=True,angle=angle,bgcolor=bgcolor,**kwargs))
+
+    chip.add(dxf.rectangle(struct().start,gap,w+2*s,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=gap)
+
         
 def CPW_stub_round(chip,structure,w=None,s=None,round_left=True,round_right=True,flipped=False,bgcolor=None,**kwargs):
     #same as stub_open, but preserves gap width along turn (so radii are defined by w, s)
@@ -448,6 +482,33 @@ def CPW_launcher(chip,struct,offset=0,length=None,padw=300,pads=160,w=None,s=Non
     CPW_stub_open(chip,struct,r_out=r_out,r_ins=r_ins,w=padw,s=pads,flipped=True,**kwargs)
     CPW_straight(chip,struct,padw,w=padw,s=pads,**kwargs)
     CPW_taper(chip,struct,w0=padw,s0=pads,**kwargs)
+
+def CPW_taper_cap(chip,structure,gap,width,l_taper=None,s1=None,**kwargs):
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        else:
+            return chip.structure(structure)
+    if s1 is None:
+        try:
+            s = struct().defaults['s']
+            w = struct().defaults['w']
+            s1 = width*s/w
+        except KeyError:
+            print('\x1b[33mw not defined in ',chip.chipID)
+            print('\x1b[33ms not defined in ',chip.chipID)
+    if l_taper is None:
+        l_taper = 3*width
+    try:
+        tap_angle = math.degrees(math.atan(2*l_taper/(width-struct().defaults['w'])))
+    except KeyError:
+        print('\x1b[33mw not defined in ',chip.chipID)
+        tap_angle = 90
+        
+    CPW_taper(chip,structure,length=l_taper,w1=width,s1=s1,**kwargs)
+    CPW_cap(chip, structure, gap, w=width, s=s1, angle=tap_angle, **kwargs)
+    CPW_taper(chip,structure,length=l_taper,w0=width,s0=s1,**kwargs)
+    
 
 def CPW_wiggles(chip,structure,length=None,nTurns=None,minWidth=None,maxWidth=None,CCW=True,start_bend = True,stop_bend=True,w=None,s=None,radius=None,bgcolor=None,**kwargs):
     def struct():

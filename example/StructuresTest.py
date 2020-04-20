@@ -21,7 +21,7 @@ from dxfwrite.vector2d import vadd
 # ===============================================================================
 
 w = m.Wafer('StructureTest01','DXF/',7000,7000,waferDiameter=m.waferDiameters['2in'],sawWidth=m.sawWidths['8A'],
-                frame=1,solid=0,multiLayer=1)
+                frame=1,solid=1,multiLayer=1)
 # w.frame: draw frame layer?
 # w.solid: draw things solid?
 # w.multiLayer: draw in multiple layers?
@@ -131,10 +131,17 @@ class FancyChip(m.Chip7mm):
         CPW_launcher(self,8)
         CPW_launcher(self,5)
         CPW_launcher(self,4)
+        #>>>>>>>>>>> test directTo functions <<<<<<<<<<<<<<<
         
-        CPW_directTo(self,s1,self.structures[8],radius=200)
         CPW_directTo(self,s2,self.structures[5],radius=200)
         CPW_directTo(self,s3,self.structures[4],radius=200)
+        
+        #>>>>>>>>>>> test cpw_cap functions <<<<<<<<<<<<<<<
+        
+        CPW_cap(self, s1, 4)
+        CPW_straight(self, s1, 6)
+        CPW_taper_cap(self, s1, 2, 60, l_taper=100)
+        CPW_directTo(self,s1,self.structures[8],radius=200)
         
         #>>>>>>>>>>> test cpw_tee functions <<<<<<<<<<<<<<<
         
@@ -231,18 +238,17 @@ class FancyChip(m.Chip7mm):
         
         #>>>>>>>>>>> test manhattan junction functions <<<<<<<<<<<<<<<
         
-        setupManhattanJAngles(self.wafer,40,True)
-        print(self.wafer.JANGLES)
+        #setupManhattanJAngles(self.wafer,40,True)
         
         for i,ang in enumerate(range(0,140,20)):
             jpos =self.centered((2400,800+300*i))
             JProbePads(self, jpos,padwidth=100, padradius=15, rotation=ang)
-            ManhattanJunction(self, jpos,rotation=ang,jpadTaper=6,JANGLE2=40)
+            ManhattanJunction(self, jpos,rotation=ang,jpadTaper=6)
             self.add(dxf.text(str(ang)+'%%d',vadd(jpos,rotate_2d((-5,40),math.radians(ang))),height=8.0,layer=self.wafer.defaultLayer))
         for i,ang in enumerate(range(140,280,20)):
             jpos = self.centered((2800,800+300*i))
             JProbePads(self, jpos,padwidth=100,padradius=15, rotation=ang)
-            ManhattanJunction(self, jpos,rotation=ang,jpadTaper=6)
+            ManhattanJunction(self, jpos,rotation=ang,jpadTaper=0)
             self.add(dxf.text(str(ang)+'%%d',vadd(jpos,rotate_2d((5,40),math.radians(ang))),height=8.0,layer=self.wafer.defaultLayer))
         for i,ang in enumerate(range(280,360,20)):
             jpos = self.centered((3200,800+300*i))
