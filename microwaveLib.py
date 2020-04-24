@@ -481,10 +481,10 @@ def CPW_tee(chip,structure,w=None,s=None,radius=None,r_ins=None,w1=None,s1=None,
 # composite CPW function definitions
 # ===============================================================================
 
-def CPW_launcher(chip,struct,offset=0,l_pad=0,l_gap=0,padw=300,pads=160,w=None,s=None,r_ins=0,r_out=0,bgcolor=None,**kwargs):
+def CPW_launcher(chip,struct,l_taper=None,l_pad=0,l_gap=0,padw=300,pads=160,w=None,s=None,r_ins=0,r_out=0,bgcolor=None,**kwargs):
     CPW_stub_open(chip,struct,length=max(l_gap,pads),r_out=r_out,r_ins=r_ins,w=padw,s=pads,flipped=True,**kwargs)
     CPW_straight(chip,struct,max(l_pad,padw),w=padw,s=pads,**kwargs)
-    CPW_taper(chip,struct,w0=padw,s0=pads,**kwargs)
+    CPW_taper(chip,struct,length=l_taper,w0=padw,s0=pads,**kwargs)
 
 def CPW_taper_cap(chip,structure,gap,width,l_straight=0,l_taper=None,s1=None,**kwargs):
     def struct():

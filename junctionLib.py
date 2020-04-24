@@ -11,16 +11,17 @@ import maskLib.MaskLib as m
 from dxfwrite import DXFEngine as dxf
 from dxfwrite import const
 
-from dxfwrite.vector2d import vadd, midpoint ,vsub, vector2angle, magnitude, distance
+from dxfwrite.vector2d import vadd
 from dxfwrite.algebra import rotate_2d
 
-from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideCurve
-from maskLib.utilities import curveAB, cornerRound, kwargStrip
+from maskLib.Entities import SolidPline, CurveRect, RoundRect, InsideCurve
+from maskLib.utilities import curveAB, kwargStrip
 
 import math
 
 # ===============================================================================
-# functions to setup global variables in wafer object
+# global functions to setup global variables in an arbitrary wafer object
+# these can 
 # ===============================================================================
 
 def setupJunctionLayers(wafer,JLAYER='JUNCTION',jcolor=1,ULAYER='UNDERCUT',ucolor=2,bandaid=False,BLAYER='BANDAID',bcolor=3):
@@ -43,7 +44,7 @@ def setupJunctionAngles(wafer,JANGLES=[0,90]):
     
 def setupManhattanJAngles(wafer,JANGLE1=0,flip=False):
     '''
-    Sets up angles specifically for manhattan junction
+    Sets up angles specifically for manhattan junction (Angle 2 is 90 deg CW or CCW from angle 1)
     '''
     JANGLE2 = JANGLE1 + 90
     if flip:
@@ -353,7 +354,7 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
                       JANGLE1=None,JANGLE2=None,
                       JLAYER=None,ULAYER=None,bgcolor=None,**kwargs):
     '''
-    Set jpadr to None to use chip-wide defaults (r_out)
+    Set jpadr to None to use chip-wide defaults (r_out).
     '''
     thisStructure = None
     if isinstance(pos,tuple):
@@ -541,7 +542,7 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
         '''
         
         if (angle < 90 and jpadTaper > 0) or (angle < 180 and jpadTaper <= 0): 
-            #BUG solid + jpadtaper error is here
+            
             jpadUCR=SolidPline(centerPos,rotation=struct().direction,bgcolor=chip.bg(ULAYER),layer=ULAYER,solidFillQuads=True)
             # - - - - - - - hug pad - - - - - - - 
             if angle < 90: # corner 1

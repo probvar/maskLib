@@ -10,6 +10,9 @@ from maskLib.microwaveLib import *
 from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideCurve
 from maskLib.junctionLib import setupJunctionLayers,setupManhattanJAngles,JContact_slot,JContact_tab,JcalcTabDims,JSingleProbePad,JProbePads
 from maskLib.junctionLib import ManhattanJunction
+
+from maskLib.qubitLib import HamburgerQubit
+
 import numpy as np
 from dxfwrite import DXFEngine as dxf
 from dxfwrite import const
@@ -21,7 +24,7 @@ from dxfwrite.vector2d import vadd
 # ===============================================================================
 
 w = m.Wafer('StructureTest01','DXF/',7000,7000,waferDiameter=m.waferDiameters['2in'],sawWidth=m.sawWidths['8A'],
-                frame=1,solid=1,multiLayer=1)
+                frame=1,solid=0,multiLayer=1)
 # w.frame: draw frame layer?
 # w.solid: draw things solid?
 # w.multiLayer: draw in multiple layers?
@@ -55,10 +58,8 @@ class FancyChip(m.Chip7mm):
         CPW_stub_open(self,1,r_out=100,r_ins=50,w=300,s=160,flipped=True)
         CPW_straight(self,1,300,w=300,s=160)
         CPW_taper(self,1,w0=300,s0=160)
-        #
+        #        
         CPW_straight(self,1,600)
-        
-        
         
         JellyfishResonator(self,self.structures[1].cloneAlongLast((300,40),newDirection=90),520,480,5565,w_cap=40,s_cap=20,maxWidth=100)
         
@@ -255,6 +256,16 @@ class FancyChip(m.Chip7mm):
             JProbePads(self, jpos,padwidth=100,padradius=15, rotation=ang)
             ManhattanJunction(self, jpos,rotation=ang,jfingerex=-1,jfingerl=4,jpadTaper=6,ucdist=0)
             self.add(dxf.text(str(ang)+'%%d',vadd(jpos,rotate_2d((-5,40),math.radians(ang))),height=8.0,layer=self.wafer.defaultLayer))
+        
+        #>>>>>>>>>>> test qubit functions <<<<<<<<<<<<<<<
+        CPW_launcher(self,0,l_taper=300,padw=280,pads=140)
+        CPW_straight(self, 0, 20)
+        CPW_bend(self, 0, CCW=False,radius=200)
+        CPW_straight(self,0,1000)
+        CPW_bend(self,0,angle=20)
+        HamburgerQubit(self, 0,qccap_stemw=15,jfingerw=0.13)
+        
+        
         
         #>>>>>>>>>>> test solid pline functions <<<<<<<<<<<<<<<
         

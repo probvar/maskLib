@@ -85,7 +85,6 @@ def skewRect(corner,width,height,offset,newLength,edge=1,**kwargs):
     taper = dxf.polyline(points = pts,flags=0,**kwargs)
     taper.close()
     return taper
-         
 
 # ===============================================================================
 #  WAFER CLASS  
@@ -380,6 +379,43 @@ class Wafer:
     #coordinates centered on corner of actual chip
     def chipSpace(self,xy):
         return (xy[0]+self.sawWidth/2,xy[1]+self.sawWidth/2)
+    
+    # --------------------------  Common layer setup functions  ----------------------------------
+    
+    def setupJunctionLayers(self,JLAYER='JUNCTION',jcolor=1,ULAYER='UNDERCUT',ucolor=2,bandaid=False,BLAYER='BANDAID',bcolor=3):
+        #add correct layers to wafer, and cache layer
+        self.addLayer(JLAYER,jcolor)
+        self.JLAYER=JLAYER
+        self.addLayer(ULAYER,ucolor)
+        self.ULAYER=ULAYER
+        if bandaid:
+            self.addLayer(BLAYER,bcolor)
+            self.BLAYER=BLAYER
+    
+    def setupJunctionAngles(self,JANGLES=[0,90]):
+        '''
+        Angles are defined as the angle in degrees *from which the evaporation is coming*.
+        For example, if the first evaporation comes from the East, and the second from the north,
+        the angles would be [0,90]. Add more angles to the list as needed.
+        '''
+        self.JANGLES = [angle % 360 for angle in JANGLES]
+        
+    def setupManhattanJAngles(self,JANGLE1=0,flip=False):
+        '''
+        Sets up angles specifically for manhattan junction (Angle 2 is 90 deg CW or CCW from angle 1)
+        '''
+        JANGLE2 = JANGLE1 + 90
+        if flip:
+            JANGLE2 = JANGLE1 - 90
+        self.setupJunctionAngles(self,[JANGLE1 % 360,JANGLE2 % 360])
+        
+    def setupXORlayer(self,XLAYER='XOR',xcolor=6):
+        '''
+        Sets a layer for XOR operations on all other layers. 
+        OUT = ( LAYER1 or LAYER2 ... or LAYERN ) xor XLAYER 
+        '''
+        self.XLAYER=XLAYER
+        self.addLayer(XLAYER, xcolor)
        
 
     
