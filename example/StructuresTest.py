@@ -11,7 +11,7 @@ from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideC
 from maskLib.junctionLib import setupJunctionLayers,setupManhattanJAngles,JContact_slot,JContact_tab,JcalcTabDims,JSingleProbePad,JProbePads
 from maskLib.junctionLib import ManhattanJunction
 
-from maskLib.qubitLib import HamburgerQubit
+from maskLib.qubitLib import Hamburgermon
 
 import numpy as np
 from dxfwrite import DXFEngine as dxf
@@ -24,7 +24,7 @@ from dxfwrite.vector2d import vadd
 # ===============================================================================
 
 w = m.Wafer('StructureTest01','DXF/',7000,7000,waferDiameter=m.waferDiameters['2in'],sawWidth=m.sawWidths['8A'],
-                frame=1,solid=0,multiLayer=1)
+                frame=1,solid=1,multiLayer=1)
 # w.frame: draw frame layer?
 # w.solid: draw things solid?
 # w.multiLayer: draw in multiple layers?
@@ -262,8 +262,8 @@ class FancyChip(m.Chip7mm):
         CPW_straight(self, 0, 20)
         CPW_bend(self, 0, CCW=False,radius=200)
         CPW_straight(self,0,1000)
-        CPW_bend(self,0,angle=20)
-        HamburgerQubit(self, 0,qccap_stemw=15,jfingerw=0.13)
+        #CPW_bend(self,0,angle=20)
+        Hamburgermon(self, 0,jfingerw=0.13)
         
         
         

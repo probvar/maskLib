@@ -32,7 +32,7 @@ def setupXORlayer(wafer,XLAYER='XOR',xcolor=6):
 # Planar (2D) qubit functions (composite entities)
 # ===============================================================================
 
-def HamburgerQubit(chip,pos,rotation=0,
+def Hamburgermon(chip,pos,rotation=0,
                    qwidth=1120,qheight=795,qr_out=200, minQbunToGnd=100,
                    qbunwidth=960,qbunthick=0,qbunr=60,qbunseparation=69.3751,
                    qccap_padw=40,qccap_padl=170,qccap_padr_out=10,qccap_padr_ins=4.5,qccap_gap=30,
