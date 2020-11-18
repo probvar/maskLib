@@ -292,6 +292,8 @@ class Wafer:
         # long:100    #long section of crosshair
         # dash:400    #spacing between dashes
         '''
+        if maxpts < 0:
+            maxpts = len(self.chipPts)+maxpts
         
         #determine filling
         bg = self.bg('MARKERS')
@@ -593,7 +595,9 @@ class Chip7mm(Chip):
         if defaults is None:
             self.defaults = {'w':10, 's':5, 'radius':25,'r_out':0,'r_ins':0}
         else:
-            self.defaults = defaults.copy()
+            #self.defaults = defaults.copy()
+            for d in defaults:
+                self.defaults[d]=defaults[d]
         if structures is not None:
             #override default structures
             self.structures = structures

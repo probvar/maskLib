@@ -22,6 +22,7 @@ from maskLib.utilities import kwargStrip
 
 def setupXORlayer(wafer,XLAYER='XOR',xcolor=6):
     '''
+    >>>>>>>>>>>>>>> Deprecated! Use wafer.setupXORlayer instead <<<<<<<<<<<<<<<<<<
     Sets a layer for XOR operations on all other layers. 
     OUT = ( LAYER1 or LAYER2 ... or LAYERN ) xor XLAYER 
     '''

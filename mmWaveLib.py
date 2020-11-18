@@ -10,7 +10,7 @@ from dxfwrite import DXFEngine as dxf
 from dxfwrite import const
 
 # ===============================================================================
-# chip + function definitions
+# function definitions
 # ===============================================================================
 
 #CPS dipole resonator
@@ -153,7 +153,9 @@ def MushrooomResonator(dwg,xy,w,s,nTurns,capFingerLength,nCapFingers,color,capw=
         dwg.add(dxf.rectangle((xy[0]+LR*((capw+caps)*(2*n)+w+s),xy[1]+caps/2),LR*capw,capFingerLength,valign=const.MIDDLE))
         dwg.add(dxf.rectangle((xy[0]+LR*((capw+caps)*(2*n+1)+w+s),xy[1]-caps/2),LR*capw,capFingerLength,valign=const.MIDDLE))
    
-    
+# ===============================================================================
+# Chip definitions
+# ===============================================================================    
 
 class GroundedWR10(m.BlankCenteredWR10):
     def __init__(self,wafer,chipID,pad,notch,globalOffset=(0,0)):
@@ -176,12 +178,23 @@ class StuddedWR10(m.BlankCenteredWR10):
         self.add(dxf.rectangle((self.width,self.height),-studSize,-studSize,bgcolor=wafer.bg(wafer.defaultLayer)))
         
 class ResistancePad(m.BlankCenteredWR10):
+    #for metal defining mask
     def __init__(self,wafer,chipID,w=40,l=1500,pad_extend=1000,offset=(0,0)):
         m.BlankCenteredWR10.__init__(self,wafer,chipID,wafer.defaultLayer,offset)
-        #put in a 
+        #put in a resistance bar
         self.add(dxf.rectangle((-pad_extend+offset[0],0),pad_extend+self.width/2-l/2,self.height,bgcolor=wafer.bg(wafer.defaultLayer)))
         self.add(dxf.rectangle((self.width/2 + l/2+offset[0],0),pad_extend+self.width/2-l/2,self.height,bgcolor=wafer.bg(wafer.defaultLayer)))
         self.add(dxf.rectangle(self.centered((-l/2,-w/2)),l,w,bgcolor=wafer.bg(wafer.defaultLayer)))
+        
+class InverseResistancePad(m.BlankCenteredWR10):
+    #for etch defining mask
+    def __init__(self,wafer,chipID,w=40,l=1500,pad_extend=1000,offset=(0,0),overhang=80):
+        m.BlankCenteredWR10.__init__(self,wafer,chipID,wafer.defaultLayer,offset)
+        #put in holes to define a resistance bar
+        #self.add(dxf.rectangle((-pad_extend+offset[0],0),pad_extend+self.width/2-l/2,self.height,bgcolor=wafer.bg(wafer.defaultLayer)))
+        #self.add(dxf.rectangle((self.width/2 + l/2+offset[0],0),pad_extend+self.width/2-l/2,self.height,bgcolor=wafer.bg(wafer.defaultLayer)))
+        self.add(dxf.rectangle(self.centered((0,-w/2)),l,self.height/2-w/2+overhang,halign=const.CENTER,valign=const.BOTTOM,bgcolor=wafer.bg(wafer.defaultLayer)))
+        self.add(dxf.rectangle(self.centered((0,w/2)),l,self.height/2-w/2+overhang,halign=const.CENTER,valign=const.TOP,bgcolor=wafer.bg(wafer.defaultLayer)))
         
         
         
