@@ -4,13 +4,122 @@ Created on Tue Mar 26 13:46:48 2019
 
 @author: sasha
 """
+import numpy as np
+import math
 
 import maskLib.MaskLib as m
 from dxfwrite import DXFEngine as dxf
 from dxfwrite import const
 
+from maskLib.Entities import SolidPline, RoundRect, SkewRect
+from maskLib.utilities import kwargStrip
+
+
 # ===============================================================================
-# function definitions
+#  BLANK CENTERED WR10 CHIP CLASS  
+#       chip with a rectangle marking dimensions of wr10 waveguide
+# ===============================================================================
+
+class BlankCenteredWR10(m.Chip):
+    def __init__(self,wafer,chipID,layer,offset=(0,0)):
+        m.Chip.__init__(self,wafer,chipID,layer)
+        self.center = self.centered(offset)
+        if wafer.frame:
+            self.add(dxf.rectangle(self.centered((-1270,-635)),2540,1270,layer=wafer.lyr('FRAME')))  
+
+# ===============================================================================
+#  VIVALDI TAPER CHIP CLASS + subclasses 
+#       chip designed for 1st version of transverse holder
+#       two structures on either end designed for vivaldi taper functions
+#       NOTE: chip size still needs to be set in the wafer settings, this just determines structure location
+# ===============================================================================
+
+
+class VivaldiTaperChip(m.Chip):
+    def __init__(self,wafer,chipID,layer,left=False,right=False,defaults=None,structures=None):
+        m.Chip.__init__(self,wafer,chipID,layer)
+        if defaults is None:
+            self.defaults = {'w':80, 's':5, 'radius':25,'r_out':0,'r_ins':0}
+        else:
+            #self.defaults = defaults.copy()
+            for d in defaults:
+                self.defaults[d]=defaults[d]
+        if structures is not None:
+            #override default structures
+            self.structures = structures
+        else:
+            self.structures = [#hardwired structures
+                    m.Structure(self,start=(0,self.height/2),direction=0,defaults=self.defaults),
+                    m.Structure(self,start=(self.width,self.height/2),direction=180,defaults=self.defaults)]
+        if wafer.frame:
+            self.add(RoundRect(self.centered((-3450/2,0)),870,1270,400,roundCorners=[0,1,1,0],valign=const.MIDDLE,layer=wafer.lyr('FRAME')))
+            self.add(RoundRect(self.centered((3450/2,0)),870,1270,400,roundCorners=[1,0,0,1],halign=const.RIGHT,valign=const.MIDDLE,layer=wafer.lyr('FRAME')))
+            self.add(RoundRect(self.center,2270,2110,400,halign=const.CENTER,valign=const.MIDDLE,layer=wafer.lyr('FRAME')))
+        
+        if left:
+            Slot_vivaldi_taper(self,0)
+        if right:
+            Slot_vivaldi_taper(self,1)
+            
+class VivaldiTaperChipThru(VivaldiTaperChip):
+    def __init__(self,wafer,chipID,layer,defaults=None,structures=None):
+        VivaldiTaperChip.__init__(self,wafer,chipID,layer,left=True,right=True,defaults=defaults,structures=structures)
+        Slot_straight(self,0,self.width-2*870)
+        
+class VivaldiTaperChipReflect(VivaldiTaperChip):
+    def __init__(self,wafer,chipID,layer,defaults=None,structures=None):
+        VivaldiTaperChip.__init__(self,wafer,chipID,layer,left=True,right=False,defaults=defaults,structures=structures)
+        Slot_straight(self,0,(self.width-2*870)/2)
+
+# ===============================================================================
+# Basic slot functions
+# ===============================================================================
+
+def Slot_vivaldi_taper(chip,structure,length=870,w0=1270,w1=None,overhang=70,bgcolor=None,ptDensity=100,**kwargs): #note: uses CPW conventions
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        else:
+            return chip.structure(structure)
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+    if w0 is None:
+        try:
+            w0 = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+    if w1 is None:
+        try:
+            w1 = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+            
+    chip.add(SkewRect(struct().start,overhang,w0+2*overhang,(0,0),w0,halign=const.RIGHT,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+    chip.add(SolidPline(struct().start,rotation=struct().direction,bgcolor=bgcolor,
+                       points=[(x*length,(w0/2-w1/2)*(x*math.sqrt(2-x**2))-w0/2) for x in np.arange(0,1+1/ptDensity,1/ptDensity)]+
+                       [((1-x)*length,w0/2-(w0/2-w1/2)*((1-x)*math.sqrt(2-(1-x)**2))) for x in np.arange(0,1+1/ptDensity,1/ptDensity)],
+                       solidFillQuads=True,**kwargs),structure=structure,length=length)
+    
+    
+def Slot_straight(chip,structure,length,w=None,bgcolor=None,**kwargs): #note: uses CPW conventions
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        else:
+            return chip.structure(structure)
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+    
+    chip.add(dxf.rectangle(struct().start,length,w,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)),structure=structure,length=length)
+
+
+# ===============================================================================
+# old function definitions
 # ===============================================================================
 
 #CPS dipole resonator

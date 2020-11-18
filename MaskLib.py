@@ -107,8 +107,8 @@ class Wafer:
         self.waferDiameter = waferDiameter
         self.padding = padding
         self.sawWidth = sawWidth
-        self.chipY = chipWidth + sawWidth
-        self.chipX = chipHeight + sawWidth
+        self.chipX = chipWidth + sawWidth
+        self.chipY = chipHeight + sawWidth
         self.frame = frame              #draw frame layer?
         self.solid = solid              #draw things solid?
         self.multiLayer = multiLayer    #draw in multiple layers?
