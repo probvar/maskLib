@@ -592,9 +592,8 @@ class Structure:
 class Chip7mm(Chip):
     def __init__(self,wafer,chipID,layer,structures=None,defaults=None):
         Chip.__init__(self,wafer,chipID,layer,structures=structures)
-        if defaults is None:
-            self.defaults = {'w':10, 's':5, 'radius':25,'r_out':0,'r_ins':0}
-        else:
+        self.defaults = {'w':10, 's':5, 'radius':25,'r_out':0,'r_ins':0}
+        if defaults is not None:
             #self.defaults = defaults.copy()
             for d in defaults:
                 self.defaults[d]=defaults[d]
