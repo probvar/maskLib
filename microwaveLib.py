@@ -227,7 +227,8 @@ def CPW_stub_open(chip,structure,length=0,r_out=None,r_ins=None,w=None,s=None,fl
             s = struct().defaults['s']
         except KeyError:
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
-    length = max(length,s)
+    if length <= 0:
+        length = s #length = max(length,s)
     if r_out is None:
         try:
             r_out = struct().defaults['r_out']
@@ -802,7 +803,7 @@ def Inductor_wiggles(chip,structure,length=None,nTurns=None,maxWidth=None,Width=
         #CPW_straight(chip,structure,radius,w=w,s=s,bgcolor=bgcolor)
         chip.add(dxf.rectangle(struct().getPos((0,pm*w/2)),radius,pm*(radius-w/2),rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)),structure=struct(),length=radius)
 
-def JellyfishResonator(chip,structure,width,height,l_ind=None,tiny_cap=False,w_cap=None,s_cap=None,r_cap=None,w_ind=3,r_ind=6,ialign=const.BOTTOM,nTurns=None,maxWidth=None,CCW=True,bgcolor=None,debug=False,**kwargs):
+def JellyfishResonator(chip,structure,width,height,l_ind=None,tiny_cap=False,no_cap=False,w_cap=None,s_cap=None,r_cap=None,w_ind=3,r_ind=6,ialign=const.BOTTOM,nTurns=None,maxWidth=None,CCW=True,bgcolor=None,debug=False,**kwargs):
     #inductor params: wire width = w_ind, radius (sets pitch) = r_ind, total inductor wire length = l_ind. ialign determines where the inductor should align to, (TOP = bunch at capacitor)
     #capacitor params: wire width = w_cap, gap to ground = s_cap, nominal horseshoe bend radius = r_cap (). Width determines overall resonator width assuming jellyfish shape, height determines height of capacitor only
     def struct():
@@ -846,39 +847,53 @@ def JellyfishResonator(chip,structure,width,height,l_ind=None,tiny_cap=False,w_c
     #calculate extra length
     inductor_pad = height - w_cap - 3*s_cap - (nTurns+0.5)*4*r_ind
     
-    #assume structure starts in correct orientation    
-    chip.add(dxf.rectangle(struct().start,s_cap,max((width - 2*(w_cap+2*s_cap)) and not tiny_cap,w_ind+2*s_cap),valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
-    
-    s_r = struct().cloneAlong((s_cap+w_cap/2,-max((width/2 - 2*s_cap - w_cap) and not tiny_cap,w_ind/2+s_cap)),newDirection=-90)
-    s_l = struct().cloneAlong((s_cap+w_cap/2,max((width/2 - 2*s_cap - w_cap) and not tiny_cap,w_ind/2+s_cap)),newDirection=90)
-    
-    if height-3*s_cap-w_cap*3/2 > 0:
-        #bend capacitor to form jellyfish outline
-        CPW_bend(chip,s_l,radius=r_cap,**kwargs)
-        CPW_bend(chip,s_r,CCW=False,radius=r_cap,**kwargs)
-        CPW_straight(chip,s_l,height-3*s_cap-w_cap*3/2,**kwargs)
-        CPW_straight(chip,s_r,height-3*s_cap-w_cap*3/2,**kwargs)
+    #assume structure starts in correct orientation  
+    if no_cap:
+        #cover the entire area where the capacitor would be
+        #chip.add(dxf.rectangle(struct().start,2*s_cap+w_cap,width - (w_cap+2*s_cap)-w_ind,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
+        s_0 = struct().cloneAlong(distance=0)
+        CPW_stub_open(chip,s_0,w=w_ind,s=(width - (w_cap+2*s_cap)-w_ind)/2,r_ins=w_ind/2,length=2*s_cap+w_cap-w_ind,r_out=0,flipped=True)
+        CPW_straight(chip,s_0,w=w_ind,s=(width - (w_cap+2*s_cap)-w_ind)/2,length=w_ind)
     else:
-        #extend capacitor to fit width
-        CPW_straight(chip,s_l,min(s_cap+w_cap/2+width*tiny_cap,width/2-2*s_cap-w_cap/2-w_ind/2),**kwargs)
-        CPW_straight(chip,s_r,min(s_cap+w_cap/2+width*tiny_cap,width/2-2*s_cap-w_cap/2-w_ind/2),**kwargs)
-    if tiny_cap:
-        #round off capacitor immediately
-        chip.add(InsideCurve(s_l.getLastPos((s_cap,w_cap/2)),s_cap,rotation=s_l.direction,hflip=False,bgcolor=bgcolor,**kwargs))
-        chip.add(InsideCurve(s_l.getLastPos((s_cap,-w_cap/2)),s_cap,rotation=s_l.direction,hflip=False,vflip=True,bgcolor=bgcolor,**kwargs))
-        chip.add(dxf.rectangle(s_l.getLastPos((s_cap,0)),width/2-w_ind/2-3*s_cap-w_cap/2,w_cap,valign=const.MIDDLE,rotation=s_l.direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
-        
-        chip.add(InsideCurve(s_r.getLastPos((s_cap,w_cap/2)),s_cap,rotation=s_r.direction,hflip=False,bgcolor=bgcolor,**kwargs))
-        chip.add(InsideCurve(s_r.getLastPos((s_cap,-w_cap/2)),s_cap,rotation=s_r.direction,hflip=False,vflip=True,bgcolor=bgcolor,**kwargs))
-        chip.add(dxf.rectangle(s_r.getLastPos((s_cap,0)),width/2-w_ind/2-3*s_cap-w_cap/2,w_cap,valign=const.MIDDLE,rotation=s_r.direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
+        chip.add(dxf.rectangle(struct().start,s_cap,max((width - 2*(w_cap+2*s_cap)) and not tiny_cap,w_ind+2*s_cap),valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
+    
+    s_r = struct().cloneAlong((s_cap+w_cap/2,-max((width/2 - 2*s_cap - w_cap) and not (tiny_cap or no_cap),w_ind/2+s_cap)),newDirection=-90)
+    s_l = struct().cloneAlong((s_cap+w_cap/2,max((width/2 - 2*s_cap - w_cap) and not (tiny_cap or no_cap),w_ind/2+s_cap)),newDirection=90)
+    
+    if no_cap:
+        s_l.shiftPos(min(s_cap+w_cap/2+width,width/2-2*s_cap-w_cap/2-w_ind/2))
+        s_r.shiftPos(min(s_cap+w_cap/2+width,width/2-2*s_cap-w_cap/2-w_ind/2))
         #extend outsides with a cpw
         chip.add(RoundRect(s_l.start,w_cap/2+s_cap,2*s_cap+w_cap,w_cap/2+s_cap,roundCorners=[0,0,1,0],valign=const.MIDDLE,rotation=s_l.direction,bgcolor=bgcolor,**kwargs),structure=s_l,length=w_cap/2+s_cap)
         chip.add(RoundRect(s_r.start,w_cap/2+s_cap,2*s_cap+w_cap,w_cap/2+s_cap,roundCorners=[0,1,0,0],valign=const.MIDDLE,rotation=s_r.direction,bgcolor=bgcolor,**kwargs),structure=s_r,length=w_cap/2+s_cap)
     else:
-        #round off ends of capacitor
-        CPW_stub_round(chip,s_l,round_left = (inductor_pad > 0) or (height-3*s_cap-w_cap*3/2 < 0),round_right=False,**kwargs) 
-        CPW_stub_round(chip,s_r,round_right = (inductor_pad > 0) or (height-3*s_cap-w_cap*3/2 < 0),round_left=False,**kwargs)
-    
+        if height-3*s_cap-w_cap*3/2 > 0:
+            #bend capacitor to form jellyfish outline
+            CPW_bend(chip,s_l,radius=r_cap,**kwargs)
+            CPW_bend(chip,s_r,CCW=False,radius=r_cap,**kwargs)
+            CPW_straight(chip,s_l,height-3*s_cap-w_cap*3/2,**kwargs)
+            CPW_straight(chip,s_r,height-3*s_cap-w_cap*3/2,**kwargs)
+        else:
+            #extend capacitor to fit width
+            CPW_straight(chip,s_l,min(s_cap+w_cap/2+width*tiny_cap,width/2-2*s_cap-w_cap/2-w_ind/2),**kwargs)
+            CPW_straight(chip,s_r,min(s_cap+w_cap/2+width*tiny_cap,width/2-2*s_cap-w_cap/2-w_ind/2),**kwargs)
+        if tiny_cap:
+            #round off capacitor immediately
+            chip.add(InsideCurve(s_l.getLastPos((s_cap,w_cap/2)),s_cap,rotation=s_l.direction,hflip=False,bgcolor=bgcolor,**kwargs))
+            chip.add(InsideCurve(s_l.getLastPos((s_cap,-w_cap/2)),s_cap,rotation=s_l.direction,hflip=False,vflip=True,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(s_l.getLastPos((s_cap,0)),width/2-w_ind/2-3*s_cap-w_cap/2,w_cap,valign=const.MIDDLE,rotation=s_l.direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
+            
+            chip.add(InsideCurve(s_r.getLastPos((s_cap,w_cap/2)),s_cap,rotation=s_r.direction,hflip=False,bgcolor=bgcolor,**kwargs))
+            chip.add(InsideCurve(s_r.getLastPos((s_cap,-w_cap/2)),s_cap,rotation=s_r.direction,hflip=False,vflip=True,bgcolor=bgcolor,**kwargs))
+            chip.add(dxf.rectangle(s_r.getLastPos((s_cap,0)),width/2-w_ind/2-3*s_cap-w_cap/2,w_cap,valign=const.MIDDLE,rotation=s_r.direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
+            #extend outsides with a cpw
+            chip.add(RoundRect(s_l.start,w_cap/2+s_cap,2*s_cap+w_cap,w_cap/2+s_cap,roundCorners=[0,0,1,0],valign=const.MIDDLE,rotation=s_l.direction,bgcolor=bgcolor,**kwargs),structure=s_l,length=w_cap/2+s_cap)
+            chip.add(RoundRect(s_r.start,w_cap/2+s_cap,2*s_cap+w_cap,w_cap/2+s_cap,roundCorners=[0,1,0,0],valign=const.MIDDLE,rotation=s_r.direction,bgcolor=bgcolor,**kwargs),structure=s_r,length=w_cap/2+s_cap)
+        else:
+            #round off ends of capacitor
+            CPW_stub_round(chip,s_l,round_left = (inductor_pad > 0) or (height-3*s_cap-w_cap*3/2 < 0),round_right=False,**kwargs) 
+            CPW_stub_round(chip,s_r,round_right = (inductor_pad > 0) or (height-3*s_cap-w_cap*3/2 < 0),round_left=False,**kwargs)
+        
     if height-3*s_cap-w_cap*3/2 < 0:
         #move left and right structures where capacitor bend would noramlly end
         s_l.updatePos(newStart=s_l.getPos((-s_cap -w_cap/2,-s_cap-w_cap/2)),angle=-90)
@@ -912,7 +927,10 @@ def JellyfishResonator(chip,structure,width,height,l_ind=None,tiny_cap=False,w_c
     s_0 = struct().cloneAlong((s_cap+w_cap,0))
     s_0.defaults['w']=w_ind
     s_0.defaults['radius']=r_ind
-    CPW_stub_short(chip,s_0,s=max(((width - 2*(w_cap+2*s_cap)-w_ind)/2) and not tiny_cap,s_cap),r_out=r_cap-w_cap/2,curve_out=False,flipped=True,**kwargs)
+    if no_cap:
+        s_0.shiftPos(r_cap-w_cap/2)
+    else:
+        CPW_stub_short(chip,s_0,s=max(((width - 2*(w_cap+2*s_cap)-w_ind)/2) and not tiny_cap,s_cap),r_out=r_cap-w_cap/2,curve_out=False,flipped=True,**kwargs)
     
     if width < 2*w_cap + 4*s_cap + 2*maxWidth:
         iwidth = width - (w_cap+2*s_cap)-w_ind
