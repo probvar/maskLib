@@ -15,6 +15,8 @@ from dxfwrite import DXFEngine as dxf
 from dxfwrite.vector2d import vadd,midpoint,vmul_scalar,vsub
 from dxfwrite.algebra import rotate_2d
 
+
+
 # ===============================================================================
 #  LOOKUP DICTIONARIES FOR COMMON TERMS 
 # ===============================================================================
@@ -22,11 +24,12 @@ waferDiameters = {'2in':50800,'3in':76200,'4in':101600,'6in':152400}
 sawWidths = {'4A':101.6,'8A':203.2}
 
 # ===============================================================================
-#  UTILITY FUNCTIONS  (Deprecated)
+#  MARKER FUNCTIONS (Deprecated- use functions from masklib.markerLib)
 # ===============================================================================
 #Define Marker Function for numbers 0-9
 #High visibility markers composed of a grid of six squares
-def Marker09(dwg,xpos,ypos,number,width,bg=None,**kwargs):
+def HiVisMarker09(dwg,xpos,ypos,number,width,bg=None,**kwargs):
+    #>>>>>>>> Deprecated, use markerLib.HiVisMarker09 instead <<<<<<<<<<
     shapes = [[],  [[0,0]],  [[0,0],[1,1]],    [[0,0],[1,1],[0,1]],  [[0,0],[0,1],[2,0],[2,1]],
              [[0,1],[1,0],[2,1]],  [[0,0],[1,0],[2,0],[1,1]],   [[0,0],[0,1],[1,0],[1,1],[2,1]], [[0,0],[0,1],[1,0],[1,1]],
              [[0,0],[1,0],[1,1],[2,1]]]
@@ -34,7 +37,9 @@ def Marker09(dwg,xpos,ypos,number,width,bg=None,**kwargs):
     for v in shapes[number]:
         dwg.add(dxf.rectangle((xpos+v[0]*width,ypos+v[1]*width),width,width,bgcolor=bg,**kwargs))
    
-
+# ===============================================================================
+#  UTILITY FUNCTIONS  (Deprecated - use functions from masklib.utilities)
+# ===============================================================================
 def curveAB(a,b,clockwise,angleDeg,ptdensity):
     #>>>>>>>> Deprecated, use utilities.curveAB instead <<<<<<<<<<
     
@@ -92,7 +97,7 @@ def skewRect(corner,width,height,offset,newLength,edge=1,**kwargs):
 # ===============================================================================
 class Wafer:
 
-    def __init__(self,name,path,chipWidth,chipHeight,waferDiameter=50800,padding=2500,sawWidth=203.2,frame=True,solid=False,multiLayer=True,singleChipRow=False):
+    def __init__(self,name,path,chipWidth,chipHeight,waferDiameter=50800,padding=2500,sawWidth=203.2,frame=True,solid=False,multiLayer=True,singleChipRow=False,singleChipColumn=False):
         # initialize drawing
         self.fileName = name
         self.path = path
@@ -112,7 +117,8 @@ class Wafer:
         self.frame = frame              #draw frame layer?
         self.solid = solid              #draw things solid?
         self.multiLayer = multiLayer    #draw in multiple layers?
-        self.singleChipRow = singleChipRow #draw only one row of chips? (vertical)
+        self.singleChipRow = singleChipRow #draw only one row of chips? (horizontal row)
+        self.singleChipColumn = singleChipColumn #draw only one column of chips? (vertical column)
         
         # initialize default layers
         self.layerColors = {'0':7} #colors corresponding to layers
@@ -170,8 +176,9 @@ class Wafer:
             return self.solid and self.layerColors[self.lyr(layerName)] or None
     
     def addLayer(self,layerName,layerColor):
-        self.layerNames.append(layerName)
-        self.layerColors[layerName]=layerColor
+        if layerName not in self.layerNames:
+            self.layerNames.append(layerName)
+            self.layerColors[layerName]=layerColor
     
     def setDefaultChip(self,chip=None):
         # update default chip and chip list
@@ -215,14 +222,28 @@ class Wafer:
         #determine number of chips, chip layout and coordinates
         nx=0
         ny=0
-        if self.singleChipRow:
-            while((ny+1)*self.chipY)**2 + ((0.5)*self.chipX)**2 < (self.waferDiameter/2 - self.padding)**2:
-                self.chipPts.append([-0.5*self.chipX,ny*self.chipY])
-                self.chipPts.append([-0.5*self.chipX,(-ny-1)*self.chipY])
-                ny += 1
-            self.chipColumns.append(2*ny)
-            nx += 1
+        if self.singleChipColumn:
+            if self.singleChipRow:
+                #only one chip on the wafer
+                self.chipPts.append([-0.5*self.chipX,-0.5*self.chipY])
+                self.chipColumns.append(1)
+            else:
+                #vertical column of chips, symmetric about X axis
+                while((ny+1)*self.chipY)**2 + ((0.5)*self.chipX)**2 < (self.waferDiameter/2 - self.padding)**2:
+                    self.chipPts.append([-0.5*self.chipX,ny*self.chipY])
+                    self.chipPts.append([-0.5*self.chipX,(-ny-1)*self.chipY])
+                    ny += 1
+                self.chipColumns.append(2*ny)
+                nx += 1
+        elif self.singleChipRow:
+            #horizontal row of chips, symmetric about Y axis
+            while ((nx+1)*self.chipX)**2 + self.chipY**2 < (self.waferDiameter/2 - self.padding)**2:
+                self.chipPts.append([nx*self.chipX,-0.5*self.chipY])
+                self.chipPts.append([(-nx-1)*self.chipX,-0.5*self.chipY])
+                self.chipColumns.append(1)
+                nx += 1
         else:
+            #grid of chips, symmetric about X and Y axis
             while ((nx+1)*self.chipX)**2 + self.chipY**2 < (self.waferDiameter/2 - self.padding)**2:
                 ny=0
                 while((ny+1)*self.chipY)**2 + ((nx+1)*self.chipX)**2 < (self.waferDiameter/2 - self.padding)**2:
@@ -261,14 +282,9 @@ class Wafer:
         else:
             self.chipPts =[[0,0]]
             
-        self.setDefaultChip()
-        '''
         #setup the default chip
-        self.defaultChip = Chip(self,'BLANK',self.defaultLayer)
-        self.defaultChip.save(self)
-        #populate with the default chip
-        self.chips = [self.defaultChip]
-        '''
+        self.setDefaultChip()
+
         #setup the viewport
         self.drawing.add_vport('*ACTIVE',ucs_icon=0,circle_zoom=1000,grid_on=1,center_point=(0,0),aspect_ratio=2*(max(self.chipX,self.chipY)))
     
@@ -282,7 +298,7 @@ class Wafer:
             
     
     #dicing saw border
-    def DicingBorder(self,maxpts=0,minpts=0,thin=5,thick=20,short=40,long=100,dash=400):
+    def DicingBorder(self,maxpts=0,minpts=0,thin=5,thick=20,short=40,long=100,dash=400,layer='MARKERS'):
         '''
         # maxpts:     where in chip list to stop putting a dicing border 
         # minpts:     where in chip list to start putting dicing border
@@ -296,7 +312,7 @@ class Wafer:
             maxpts = len(self.chipPts)+maxpts
         
         #determine filling
-        bg = self.bg('MARKERS')
+        bg = self.bg(layer)
         offsetX = ((self.chipX-2*short-2*long)%(dash)+dash)/2
         offsetY = ((self.chipY-2*short-2*long)%(dash)+dash)/2
         border = dxf.block('DICINGBORDER')
@@ -336,7 +352,7 @@ class Wafer:
 
         for index,pt in enumerate(self.chipPts):
             if (maxpts==0 or index<maxpts) and index>=minpts:
-                self.drawing.add(dxf.insert('DICINGBORDER',insert=(pt[0],pt[1]),layer=self.lyr('MARKERS')))
+                self.drawing.add(dxf.insert('DICINGBORDER',insert=(pt[0],pt[1]),layer=self.lyr(layer)))
                 
     def writeChip(self,chip,index):
         #insert a chip at specified index
@@ -351,10 +367,10 @@ class Wafer:
         self.chips[index]=chip
     
     #define high visibility markers as blocks '00' - '09'
-    def defineMarker09(self,width,layer):
+    def defineHiVisMarker09(self,width,layer):
         for i in range(10):
             num = dxf.block('0'+str(i))
-            Marker09(num,0,0,i,width,self.bg(layer))
+            HiVisMarker09(num,0,0,i,width,self.bg(layer))
             self.drawing.blocks.add(num)
     
     #draw a high visibility marker on each chip in the lower left corner
@@ -381,6 +397,10 @@ class Wafer:
     #coordinates centered on corner of actual chip
     def chipSpace(self,xy):
         return (xy[0]+self.sawWidth/2,xy[1]+self.sawWidth/2)
+    
+    #shortcut for add function
+    def add(self,obj):
+        self.drawing.add(obj)
     
     # --------------------------  Common layer setup functions  ----------------------------------
     
@@ -437,7 +457,7 @@ class Chip:
     #cached chip propoerties
     solid = 1
     frame = 1
-    def __init__(self,wafer,chipID,layer,structures=None):
+    def __init__(self,wafer,chipID,layer,structures=None,defaults=None):
         self.wafer = wafer
         self.width = wafer.chipX - wafer.sawWidth
         self.height = wafer.chipY - wafer.sawWidth
@@ -446,6 +466,10 @@ class Chip:
         self.solid = wafer.solid
         self.frame = wafer.frame
         self.layer = layer
+        if defaults is None:
+            self.defaults = {}
+        else:
+            self.defaults = defaults.copy()
         #setup centering
         self.center = (self.width/2,self.height/2)
         #initialize the block
@@ -473,12 +497,15 @@ class Chip:
             temp_wafer.setDefaultChip(self)
             temp_wafer.populate()
             temp_wafer.save()
+        return self
         
     def add(self,obj,structure=None,length=None,offsetVector=None,absolutePos=None,angle=0,newDir=None):
         self.chipBlock.add(obj)
         def struct():
             if isinstance(structure,Structure):
                 return structure
+            elif isinstance(structure,tuple):
+                return Structure(self,structure)
             else:
                 return self.structures[structure]
         if length is not None:
@@ -491,22 +518,28 @@ class Chip:
     #return chip centered coordinates in chip space
     def centered(self,xy=(0,0)):
         return (xy[0]+self.center[0],xy[1]+self.center[1])
-
+    
+    #return chip centered x coordinate in chip space
     def cx(self,x):
         return self.center[0] + x
     
+    #return chip centered y coordinate in chip space
     def cy(self,y):
         return self.center[1] + y
     
+    #get structure by index
     def structure(self,i):
         return self.structures[i]
     
+    #get structure start by index
     def getStart(self,i):
         return self.structures[i].start
     
+    #get structure direction by index
     def getDir(self,i):
         return self.structures[i].direction
     
+    #get background color from layer
     def bg(self,layerName=None):
         return self.wafer.bg(layerName)
 
@@ -602,6 +635,39 @@ class Chip7mm(Chip):
             self.structures = structures
         else:
             self.structures = [#hardwired structures
+                    Structure(self,start=(500,self.height/2),direction=0,defaults=self.defaults),
+                    Structure(self,start=(500,700),direction=45,defaults=self.defaults),
+                    Structure(self,start=(2500,500),direction=90,defaults=self.defaults),
+                    Structure(self,start=(4500,500),direction=90,defaults=self.defaults),
+                    Structure(self,start=(self.width-500,700),direction=135,defaults=self.defaults),
+                    Structure(self,start=(self.width-500,self.height/2),direction=180,defaults=self.defaults),
+                    Structure(self,start=(self.width-500,self.height-700),direction=225,defaults=self.defaults),
+                    Structure(self,start=(4500,self.height-500),direction=270,defaults=self.defaults),
+                    Structure(self,start=(2500,self.height-500),direction=270,defaults=self.defaults),
+                    Structure(self,start=(500,self.height-700),direction=315,defaults=self.defaults)]
+        if wafer.frame:
+            self.add(dxf.rectangle(self.center,6000,6000,layer=wafer.lyr('FRAME'),halign = const.CENTER,valign = const.MIDDLE,linetype='DOT'))
+            
+# ===============================================================================
+#  10mm CHIP CLASS  
+#       chip with 8 structures corresponding to the launcher positions
+#       NOTE: chip size still needs to be set in the wafer settings, this just determines structure location
+# ===============================================================================
+
+class Chip10mm(Chip):
+    def __init__(self,wafer,chipID,layer,structures=None,defaults=None):
+        Chip.__init__(self,wafer,chipID,layer,structures=structures)
+        self.defaults = {'w':10, 's':5, 'radius':25,'r_out':0,'r_ins':0}
+        if defaults is not None:
+            #self.defaults = defaults.copy()
+            for d in defaults:
+                self.defaults[d]=defaults[d]
+        if structures is not None:
+            #override default structures
+            self.structures = structures
+        else:
+            self.structures = [#hardwired structures
+                    #TODO update these for 10mm IBM board
                     Structure(self,start=(500,self.height/2),direction=0,defaults=self.defaults),
                     Structure(self,start=(500,700),direction=45,defaults=self.defaults),
                     Structure(self,start=(2500,500),direction=90,defaults=self.defaults),

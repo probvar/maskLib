@@ -99,6 +99,55 @@ def waffle(chip, grid_x, grid_y=None,width=10,height=None,exclude=None,padx=0,pa
                 chip.add(dxf.rectangle(pos,width,height,bgcolor=chip.wafer.bg(),halign=const.CENTER,valign=const.MIDDLE,layer=layer) )   
 
 # ===============================================================================
+# basic POSITIVE microstrip function definitions
+# ===============================================================================
+
+def Strip_straight(chip,structure,length,w=None,bgcolor=None,**kwargs): #note: uses CPW conventions
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+    
+    chip.add(dxf.rectangle(struct().start,length,w,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)),structure=structure,length=length)
+
+def Strip_taper(chip,structure,length=None,w0=None,w1=None,bgcolor=None,**kwargs): #note: uses CPW conventions
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+    if w0 is None:
+        try:
+            w0 = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+    if w1 is None:
+        try:
+            w1 = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+    #if undefined, make outer angle 30 degrees
+    if length is None:
+        length = math.sqrt(3)*abs(w0/2-w1/2)
+    
+    chip.add(SkewRect(struct().last,length,w0,(0,0),w1,rotation=struct().direction,valign=const.MIDDLE,edgeAlign=const.MIDDLE,bgcolor=bgcolor,**kwargs),structure=structure,length=length)
+
+
+# ===============================================================================
 # basic NEGATIVE CPW function definitions
 # ===============================================================================
 
@@ -107,6 +156,8 @@ def CPW_straight(chip,structure,length,w=None,s=None,bgcolor=None,**kwargs): #no
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if bgcolor is None:
@@ -131,6 +182,8 @@ def CPW_taper(chip,structure,length=None,w0=None,s0=None,w1=None,s1=None,bgcolor
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if bgcolor is None:
@@ -167,6 +220,8 @@ def CPW_stub_short(chip,structure,flipped=False,curve_ins=True,curve_out=True,r_
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if w is None:
@@ -215,6 +270,8 @@ def CPW_stub_open(chip,structure,length=0,r_out=None,r_ins=None,w=None,s=None,fl
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if w is None:
@@ -258,6 +315,8 @@ def CPW_cap(chip,structure,gap,r_ins=None,w=None,s=None,bgcolor=None,angle=90,**
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if w is None:
@@ -293,6 +352,8 @@ def CPW_stub_round(chip,structure,w=None,s=None,round_left=True,round_right=True
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if w is None:
@@ -332,6 +393,8 @@ def CPW_bend(chip,structure,angle=90,CCW=True,w=None,s=None,radius=None,ptDensit
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if w is None:
@@ -368,6 +431,8 @@ def Wire_bend(chip,structure,angle=90,CCW=True,w=None,radius=None,bgcolor=None,*
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if w is None:
@@ -399,6 +464,8 @@ def CPW_tee(chip,structure,w=None,s=None,radius=None,r_ins=None,w1=None,s1=None,
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if w is None:
@@ -501,6 +568,8 @@ def CPW_taper_cap(chip,structure,gap,width,l_straight=0,l_taper=None,s1=None,**k
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if s1 is None:
@@ -535,6 +604,8 @@ def CPW_wiggles(chip,structure,length=None,nTurns=None,minWidth=None,maxWidth=No
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if radius is None:
@@ -662,6 +733,8 @@ def wiggle_calc(chip,structure,length=None,nTurns=None,maxWidth=None,Width=None,
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if radius is None:
@@ -707,6 +780,8 @@ def Inductor_wiggles(chip,structure,length=None,nTurns=None,maxWidth=None,Width=
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if radius is None:
@@ -809,6 +884,8 @@ def JellyfishResonator(chip,structure,width,height,l_ind=None,tiny_cap=False,no_
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if r_cap is None:
@@ -958,6 +1035,8 @@ def DoubleJellyfishResonator(chip,structure,width,height,l_ind,w_cap=None,s_cap=
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if r_cap is None:

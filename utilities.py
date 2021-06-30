@@ -52,3 +52,26 @@ def transformedQuadrants(vflip=False,hflip=False):
 def kwargStrip(kwargs,keys=['layer']):
     # return kwargs with only entries specified by keys
     return {k:kwargs[k] for k in keys if k in kwargs}
+
+
+def doMirrored(func,canvas,pos,*args,**kwargs):
+    #experimental- executes function 'func' with second argument mirrored around x and y
+    # mirrorX : mirrors along X axis (1,0)
+    # mirrorY : mirrors along Y axis (0,1)
+    
+    if not isinstance(pos, tuple):
+        print('\x1b[33mError:\x1b[0m Bad position args passed to doMirrorred()!')
+        return
+    #assign unlisted default args
+    kwargs = { **{'mirrorX':True,'mirrorY':True}, **kwargs}
+    #assign args and sanitize kwargs
+    mirrorX = kwargs.pop('mirrorX')
+    mirrorY = kwargs.pop('mirrorY')
+    
+    func(canvas,(pos[0],pos[1]),*args,**kwargs)
+    if mirrorY:
+        func(canvas,(pos[0],-pos[1]),*args,**kwargs)
+    if mirrorX:
+        func(canvas,(-pos[0],pos[1]),*args,**kwargs)
+    if mirrorY and mirrorX:
+        func(canvas,(-pos[0],-pos[1]),*args,**kwargs)
