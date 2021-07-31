@@ -70,6 +70,7 @@ class MultimodeTransmon3D(m.Chip):
                 self.defaults[d]=defaults[d]
         
         #define the transmon (transmon pads and manhattan junction)
+        #these numbers copied from Kevin's files
         jpos =self.centered((-self.width/2 + 2960+58-210-250+500+790+1102+100+648-750-500,0))
         Transmon3D(self, jpos,padh=200,padw=4950-750-500,padw2=750+750+500,leadw=85,leadw2=85,leadh=20,separation=20,jfingerw=jfingerw,**kwargs)
         
