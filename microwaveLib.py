@@ -5,6 +5,9 @@ Created on Fri Oct  4 17:29:02 2019
 @author: Sasha
 
 Library for drawing standard microwave components (CPW parts, inductors, capacitors etc)
+
+Only standard composite components (inductors, launchers) are included here- complicated / application specific composites
+go in sub-libraries
 """
 
 import maskLib.MaskLib as m
@@ -146,8 +149,110 @@ def Strip_taper(chip,structure,length=None,w0=None,w1=None,bgcolor=None,**kwargs
     if length is None:
         length = math.sqrt(3)*abs(w0/2-w1/2)
     
-    chip.add(SkewRect(struct().last,length,w0,(0,0),w1,rotation=struct().direction,valign=const.MIDDLE,edgeAlign=const.MIDDLE,bgcolor=bgcolor,**kwargs),structure=structure,length=length)
+    chip.add(SkewRect(struct().start,length,w0,(0,0),w1,rotation=struct().direction,valign=const.MIDDLE,edgeAlign=const.MIDDLE,bgcolor=bgcolor,**kwargs),structure=structure,length=length)
 
+def Strip_bend(chip,structure,angle=90,CCW=True,w=None,radius=None,ptDensity=120,bgcolor=None,**kwargs):
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33mw not defined in ',chip.chipID)
+    if radius is None:
+        try:
+            radius = struct().defaults['radius']
+        except KeyError:
+            print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
+            return
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+        
+    while angle < 0:
+        angle = angle + 360
+    angle = angle%360
+        
+    chip.add(CurveRect(struct().start,w,radius,angle=angle,ptDensity=ptDensity,ralign=const.MIDDLE,valign=const.MIDDLE,rotation=struct().direction,vflip=not CCW,bgcolor=bgcolor,**kwargs))
+    struct().updatePos(newStart=struct().getPos((radius*math.sin(math.radians(angle)),(CCW and 1 or -1)*radius*(math.cos(math.radians(angle))-1))),angle=CCW and -angle or angle)
+
+
+def Strip_stub_open(chip,structure,flipped=False,curve_out=True,r_out=None,w=None,allow_oversize=True,bgcolor=None,**kwargs):
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+    if r_out is None:
+        try:
+            if allow_oversize:
+                r_out = struct().defaults['r_out']
+            else:
+                r_out = min(struct().defaults['r_out'],w/2)
+        except KeyError:
+            print('r_out not defined in ',chip.chipID,'!\x1b[0m')
+            r_out=0
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+    
+    
+    if r_out > 0:
+        dx = 0.
+        if flipped:
+            if allow_oversize:
+                dx = r_out
+            else:
+                dx = min(w/2,r_out)
+        
+        if allow_oversize:
+            l=r_out
+        else:
+            l=min(w/2,r_out)
+
+        chip.add(RoundRect(struct().getPos((dx,0)),l,w,l,roundCorners=[0,curve_out,curve_out,0],hflip=flipped,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=l)
+    else:
+        Strip_straight(chip,structure,w/2,w=w,bgcolor=bgcolor,**kwargs)
+
+def Strip_stub_short(chip,structure,r_ins=None,w=None,flipped=False,extra_straight_section=False,bgcolor=None,**kwargs):
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33mw not defined in ',chip.chipID,'!\x1b[0m')
+    if r_ins is None:
+        try:
+            r_ins = struct().defaults['r_ins']
+        except KeyError:
+            #print('r_ins not defined in ',chip.chipID,'!\x1b[0m')
+            r_ins=0
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+    
+    if r_ins > 0:
+        if extra_straight_section and not flipped:
+            Strip_straight(chip, struct(), r_ins, w=w,rotation=struct().direction,bgcolor=bgcolor,**kwargs)
+        chip.add(InsideCurve(struct().getPos((0,-w/2)),r_ins,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs))
+        chip.add(InsideCurve(struct().getPos((0,w/2)),r_ins,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
+        if extra_straight_section and flipped:
+                Strip_straight(chip, struct(), r_ins, w=w,rotation=struct().direction,bgcolor=bgcolor,**kwargs)
 
 # ===============================================================================
 # basic NEGATIVE CPW function definitions
@@ -268,7 +373,7 @@ def CPW_stub_short(chip,structure,flipped=False,curve_ins=True,curve_out=True,r_
     else:
         CPW_straight(chip,structure,s/2,w=w,s=s,bgcolor=bgcolor,**kwargs)
         
-def CPW_stub_open(chip,structure,length=0,r_out=None,r_ins=None,w=None,s=None,flipped=False,bgcolor=None,**kwargs):
+def CPW_stub_open(chip,structure,length=0,r_out=None,r_ins=None,w=None,s=None,flipped=False,extra_straight_section=False,bgcolor=None,**kwargs):
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -286,8 +391,7 @@ def CPW_stub_open(chip,structure,length=0,r_out=None,r_ins=None,w=None,s=None,fl
             s = struct().defaults['s']
         except KeyError:
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
-    if length <= 0:
-        length = s #length = max(length,s)
+    length = max(length,s)
     if r_out is None:
         try:
             r_out = struct().defaults['r_out']
@@ -308,10 +412,14 @@ def CPW_stub_open(chip,structure,length=0,r_out=None,r_ins=None,w=None,s=None,fl
         dx = length
 
     if r_ins > 0:
+        if extra_straight_section and not flipped:
+            CPW_straight(chip, struct(), r_ins, w=w,s=s,rotation=struct().direction,bgcolor=bgcolor,**kwargs)
         chip.add(InsideCurve(struct().getPos((dx,w/2)),r_ins,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs))
         chip.add(InsideCurve(struct().getPos((dx,-w/2)),r_ins,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
 
     chip.add(RoundRect(struct().getPos((dx,0)),length,w+2*s,r_out,roundCorners=[0,1,1,0],hflip=flipped,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=length)
+    if extra_straight_section and flipped:
+        CPW_straight(chip, struct(), r_ins, w=w,s=s,rotation=struct().direction,bgcolor=bgcolor,**kwargs)
 
 def CPW_cap(chip,structure,gap,r_ins=None,w=None,s=None,bgcolor=None,angle=90,**kwargs):
     def struct():
