@@ -534,40 +534,6 @@ def CPW_bend(chip,structure,angle=90,CCW=True,w=None,s=None,radius=None,ptDensit
     chip.add(CurveRect(struct().start,s,radius,angle=angle,ptDensity=ptDensity,roffset=-w/2,ralign=const.TOP,valign=const.TOP,rotation=struct().direction,vflip=not CCW,bgcolor=bgcolor,**kwargs))
     struct().updatePos(newStart=struct().getPos((radius*math.sin(math.radians(angle)),(CCW and 1 or -1)*radius*(math.cos(math.radians(angle))-1))),angle=CCW and -angle or angle)
 
-def Wire_bend(chip,structure,angle=90,CCW=True,w=None,radius=None,bgcolor=None,**kwargs):
-    #only defined for 90 degree bends
-    if angle%90 != 0:
-        return
-    def struct():
-        if isinstance(structure,m.Structure):
-            return structure
-        elif isinstance(structure,tuple):
-            return m.Structure(chip,structure)
-        else:
-            return chip.structure(structure)
-    if w is None:
-        try:
-            w = struct().defaults['w']
-        except KeyError:
-            print('\x1b[33mw not defined in ',chip.chipID)
-    if radius is None:
-        try:
-            radius = struct().defaults['radius']
-        except KeyError:
-            print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
-            return
-    if bgcolor is None:
-        bgcolor = chip.wafer.bg()
-        
-    while angle < 0:
-        angle = angle + 360
-    angle = angle%360
-        
-    if radius-w/2 > 0:
-        chip.add(CurveRect(struct().start,radius-w/2,radius,angle=angle,roffset=-w/2,ralign=const.TOP,valign=const.TOP,rotation=struct().direction,vflip=not CCW,bgcolor=bgcolor,**kwargs))
-    for i in range(angle//90):
-        chip.add(InsideCurve(struct().getPos(vadd(rotate_2d((radius+w/2,(CCW and 1 or -1)*(radius+w/2)),(CCW and -1 or 1)*math.radians(i*90)),(0,CCW and -radius or radius))),radius+w/2,rotation=struct().direction+(CCW and -1 or 1)*i*90,bgcolor=bgcolor,vflip=not CCW,**kwargs))
-    struct().updatePos(newStart=struct().getPos((radius*math.sin(math.radians(angle)),(CCW and 1 or -1)*radius*(math.cos(math.radians(angle))-1))),angle=CCW and -angle or angle)
 
 def CPW_tee(chip,structure,w=None,s=None,radius=None,r_ins=None,w1=None,s1=None,ptDensity=60,bgcolor=None,hflip=False,branch_off=const.CENTER,**kwargs):
     
@@ -664,6 +630,45 @@ def CPW_tee(chip,structure,w=None,s=None,radius=None,r_ins=None,w1=None,s1=None,
         s_r = struct().cloneAlong((0,0),newDirection=180)
         struct().translatePos((w/2+max(radius,s),-s_rad-w1/2 + 2*hflip*(s_rad+w1/2)),angle=-90)
         return s_r
+
+# ===============================================================================
+#  NEGATIVE wire/stripline function definitions
+# ===============================================================================
+
+def Wire_bend(chip,structure,angle=90,CCW=True,w=None,radius=None,bgcolor=None,**kwargs):
+    #only defined for 90 degree bends
+    if angle%90 != 0:
+        return
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33mw not defined in ',chip.chipID)
+    if radius is None:
+        try:
+            radius = struct().defaults['radius']
+        except KeyError:
+            print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
+            return
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+        
+    while angle < 0:
+        angle = angle + 360
+    angle = angle%360
+        
+    if radius-w/2 > 0:
+        chip.add(CurveRect(struct().start,radius-w/2,radius,angle=angle,roffset=-w/2,ralign=const.TOP,valign=const.TOP,rotation=struct().direction,vflip=not CCW,bgcolor=bgcolor,**kwargs))
+    for i in range(angle//90):
+        chip.add(InsideCurve(struct().getPos(vadd(rotate_2d((radius+w/2,(CCW and 1 or -1)*(radius+w/2)),(CCW and -1 or 1)*math.radians(i*90)),(0,CCW and -radius or radius))),radius+w/2,rotation=struct().direction+(CCW and -1 or 1)*i*90,bgcolor=bgcolor,vflip=not CCW,**kwargs))
+    struct().updatePos(newStart=struct().getPos((radius*math.sin(math.radians(angle)),(CCW and 1 or -1)*radius*(math.cos(math.radians(angle))-1))),angle=CCW and -angle or angle)
 
 # ===============================================================================
 # composite CPW function definitions

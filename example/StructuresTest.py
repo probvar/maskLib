@@ -10,6 +10,7 @@ from maskLib.microwaveLib import *
 from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideCurve
 from maskLib.junctionLib import setupJunctionLayers,setupManhattanJAngles,JContact_slot,JContact_tab,JcalcTabDims,JSingleProbePad,JProbePads
 from maskLib.junctionLib import ManhattanJunction
+from maskLib.resonatorLib import JellyfishResonator, DoubleJellyfishResonator
 
 from maskLib.qubitLib import Hamburgermon
 
@@ -51,8 +52,17 @@ class FancyChip(m.Chip7mm):
         for s in self.structures:
             self.add(dxf.rectangle(s.start,80,20,rotation=s.direction,layer='FRAME',halign = const.RIGHT,valign = const.MIDDLE))
             
-        self.add(dxf.rectangle(self.getStart(3),200,40,rotation = self.getDir(3),valign = const.MIDDLE),structure=3,length=200,angle=-90)
-        self.add(dxf.rectangle(self.getStart(3),200,40,rotation = self.getDir(3),valign = const.MIDDLE),structure=3,length=200)
+        #self.add(dxf.rectangle(self.getStart(3),200,40,rotation = self.getDir(3),valign = const.MIDDLE),structure=3,length=200,angle=-90)
+        #self.add(dxf.rectangle(self.getStart(3),200,40,rotation = self.getDir(3),valign = const.MIDDLE),structure=3,length=200)
+        Strip_stub_open(self, 3,flipped=True)
+        Strip_bend(self, 3,angle=20,CCW=False)
+        Strip_straight(self, 3,20)
+        Strip_taper(self, 3,w1=2)
+        Strip_bend(self, 3,w=2)
+        Strip_stub_short(self,3,w=2,extra_straight_section=True)
+        Strip_stub_open(self, 3, w=40,flipped=True)
+        Strip_straight(self,3,40,w=40)
+        Strip_stub_open(self, 3, w=40)
         
         #launcher subcomponents
         CPW_stub_open(self,1,r_out=100,r_ins=50,w=300,s=160,flipped=True)
@@ -106,7 +116,7 @@ class FancyChip(m.Chip7mm):
         
         
         #continue independent structure
-        CPW_stub_open(self,s0,flipped=True)
+        CPW_stub_open(self,s0,flipped=True,extra_straight_section=True,length=40)
         CPW_straight(self,s0,200)
         CPW_taper(self,s0,50,w1=self.structures[2].defaults['w'],s1=self.structures[2].defaults['s'])
         s0.defaults['w']=self.structures[2].defaults['w']
