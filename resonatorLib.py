@@ -384,7 +384,13 @@ def CingularResonator(chip,structure,l_ind,w_ind=3,w_cap=None,s_cap=None,w_bridg
     Strip_bend(chip, s_l,CCW=True,angle=90,radius=r_ins,bgcolor=bgcolor,**kwargs)
     
     if r_bridge >0:
-        Strip_stub_open()
+        Strip_stub_open(chip,s_r,r_out=r_bridge)
+        Strip_stub_open(chip,s_l,r_out=r_bridge)
+        
+    Strip_stub_short(chip,s_r,r_ins=r_taper,w=l_ind,flipped=True,**kwargs)
+    Strip_stub_short(chip,s_l,r_ins=r_taper,w=l_ind,flipped=True,**kwargs)
+    Strip_straight(chip,s_r,(w_taper-w_ind)/2.,w=l_ind,**kwargs)
+    Strip_straight(chip,s_l,(w_taper-w_ind)/2.,w=l_ind,**kwargs)
     
     
     
