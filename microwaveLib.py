@@ -285,7 +285,7 @@ def CPW_straight(chip,structure,length,w=None,s=None,bgcolor=None,**kwargs): #no
     chip.add(dxf.rectangle(struct().getPos((0,w/2)),length,s,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)),structure=structure,length=length)
         
     
-def CPW_taper(chip,structure,length=None,w0=None,s0=None,w1=None,s1=None,bgcolor=None,**kwargs): #note: uses CPW conventions
+def CPW_taper(chip,structure,length=None,w0=None,s0=None,w1=None,s1=None,bgcolor=None,offset=(0,0),**kwargs): #note: uses CPW conventions
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -319,8 +319,8 @@ def CPW_taper(chip,structure,length=None,w0=None,s0=None,w1=None,s1=None,bgcolor
     if length is None:
         length = math.sqrt(3)*abs(w0/2+s0-w1/2-s1)
     
-    chip.add(SkewRect(struct().getPos((0,-w0/2)),length,s0,(0,w0/2-w1/2),s1,rotation=struct().direction,valign=const.TOP,edgeAlign=const.TOP,bgcolor=bgcolor,**kwargs))
-    chip.add(SkewRect(struct().getPos((0,w0/2)),length,s0,(0,w1/2-w0/2),s1,rotation=struct().direction,valign=const.BOTTOM,edgeAlign=const.BOTTOM,bgcolor=bgcolor,**kwargs),structure=structure,length=length)
+    chip.add(SkewRect(struct().getPos((0,-w0/2)),length,s0,(offset[0],w0/2-w1/2+offset[1]),s1,rotation=struct().direction,valign=const.TOP,edgeAlign=const.TOP,bgcolor=bgcolor,**kwargs))
+    chip.add(SkewRect(struct().getPos((0,w0/2)),length,s0,(offset[0],w1/2-w0/2+offset[1]),s1,rotation=struct().direction,valign=const.BOTTOM,edgeAlign=const.BOTTOM,bgcolor=bgcolor,**kwargs),structure=structure,offsetVector=(length+offset[0],offset[1]))
     
 def CPW_stub_short(chip,structure,flipped=False,curve_ins=True,curve_out=True,r_out=None,w=None,s=None,bgcolor=None,**kwargs):
     allow_oversize = (curve_ins != curve_out)
