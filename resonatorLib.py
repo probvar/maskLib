@@ -393,7 +393,83 @@ def CingularResonator(chip,structure,l_ind,w_ind=3,w_cap=None,s_cap=None,w_bridg
     Strip_straight(chip,s_l,(w_taper-w_ind)/2.,w=l_ind,**kwargs)
     
     
+def HotdogResonator(chip,structure,res_width,l_ind,w_ind=3,w_cap=None,s_cap=None,r_bridge=None,w_taper=6,l_taper=None,r_taper=None,bgcolor=None,debug=False,**kwargs):
+    '''
+    Draws a resonator shaped like a hotdog.
+    res_width: overall width of resonator (must satisfy 2*s_)
+    l_ind: inductor length
+    w_ind: inductor width
+    w_cap: equivalent to the fillet radius of inner metal
+    s_cap: gap to ground
+    r_bridge: overrides flare-out radius of inductor bridge (must satisfy 2*r_bridge + 2*l_taper+l_ind <= s_cap)
+    w_taper: width of wide section of inductor
+    l_taper: set to a length to override inductor-bridge contact rounding with a taper function (must satisfy 2*l_taper+l_ind <= s_cap)
+    r_taper: overrides the inductor-bridge contact rounding radius (must satisfy 2*r_taper+w_ind <= w_taper && 2*r_taper+l_ind <= s_cap)
+    '''
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+    if w_cap is None:
+        try:
+            w_cap = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33mw not defined in ',chip.chipID,'!\x1b[0m')
+    if s_cap is None:
+        try:
+            s_cap = struct().defaults['s']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+    #assign manual inputs but override dumb inputs
     
+    l_ind = min(s_cap,l_ind)
+    if l_taper is not None and 2*l_taper + l_ind <= s_cap:
+        r_taper = 0 #don't round the contact
+    else:
+        #set l_taper manually, and round the contact
+        l_taper = max(min((s_cap-l_ind)/2.0,w_taper/2),0)#default to w_taper/2
+        if r_taper is None: r_taper = l_taper #default to l_taper
+        r_taper = max(min(r_taper,l_taper,(w_taper-w_ind)/2.0),0)
+    
+    #w_bridge not specified.
+    r_bridge = max((s_cap-l_ind-2*l_taper)/2.0,0)
+    w_bridge = w_taper+2*r_bridge
+    
+    res_width=max(res_width,w_bridge+w_cap+2*s_cap)
+    straight_length=res_width-(w_bridge+w_cap+2*s_cap)
+    r_0=w_cap/2+s_cap/2
+    
+    #define sub-structures
+    offset=s_cap/2
+    struct().shiftPos(offset)
+    s_r = struct().cloneAlong((0,w_bridge/2+straight_length/2),newDirection=90,defaults={'w':s_cap})
+    s_l = struct().cloneAlong((0,-w_bridge/2-straight_length/2),newDirection=-90,defaults={'w':s_cap})
+    
+    
+    #draw center, left right arms
+    chip.add(dxf.rectangle(struct().start, s_cap, w_bridge+straight_length,valign=const.MIDDLE,halign=const.CENTER,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
+    
+    Strip_bend(chip, s_r,CCW=True,angle=180,radius=r_0,bgcolor=bgcolor,**kwargs)
+
+    Strip_bend(chip, s_l,CCW=False,angle=180,radius=r_0,bgcolor=bgcolor,**kwargs)
+    
+    if straight_length>0:
+        Strip_straight(chip,s_r,(straight_length)/2.,**kwargs)
+        Strip_straight(chip,s_l,(straight_length)/2.,**kwargs)
+    
+    if r_bridge >0:
+        Strip_stub_open(chip,s_r,r_out=r_bridge)
+        Strip_stub_open(chip,s_l,r_out=r_bridge)
+    
+    Strip_stub_short(chip,s_r,r_ins=r_taper,w=l_ind,flipped=True,**kwargs)
+    Strip_stub_short(chip,s_l,r_ins=r_taper,w=l_ind,flipped=True,**kwargs)
+    Strip_straight(chip,s_r,(w_taper-w_ind)/2.,w=l_ind,**kwargs)
+    Strip_straight(chip,s_l,(w_taper-w_ind)/2.,w=l_ind,**kwargs)    
         
     
         
