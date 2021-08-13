@@ -25,25 +25,35 @@ def HiVisMarker09(dwg,xpos,ypos,number,width,bg=None,**kwargs):
     for v in shapes[number]:
         dwg.add(dxf.rectangle((xpos+v[0]*width,ypos+v[1]*width),width,width,bgcolor=bg,**kwargs))
         
-def MarkerRect(w,pos,width,height,bgcolor=None,layer=None,**kwargs):
+def MarkerRect(w,pos,width,height,bgcolor=None,layer=None,chipCentered=False,**kwargs):
     if layer is None:
         layer = w.defaultLayer
     else:
         layer = w.lyr(layer)
     if bgcolor is None:
         bgcolor = w.bg(layer)
+    if chipCentered:
+        try:
+            pos = w.centered(pos)
+        except:
+            print('does not have centered argument')
     w.add(dxf.rectangle(pos,width,height,valign=const.MIDDLE,halign=const.CENTER,bgcolor=bgcolor,layer=layer,**kwargStrip(kwargs)))
     
 def MarkerSquare(w,pos,width=80,bgcolor=None,layer=None,**kwargs):
     MarkerRect(w,pos,width,width,bgcolor=bgcolor,layer=layer,**kwargs)
 
-def MarkerCross(w,pos,size=(200,200),linewidth=80,bgcolor=None,layer=None,**kwargs):
+def MarkerCross(w,pos,size=(200,200),linewidth=80,bgcolor=None,layer=None,chipCentered=False,**kwargs):
     if layer is None:
         layer = w.defaultLayer
     else:
         layer = w.lyr(layer)
     if bgcolor is None:
         bgcolor = w.bg(layer)
+    if chipCentered:
+        try:
+            pos = w.centered(pos)
+        except:
+            print('does not have centered argument')
     w.add(dxf.rectangle(pos,size[0],linewidth,valign=const.MIDDLE,halign=const.CENTER,bgcolor=bgcolor,layer=layer,**kwargStrip(kwargs)))
     w.add(dxf.rectangle(vadd(pos,(0,linewidth/2)),linewidth,size[1]/2-linewidth/2,valign=const.BOTTOM,halign=const.CENTER,bgcolor=bgcolor,layer=layer,**kwargStrip(kwargs)))
     w.add(dxf.rectangle(vadd(pos,(0,-linewidth/2)),linewidth,size[1]/2-linewidth/2,valign=const.TOP,halign=const.CENTER,bgcolor=bgcolor,layer=layer,**kwargStrip(kwargs)))

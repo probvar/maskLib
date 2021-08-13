@@ -527,6 +527,11 @@ class Chip:
     def cy(self,y):
         return self.center[1] + y
     
+    #chip space:
+    #coordinates centered on corner of actual chip
+    def chipSpace(self,xy):
+        return (xy[0]+self.wafer.sawWidth/2,xy[1]+self.wafer.sawWidth/2)
+    
     #get structure by index
     def structure(self,i):
         return self.structures[i]
@@ -542,6 +547,10 @@ class Chip:
     #get background color from layer
     def bg(self,layerName=None):
         return self.wafer.bg(layerName)
+    
+    #get layer from wafer 
+    def lyr(self,layerName):
+        return self.wafer.lyr(layerName)
 
    
 # ===============================================================================
