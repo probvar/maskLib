@@ -6,16 +6,17 @@ Created on Fri Aug 31 16:45:06 2018
 """
 
 import maskLib.MaskLib as m
-from maskLib.microwaveLib import *
+from maskLib.microwaveLib import CPW_straight,CPW_taper,CPW_bend,CPW_launcher,Strip_straight,waffle
 import numpy as np
+from dxfwrite import const
 from dxfwrite import DXFEngine as dxf
 from dxfwrite.vector2d import vadd
 
 from maskLib.utilities import doMirrored
 from maskLib.markerLib import MarkerSquare
+from maskLib.Entities import RoundRect
 
-from maskLib.resonatorLib import JellyfishResonator,CingularResonator
-from maskLib.junctionLib import setupJunctionLayers
+from maskLib.junctionLib import setupJunctionLayers, JProbePads, ManhattanJunction
 from maskLib.qubitLib import Hamburgermon
 
 # ===============================================================================
@@ -50,7 +51,7 @@ for pt in markerpts:
 
 #=============================
 class ReflectionPurcellQubit(m.Chip7mm):
-    def __init__(self,wafer,chipID,layer,jfingerw=0.0):
+    def __init__(self,wafer,chipID,layer,jfingerw=0.0,padwidth=150,padradius=5,**kwargs):
         m.Chip7mm.__init__(self,wafer,chipID,layer,defaults={'w':11, 's':5, 'radius':180,'r_out':5,'r_ins':5})
         #do local p80 ebeam markers
         doMirrored(MarkerSquare, self, (3250,3250), 80,layer='EMARKER',chipCentered=True)
@@ -114,14 +115,25 @@ class ReflectionPurcellQubit(m.Chip7mm):
         CPW_bend(self,s4,angle=180,w=11,s=5,radius=210.5)
         CPW_straight(self,s4, 3098, 11, 5)
 
-        Hamburgermon(self, s4,qbunthick=120,qbunr=59.9,qccap_padl=170,qccapl=120,jfingerw=jfingerw)
+        Hamburgermon(self, s4,qbunthick=120,qbunr=59.9,qccap_padl=170,qccapl=120,jfingerw=jfingerw,**kwargs)
         
+        #this is for the test junctions on the left
+        
+        #cutout
+        self.add(RoundRect(self.chipSpace((650,2375)),670,2275+300,1,valign=const.MIDDLE))#note we are purposefully not setting the bgcolor
+        #contact pads
+        for y in range(5):
+            for x in range(2):
+                JProbePads(self,self.chipSpace((830+300*x,3180+170-500*y)),rotation=90,padwidth=padwidth,padradius=padradius,layer=self.wafer.XLAYER,**kwargs)
+                ManhattanJunction(self,self.chipSpace((830+300*x,3180+170-500*y)),rotation=90,jfingerw=jfingerw,**kwargs)
+                
    
-        
+
+#define the chip        
 reflectionQubit01 = ReflectionPurcellQubit(w,'QCHIP1','BASEMETAL',jfingerw=0.12)
-waffle(reflectionQubit01, 241.3, width=50,bleedRadius=1,padx=700,layer='MARKERS')
-
-
+#perforate the ground plane to trap flux vortices
+waffle(reflectionQubit01, 211.3, width=50,bleedRadius=1,padx=700,layer='MARKERS')
+#save the chip to the wafer, and also make a copy dxf of just this chip with dicing border included
 reflectionQubit01.save(w,drawCopyDXF=True,dicingBorder=True)
 
 for i in range(8,16):
