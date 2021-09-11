@@ -307,7 +307,7 @@ class RoundRect(SolidPline):
 
     def __init__(self, insert, width, height, radius, roundCorners=[1,1,1,1],
                  halign=const.LEFT, valign=const.BOTTOM,
-                 hflip=False, vflip = False,**kwargs):
+                 hflip=False, vflip = False,ptDensity=120,**kwargs):
         self.width = abs(float(width))
         self.height = abs(float(height))
         self.radius = abs(float(radius))
@@ -319,6 +319,8 @@ class RoundRect(SolidPline):
         
         #boolean array with corresponding to which corners to round
         self.roundCorners=roundCorners
+        
+        self.ptDensity = ptDensity
         
         #make all corners square if radius is zero
         if self.radius <=0:
@@ -337,7 +339,7 @@ class RoundRect(SolidPline):
         
         for i,sqpt in enumerate(square_points):
             if self.roundCorners[i]:
-                for p in cornerRound(sqpt, quadrants[i], self.radius,clockwise=False):
+                for p in cornerRound(sqpt, quadrants[i], self.radius,clockwise=False,ptDensity=self.ptDensity):
                     points.append(self._get_flipped_point(vadd(align_vector,p)))
             else:
                 points.append(self._get_flipped_point(vadd(align_vector,sqpt)))

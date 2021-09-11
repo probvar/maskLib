@@ -80,8 +80,8 @@ def JellyfishResonator(chip,structure,width,height,l_ind=None,tiny_cap=False,no_
         #cover the entire area where the capacitor would be
         #chip.add(dxf.rectangle(struct().start,2*s_cap+w_cap,width - (w_cap+2*s_cap)-w_ind,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
         s_0 = struct().cloneAlong(distance=0)
-        CPW_stub_open(chip,s_0,w=w_ind,s=(width - (w_cap+2*s_cap)-w_ind)/2,r_ins=w_ind/2,length=2*s_cap+w_cap-w_ind,r_out=0,flipped=True)
-        CPW_straight(chip,s_0,w=w_ind,s=(width - (w_cap+2*s_cap)-w_ind)/2,length=w_ind)
+        CPW_stub_open(chip,s_0,w=w_ind,s=(width - (w_cap+2*s_cap)-w_ind)/2,r_ins=w_ind/2,length=2*s_cap+w_cap-w_ind,r_out=0,flipped=True,**kwargs)
+        CPW_straight(chip,s_0,w=w_ind,s=(width - (w_cap+2*s_cap)-w_ind)/2,length=w_ind,**kwargs)
     else:
         chip.add(dxf.rectangle(struct().start,s_cap,max((width - 2*(w_cap+2*s_cap)) * (not tiny_cap),w_ind+2*s_cap),valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
     
@@ -383,6 +383,129 @@ def CingularResonator(chip,structure,l_ind,w_ind=3,w_cap=None,s_cap=None,w_bridg
     Strip_bend(chip, s_l,CCW=False,angle=270,radius=r_out,bgcolor=bgcolor,**kwargs)
     Strip_bend(chip, s_l,CCW=True,angle=90,radius=r_ins,bgcolor=bgcolor,**kwargs)
     
+    if r_bridge >0:
+        Strip_stub_open(chip,s_r,r_out=r_bridge)
+        Strip_stub_open(chip,s_l,r_out=r_bridge)
+        
+    Strip_stub_short(chip,s_r,r_ins=r_taper,w=l_ind,flipped=True,**kwargs)
+    Strip_stub_short(chip,s_l,r_ins=r_taper,w=l_ind,flipped=True,**kwargs)
+    Strip_straight(chip,s_r,(w_taper-w_ind)/2.,w=l_ind,**kwargs)
+    Strip_straight(chip,s_l,(w_taper-w_ind)/2.,w=l_ind,**kwargs)
+    
+def SierpinskiResonator(chip,structure,l_ind,w_ind=3,recursions=2,w_cap=None,s_cap=None,w_bridge=None,r_bridge=None,w_taper=6,l_taper=None,r_taper=None,ralign=const.BOTTOM,bgcolor=None,debug=False,**kwargs):
+    '''
+    Draws a resonator following a modified sierpinski curve. 
+    l_ind: inductor length
+    w_ind: inductor width
+    w_cap: equivalent to the fillet radius of inner metal
+    s_cap: gap to ground
+    w_bridge: overrides overall width of inductor bridge (must satisfy 2*r_bridge+w_taper <= w_bridge)
+    r_bridge: overrides flare-out radius of inductor bridge (must satisfy 2*r_bridge + 2*l_taper+l_ind <= s_cap)
+    w_taper: width of wide section of inductor
+    l_taper: set to a length to override inductor-bridge contact rounding with a taper function (must satisfy 2*l_taper+l_ind <= s_cap)
+    r_taper: overrides the inductor-bridge contact rounding radius (must satisfy 2*r_taper+w_ind <= w_taper && 2*r_taper+l_ind <= s_cap)
+    '''
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+    if w_cap is None:
+        try:
+            w_cap = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33mw not defined in ',chip.chipID,'!\x1b[0m')
+    if s_cap is None:
+        try:
+            s_cap = struct().defaults['s']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+    #assign manual inputs but override dumb inputs       
+    l_ind = min(s_cap,l_ind)
+    if l_taper is not None and 2*l_taper + l_ind <= s_cap:
+        r_taper = 0 #don't round the contact
+    else:
+        #set l_taper manually, and round the contact
+        l_taper = max(min((s_cap-l_ind)/2.0,w_taper/2),0)#default to w_taper/2
+        if r_taper is None: r_taper = l_taper #default to l_taper
+        r_taper = max(min(r_taper,l_taper,(w_taper-w_ind)/2.0),0)
+    
+    if w_bridge is not None and w_bridge >= w_taper:
+        #w_bridge specified, constrain r_bridge
+        if r_bridge is None: r_bridge = (s_cap-l_ind-2*l_taper)/2.0 #default to max space
+        r_bridge = max(min(r_bridge,(s_cap-l_ind-2*l_taper)/2.0,(w_bridge-w_taper)/2.0),0)
+    else:
+        #w_bridge not specified.
+        r_bridge = max((s_cap-l_ind-2*l_taper)/2.0,0)
+        w_bridge = w_taper+2*r_bridge
+    
+    #internal variables
+    r_0 = 3*(w_cap/2 + s_cap/2)
+    
+    #by default the radius is defined as the inner radius
+    if ralign == const.MIDDLE:
+        dr = 0
+    elif ralign == const.TOP: #anchored at TOP
+        dr = -s_cap/2.
+    else:  # const.BOTTOM (anchored at BOTTOM)
+        dr = s_cap/2.
+        
+    #determine effective radius
+    r_eff = r_0 * (2**int(recursions))/(2**(int(recursions)+1)-1)
+
+    #debug
+    if debug:
+        chip.add(dxf.rectangle(struct().getPos(distance=(dr+s_cap/2)), 2*r_0, 2*r_0+w_bridge,valign=const.MIDDLE,rotation=struct().direction,layer='FRAME'))
+    
+    #define sub-structures
+    offset=s_cap/2 + r_0 - r_0 /(2**(int(recursions)+1)-1)
+    struct().shiftPos(offset)
+    s_r = struct().cloneAlong((0,w_bridge/2),newDirection=90,defaults={'w':s_cap})
+    s_l = struct().cloneAlong((0,-w_bridge/2),newDirection=-90,defaults={'w':s_cap})
+    
+    #draw center, left right arms
+    chip.add(dxf.rectangle(struct().start, s_cap, w_bridge,valign=const.MIDDLE,halign=const.CENTER,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
+    
+    #subfunctions, defined by right hand side (CCW0=True)
+    def vertex_out(structure,CCW0,radius,count=0):
+        if radius-dr<=0 or radius+dr<=0:    #abort if curve would be too tight
+            count=0
+        if count <= 0:  # The base case
+            #draw curve
+            Strip_bend(chip, structure,CCW=CCW0,radius=radius+dr,bgcolor=bgcolor,**kwargs)
+        else:
+            count -=1
+            vertex_ins(structure,CCW0,radius/2.0,count)
+            vertex_out(structure,CCW0,radius/2.0,count)
+            vertex_out(structure,CCW0,radius/2.0,count)
+            vertex_out(structure,CCW0,radius/2.0,count)
+            vertex_ins(structure,CCW0,radius/2.0,count)
+            
+    def vertex_ins(structure,CCW0,radius,count=0):
+        if radius-dr<=0 or radius+dr<=0:    #abort if curve would be too tight
+            count=0
+        if count <=0:   #The base case
+            #draw curve
+            Strip_bend(chip, structure,CCW=not CCW0,radius=radius-dr,bgcolor=bgcolor,**kwargs)
+        else:
+            count -=1
+            vertex_ins(structure,CCW0,radius/2.0,count)
+            vertex_out(structure,CCW0,radius/2.0,count)
+            vertex_ins(structure,CCW0,radius/2.0,count)
+    
+    #0th order is square
+    vertex_out(s_r,CCW0=True,radius=r_eff,count=recursions)
+    vertex_out(s_r,CCW0=True,radius=r_eff,count=recursions)
+    
+    vertex_out(s_l,CCW0=False,radius=r_eff,count=recursions)
+    vertex_out(s_l,CCW0=False,radius=r_eff,count=recursions)
+    
+    
+    #draw inductor bridge
     if r_bridge >0:
         Strip_stub_open(chip,s_r,r_out=r_bridge)
         Strip_stub_open(chip,s_l,r_out=r_bridge)
