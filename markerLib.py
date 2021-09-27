@@ -55,5 +55,5 @@ def MarkerCross(w,pos,size=(200,200),linewidth=80,bgcolor=None,layer=None,chipCe
         except:
             print('does not have centered argument')
     w.add(dxf.rectangle(pos,size[0],linewidth,valign=const.MIDDLE,halign=const.CENTER,bgcolor=bgcolor,layer=layer,**kwargStrip(kwargs)))
-    w.add(dxf.rectangle(vadd(pos,(0,linewidth/2)),linewidth,size[1]/2-linewidth/2,valign=const.BOTTOM,halign=const.CENTER,bgcolor=bgcolor,layer=layer,**kwargStrip(kwargs)))
-    w.add(dxf.rectangle(vadd(pos,(0,-linewidth/2)),linewidth,size[1]/2-linewidth/2,valign=const.TOP,halign=const.CENTER,bgcolor=bgcolor,layer=layer,**kwargStrip(kwargs)))
+    w.add(dxf.rectangle(vadd(pos,(0,linewidth/2)),linewidth,size[1]/2-linewidth/2,valign=const.TOP,halign=const.CENTER,bgcolor=bgcolor,layer=layer,**kwargStrip(kwargs)))
+    w.add(dxf.rectangle(vadd(pos,(0,-linewidth/2)),linewidth,size[1]/2-linewidth/2,valign=const.BOTTOM,halign=const.CENTER,bgcolor=bgcolor,layer=layer,**kwargStrip(kwargs)))

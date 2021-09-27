@@ -617,6 +617,9 @@ class Structure:
         localPos = vsub(pos,self.last)
         return rotate_2d(localPos,-math.radians(self.last_direction))
     
+    def clone(self,defaults=None):
+        return Structure(self.chip,start=self.start,direction=self.direction,defaults=defaults is not None and defaults or self.defaults)
+    
     def cloneAlong(self,vector=None,distance=None,angle=0,newDirection=0,defaults=None):
         return Structure(self.chip,start=self.getPos(vector=vector,distance=distance,angle=angle),direction=self.direction+newDirection,defaults=defaults is not None and defaults or self.defaults)
     
