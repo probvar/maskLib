@@ -897,23 +897,7 @@ def CPW_wiggles(chip,structure,length=None,nTurns=None,maxWidth=None,CCW=True,st
         except KeyError:
             print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
             return
-    '''
-    #prevent dumb entries
-    if nTurns is None:
-        nTurns = 1
-    elif nTurns < 1:
-        nTurns = 1
-    #is length constrained?
-    if length is not None:
-        if nTurns is None:
-            nTurns = 1
-        h = (length - (((start_bend+stop_bend)/2+2*nTurns)*math.pi - 2))/(4*nTurns)
-        #is width constrained?
-        if maxWidth is not None:
-            while h>max(maxWidth,radius):
-                nTurns = nTurns+1
-                h = (length - (((start_bend+stop_bend)/2+2*nTurns)*math.pi - 2))/(4*nTurns)
-    '''
+    
     params = wiggle_calc(chip,structure,length,nTurns,maxWidth,None,start_bend,stop_bend,w,s,radius,**kwargs)
     [nTurns,h,length,maxWidth]=[params[key] for key in ['nTurns','h','length','maxWidth']]
     if (length is None) or (h is None) or (nTurns is None):
@@ -963,23 +947,7 @@ def Strip_wiggles(chip,structure,length=None,nTurns=None,maxWidth=None,CCW=True,
         except KeyError:
             print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
             return
-    '''
-    #prevent dumb entries
-    if nTurns is None:
-        nTurns = 1
-    elif nTurns < 1:
-        nTurns = 1
-    #is length constrained?
-    if length is not None:
-        if nTurns is None:
-            nTurns = 1
-        h = (length - (((start_bend+stop_bend)/2+2*nTurns)*math.pi - 2))/(4*nTurns)
-        #is width constrained?
-        if maxWidth is not None:
-            while h>max(maxWidth,radius):
-                nTurns = nTurns+1
-                h = (length - (((start_bend+stop_bend)/2+2*nTurns)*math.pi - 2))/(4*nTurns)
-    '''
+    
     params = wiggle_calc(chip,structure,length,nTurns,maxWidth,None,start_bend,stop_bend,w,0,radius,**kwargs)
     [nTurns,h,length,maxWidth]=[params[key] for key in ['nTurns','h','length','maxWidth']]
     if (h is None) or (nTurns is None):
@@ -1039,33 +1007,7 @@ def Inductor_wiggles(chip,structure,length=None,nTurns=None,maxWidth=None,Width=
             s = struct().defaults['s']
         except KeyError:
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
-    '''
-    #prevent dumb entries
-    if nTurns is None:
-        nTurns = 1
-    elif nTurns < 1:
-        nTurns = 1
-    #is length constrained?
-    if length is not None:
-        if nTurns is None:
-            nTurns = 1
-        h = (length - (((start_bend+stop_bend)/2+2*nTurns)*math.pi - 2))/(4*nTurns)
-        #is width constrained?
-        if Width is not None:
-            #maxWidth corresponds to the wiggle width, while Width corresponds to the total width filled
-            if maxWidth is not None:
-                maxWidth = min(maxWidth,Width)
-            else:
-                maxWidth = Width
-            while h+radius+w/2>maxWidth:
-                nTurns = nTurns+1
-                h = (length - (((start_bend+stop_bend)/2+2*nTurns)*math.pi - 2))/(4*nTurns)
-    else: #length is not contrained
-        h= maxWidth-radius-w/2
-    if h < radius:
-        print('\x1b[33mWarning:\x1b[0m Wiggles too tight. Adjusting length')
-    h = max(h,radius)
-    '''
+
     if pad_to_width is None and Width is not None:
         pad_to_width = True
     params = wiggle_calc(chip,structure,length,nTurns,maxWidth,Width,start_bend,stop_bend,w,0,radius,**kwargs)
