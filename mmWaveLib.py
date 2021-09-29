@@ -76,7 +76,7 @@ class VivaldiTaperChipReflect(VivaldiTaperChip):
 # Slot (same as strip) functions
 # ===============================================================================
 
-def Slot_vivaldi_taper(chip,structure,length=870,w0=1270,w1=None,overhang=70,x=0.5,ptDensity=100,bgcolor=None,**kwargs): #note: uses CPW conventions
+def Slot_vivaldi_taper(chip,structure,length=870,s0=1270,s1=None,overhang=70,x=0.5,ptDensity=100,bgcolor=None,**kwargs): #note: uses CPW conventions
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -84,24 +84,32 @@ def Slot_vivaldi_taper(chip,structure,length=870,w0=1270,w1=None,overhang=70,x=0
             return chip.structure(structure)
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
-    if w0 is None:
+    if s0 is None:
         try:
-            w0 = struct().defaults['w']
+            s0 = struct().defaults['s']
         except KeyError:
+            try:
+                s0 = struct().defaults['w']
+            except KeyError:
+                print('\x1b[33mw not defined in ',chip.chipID,'!\x1b[0m')
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
-    if w1 is None:
+    if s1 is None:
         try:
-            w1 = struct().defaults['w']
+            s1 = struct().defaults['s']
         except KeyError:
+            try:
+                s1 = struct().defaults['w']
+            except KeyError:
+                print('\x1b[33mw not defined in ',chip.chipID,'!\x1b[0m')
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')   
-    chip.add(SkewRect(struct().start,overhang,w0+2*overhang,(0,0),w0,halign=const.RIGHT,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+    chip.add(SkewRect(struct().start,overhang,s0+2*overhang,(0,0),s0,halign=const.RIGHT,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
     chip.add(SolidPline(struct().start,rotation=struct().direction,bgcolor=bgcolor,
-                       points=[(t*length,(w0/2-w1/2)*math.sqrt((t**(1/x))*(2-t**(1/x)))-w0/2) for t in np.arange(0,1+1/ptDensity,1/ptDensity)]+
-                       [((1-t)*length,w0/2-(w0/2-w1/2)*math.sqrt(((1-t)**(1/x))*(2-(1-t)**(1/x)))) for t in np.arange(0,1+1/ptDensity,1/ptDensity)],
+                       points=[(t*length,(s0/2-s1/2)*math.sqrt((t**(1/x))*(2-t**(1/x)))-s0/2) for t in np.arange(0,1+1/ptDensity,1/ptDensity)]+
+                       [((1-t)*length,s0/2-(s0/2-s1/2)*math.sqrt(((1-t)**(1/x))*(2-(1-t)**(1/x)))) for t in np.arange(0,1+1/ptDensity,1/ptDensity)],
                        solidFillQuads=True,**kwargs),structure=structure,length=length)
     
     
-def Slot_straight(chip,structure,length,w=None,bgcolor=None,**kwargs): #note: uses CPW conventions
+def Slot_straight(chip,structure,length,s=None,bgcolor=None,**kwargs): #note: uses CPW conventions
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -109,20 +117,24 @@ def Slot_straight(chip,structure,length,w=None,bgcolor=None,**kwargs): #note: us
             return chip.structure(structure)
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
-    if w is None:
+    if s is None:
         try:
-            w = struct().defaults['w']
+            s = struct().defaults['s']
         except KeyError:
+            try:
+                s = struct().defaults['w']
+            except KeyError:
+                print('\x1b[33mw not defined in ',chip.chipID,'!\x1b[0m')
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     
-    chip.add(dxf.rectangle(struct().start,length,w,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)),structure=structure,length=length)
+    chip.add(dxf.rectangle(struct().start,length,s,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)),structure=structure,length=length)
 
 
 # ===============================================================================
 # Inverse CPS function definitions
 # ===============================================================================
 
-def SlotToCPS_taper(chip,structure,offset,slot_length=400,slot_w0=1270,slot_w1=None,x=0.5,ptDensity=100,bgcolor=None,**kwargs):
+def SlotToCPS_taper(chip,structure,offset,slot_length=400,slot_s0=1270,slot_s1=None,x=0.5,ptDensity=100,bgcolor=None,**kwargs):
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -130,25 +142,29 @@ def SlotToCPS_taper(chip,structure,offset,slot_length=400,slot_w0=1270,slot_w1=N
             return chip.structure(structure)
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
-    if slot_w0 is None:
+    if slot_s0 is None:
         try:
-            slot_w0 = struct().defaults['w']
+            slot_s0 = struct().defaults['s']
         except KeyError:
+            try:
+                slot_s0 = struct().defaults['w']
+            except KeyError:
+                print('\x1b[33mw not defined in ',chip.chipID,'!\x1b[0m')
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
-    if slot_w1 is None:
+    if slot_s1 is None:
         try:
-            slot_w1 = struct().defaults['w']+2*struct().defaults['s']
+            slot_s1 = struct().defaults['w']+2*struct().defaults['s']
         except KeyError:
             print('\x1b[33mw or s not defined in ',chip.chipID,'!\x1b[0m')
             
     Slot_straight(chip, struct(), offset, bgcolor=bgcolor,**kwargs)
     #lower
     chip.add(SolidPline(struct().start,rotation=struct().direction,bgcolor=bgcolor,
-                       points=[(0,-slot_w0/2)]+[((t-1)*slot_length,-slot_w0/2+(slot_w0/2-slot_w1/2)*math.sqrt((t**(1/x))*(2-t**(1/x)))) for t in np.arange(0,1+1/ptDensity,1/ptDensity)],
+                       points=[(0,-slot_s0/2)]+[((t-1)*slot_length,-slot_s0/2+(slot_s0/2-slot_s1/2)*math.sqrt((t**(1/x))*(2-t**(1/x)))) for t in np.arange(0,1+1/ptDensity,1/ptDensity)],
                        **kwargs))
     #upper
     chip.add(SolidPline(struct().start,rotation=struct().direction,bgcolor=bgcolor,
-                       points=[(0,slot_w0/2)]+[((t-1)*slot_length,slot_w0/2-(slot_w0/2-slot_w1/2)*math.sqrt((t**(1/x))*(2-t**(1/x)))) for t in np.arange(0,1+1/ptDensity,1/ptDensity)],
+                       points=[(0,slot_s0/2)]+[((t-1)*slot_length,slot_s0/2-(slot_s0/2-slot_s1/2)*math.sqrt((t**(1/x))*(2-t**(1/x)))) for t in np.arange(0,1+1/ptDensity,1/ptDensity)],
                        **kwargs),structure=structure,length=slot_length)
     
 
