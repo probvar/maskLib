@@ -40,7 +40,7 @@ class VivaldiTaperChip(m.Chip):
                  l_waveguide=870,h_waveguide=1270,r_waveguide=400,
                  slot_width=2270,slot_height=2110,r_slot=400,**kwargs):
         m.Chip.__init__(self,wafer,chipID,layer)
-        self.defaults = {'w':80,'radius':25,'r_out':0,'r_ins':0}
+        self.defaults = {'s':80,'radius':25,'r_out':0,'r_ins':0}
         if defaults is not None:
             #self.defaults = defaults.copy()
             for d in defaults:
@@ -80,6 +80,8 @@ def Slot_vivaldi_taper(chip,structure,length=870,s0=1270,s1=None,overhang=70,x=0
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if bgcolor is None:
@@ -104,8 +106,8 @@ def Slot_vivaldi_taper(chip,structure,length=870,s0=1270,s1=None,overhang=70,x=0
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')   
     chip.add(SkewRect(struct().start,overhang,s0+2*overhang,(0,0),s0,halign=const.RIGHT,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
     chip.add(SolidPline(struct().start,rotation=struct().direction,bgcolor=bgcolor,
-                       points=[(t*length,(s0/2-s1/2)*math.sqrt((t**(1/x))*(2-t**(1/x)))-s0/2) for t in np.arange(0,1+1/ptDensity,1/ptDensity)]+
-                       [((1-t)*length,s0/2-(s0/2-s1/2)*math.sqrt(((1-t)**(1/x))*(2-(1-t)**(1/x)))) for t in np.arange(0,1+1/ptDensity,1/ptDensity)],
+                       points=[(t*length,(s0/2-s1/2)*math.sqrt((t**(1/x))*(2-t**(1/x)))-s0/2) for t in np.linspace(0., 1.,ptDensity, endpoint=True)]+
+                       [((1-t)*length,s0/2-(s0/2-s1/2)*math.sqrt(((1-t)**(1/x))*(2-(1-t)**(1/x)))) for t in np.linspace(0., 1.,ptDensity, endpoint=True)],
                        solidFillQuads=True,**kwargs),structure=structure,length=length)
     
     
@@ -113,6 +115,8 @@ def Slot_straight(chip,structure,length,s=None,bgcolor=None,**kwargs): #note: us
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if bgcolor is None:
@@ -134,10 +138,12 @@ def Slot_straight(chip,structure,length,s=None,bgcolor=None,**kwargs): #note: us
 # Inverse CPS function definitions
 # ===============================================================================
 
-def SlotToCPS_taper(chip,structure,offset,slot_length=400,slot_s0=1270,slot_s1=None,x=0.5,ptDensity=100,bgcolor=None,**kwargs):
+def SlotToCPS_taper(chip,structure,offset,slot_length=400,slot_s0=1270,slot_s1=None,x=0.5,slot_bevel=350,ptDensity=100,bgcolor=None,**kwargs):
     def struct():
         if isinstance(structure,m.Structure):
             return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
     if bgcolor is None:
@@ -153,19 +159,62 @@ def SlotToCPS_taper(chip,structure,offset,slot_length=400,slot_s0=1270,slot_s1=N
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     if slot_s1 is None:
         try:
-            slot_s1 = struct().defaults['w']+2*struct().defaults['s']
+            slot_s1 = 2*struct().defaults['w']+struct().defaults['s']
         except KeyError:
             print('\x1b[33mw or s not defined in ',chip.chipID,'!\x1b[0m')
             
     Slot_straight(chip, struct(), offset, bgcolor=bgcolor,**kwargs)
+    chip.add(RoundRect(struct().getPos((0,slot_s0/2)),slot_length,slot_bevel,slot_bevel*0.999,hflip=True,roundCorners=[0,0,1,0],rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+    chip.add(RoundRect(struct().getPos((0,-slot_s0/2)),slot_length,slot_bevel,slot_bevel*0.999,valign=const.TOP,hflip=True,roundCorners=[0,1,0,0],rotation=struct().direction,bgcolor=bgcolor,**kwargs))
     #lower
     chip.add(SolidPline(struct().start,rotation=struct().direction,bgcolor=bgcolor,
-                       points=[(0,-slot_s0/2)]+[((t-1)*slot_length,-slot_s0/2+(slot_s0/2-slot_s1/2)*math.sqrt((t**(1/x))*(2-t**(1/x)))) for t in np.arange(0,1+1/ptDensity,1/ptDensity)],
+                       points=[(0,-slot_s0/2)]+[((t-1)*slot_length,-slot_s0/2+(slot_s0/2-slot_s1/2)*math.sqrt((t**(1/x))*(2-t**(1/x)))) for t in np.linspace(0., 1.,ptDensity, endpoint=True)],
                        **kwargs))
     #upper
     chip.add(SolidPline(struct().start,rotation=struct().direction,bgcolor=bgcolor,
-                       points=[(0,slot_s0/2)]+[((t-1)*slot_length,slot_s0/2-(slot_s0/2-slot_s1/2)*math.sqrt((t**(1/x))*(2-t**(1/x)))) for t in np.arange(0,1+1/ptDensity,1/ptDensity)],
-                       **kwargs),structure=structure,length=slot_length)
+                       points=[(0,slot_s0/2)]+[((t-1)*slot_length,slot_s0/2-(slot_s0/2-slot_s1/2)*math.sqrt((t**(1/x))*(2-t**(1/x)))) for t in np.linspace(0., 1.,ptDensity, endpoint=True)],
+                       **kwargs))
+
+def PalmFrondSlits(chip,structure,w_notch=60,cutoff_outer=50,cutoff_inner=12,notch_s0=1270,notch_s1=None,notch_s2=-1,notch_length=400,x=0.5,ptDensity=100,bgcolor=None,**kwargs):
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+    if notch_s0 is None:
+        try:
+            notch_s0 = struct().defaults['s']
+        except KeyError:
+            try:
+                notch_s0 = struct().defaults['w']
+            except KeyError:
+                print('\x1b[33mw not defined in ',chip.chipID,'!\x1b[0m')
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+    if notch_s1 is None:
+        try:
+            notch_s1 = 2*struct().defaults['w']+struct().defaults['s']
+        except KeyError:
+            print('\x1b[33mw or s not defined in ',chip.chipID,'!\x1b[0m')
+    #determine start, stop points
+    t_start_1=max((cutoff_outer)/(notch_s0/2-notch_s2/2),0.)
+    t_stop_1=min((notch_s0/2-cutoff_inner/2)/(notch_s0/2-notch_s2/2),1.)
+    t_start_2=min((notch_s0/2-cutoff_inner/2)/(notch_s0/2-notch_s1/2),1.)
+    t_stop_2=max((cutoff_outer)/(notch_s0/2-notch_s1/2),0.)
+        
+    #upper
+    chip.add(SolidPline(struct().start,rotation=struct().direction,bgcolor=bgcolor,
+                       points=[(notch_length*(1-math.sqrt(1-t**2))**x,notch_s0/2-(notch_s0/2-notch_s2/2)*t) for t in np.linspace(t_start_1, t_stop_1,ptDensity, endpoint=True)]+
+                       [(w_notch+(notch_length-w_notch)*(1-math.sqrt(1-t**2))**x,notch_s0/2-(notch_s0/2-notch_s1/2)*t) for t in np.linspace(t_start_2, t_stop_2, ptDensity, endpoint=True)],
+                       solidFillQuads=True,**kwargs))
+    #lower
+    chip.add(SolidPline(struct().start,rotation=struct().direction,bgcolor=bgcolor,
+                       points=[(notch_length*(1-math.sqrt(1-t**2))**x,-notch_s0/2+(notch_s0/2-notch_s2/2)*t) for t in np.linspace(t_start_1, t_stop_1,ptDensity, endpoint=True)]+
+                       [(w_notch+(notch_length-w_notch)*(1-math.sqrt(1-t**2))**x,-notch_s0/2+(notch_s0/2-notch_s1/2)*t) for t in np.linspace(t_start_2, t_stop_2, ptDensity, endpoint=True)],
+                       solidFillQuads=True,**kwargs))
     
 
 # ===============================================================================
