@@ -179,6 +179,17 @@ class Wafer:
         if layerName not in self.layerNames:
             self.layerNames.append(layerName)
             self.layerColors[layerName]=layerColor
+
+    def addLayerAt(self, layerName, layerColor, layerNumber=-1):
+        assert layerName not in self.layerNames, f"Layer {layerName} already exists"
+        numLayers = len(self.layerNames)
+        if layerNumber == -1: layerNumber = numLayers
+        assert layerNumber >= numLayers, f"Layer number {layerNumber} already exists"
+        fillerLayers = [f'{layerNum}' for layerNum in range(numLayers, layerNumber)]
+        for fillerLayerName in fillerLayers:
+            self.layerNames.append(fillerLayerName)
+            self.layerColors[fillerLayerName]=-1 # filler layers are off
+        self.addLayer(layerName, layerColor)
     
     def setDefaultChip(self,chip=None):
         # update default chip and chip list
@@ -289,11 +300,12 @@ class Wafer:
         self.drawing.add_vport('*ACTIVE',ucs_icon=0,circle_zoom=1000,grid_on=1,center_point=(0,0),aspect_ratio=2*(max(self.chipX,self.chipY)))
     
     def SetupLayers(self,layers):
-        #format: ['layername',color_int]
+        #format: ['layername',color_int,layer_num (optional)]
         #first layer is default
         if self.multiLayer:
             for l in layers:
-                self.addLayer(l[0], l[1])
+                if len(l) == 2: l.append(-1)
+                self.addLayerAt(*l)
             self.defaultLayer=layers[0][0]
             
     
