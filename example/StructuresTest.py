@@ -52,8 +52,7 @@ class FancyChip(m.Chip7mm):
         for s in self.structures:
             self.add(dxf.rectangle(s.start,80,20,rotation=s.direction,layer='FRAME',halign = const.RIGHT,valign = const.MIDDLE))
             
-        #self.add(dxf.rectangle(self.getStart(3),200,40,rotation = self.getDir(3),valign = const.MIDDLE),structure=3,length=200,angle=-90)
-        #self.add(dxf.rectangle(self.getStart(3),200,40,rotation = self.getDir(3),valign = const.MIDDLE),structure=3,length=200)
+        #test strip functions
         Strip_stub_open(self, 3,flipped=True)
         Strip_bend(self, 3,angle=20,CCW=False)
         Strip_straight(self, 3,20)
@@ -63,6 +62,16 @@ class FancyChip(m.Chip7mm):
         Strip_stub_open(self, 3, w=40,flipped=True)
         Strip_straight(self,3,40,w=40)
         Strip_stub_open(self, 3, w=40)
+        Strip_stub_short(self,3,w=2,extra_straight_section=True,flipped=True)
+        Strip_wiggles(self,3,length=None,nTurns=5,maxWidth=200,w=2,radius=25)
+        
+        #test twopincpw functions
+        TwoPinCPW_straight(self, 3, 40, s_ins=2,Width=250)
+        s3 = self.structures[3].cloneAlong()
+        Inductor_wiggles(self, 3, w=2+2*10,nTurns=2,maxWidth=200,radius=24,Width=250)
+        Strip_wiggles(self, s3, w=2,nTurns=2,maxWidth=200-10,radius=24)
+        #now do the same with TwoPinCPW_wiggles
+        TwoPinCPW_wiggles(self,s3,s_ins=2,nTurns=2,maxWidth=200,radius=24,Width=250)
         
         #launcher subcomponents
         CPW_stub_open(self,1,r_out=100,r_ins=50,w=300,s=160,flipped=True)
@@ -92,12 +101,12 @@ class FancyChip(m.Chip7mm):
         
         CPW_bend(self,1,angle=20,radius=200)
         CPW_straight(self,1,200,10,5)
-        CPW_wiggles(self,1,length=3750,maxWidth=200,CCW=False)
+        CPW_wiggles(self,1,length=3750,maxWidth=270,CCW=False)
         CPW_straight(self,1,200)
         CPW_bend(self,1,angle=55,CCW=False,radius=200)
-        CPW_wiggles(self,1,length=2350,maxWidth=300,CCW=False,stop_bend=False)
-        CPW_wiggles(self,1,length=1205,maxWidth=100,CCW=False,stop_bend=False,start_bend=False)
-        CPW_wiggles(self,1,length=2350,maxWidth=300,CCW=False,start_bend=False,stop_bend=False)
+        CPW_wiggles(self,1,length=2350,maxWidth=370,CCW=False,stop_bend=False)
+        CPW_wiggles(self,1,length=1205,maxWidth=170,CCW=False,stop_bend=False,start_bend=False)
+        CPW_wiggles(self,1,length=2350,maxWidth=370,CCW=False,start_bend=False,stop_bend=False)
         CPW_straight(self,1,600)
         
         #s1 = m.Structure(self,start=self.structures[1].getLastPos((300,-50)),direction=self.structures[1].direction,defaults=self.defaults)
@@ -105,8 +114,8 @@ class FancyChip(m.Chip7mm):
         s2 = m.Structure(self,start=self.structures[1].getLastPos((300,-100)),direction=self.structures[1].direction,defaults=self.defaults)
         s3 = m.Structure(self,start=self.structures[1].getLastPos((300,-150)),direction=self.structures[1].direction,defaults=self.defaults)
         
-        CPW_wiggles(self,1,length=1200,maxWidth=200,start_bend=False,stop_bend=False)
-        CPW_wiggles(self,1,length=1200,maxWidth=200,radius=10,start_bend=False,stop_bend=True)
+        CPW_wiggles(self,1,length=1200,maxWidth=270,start_bend=False,stop_bend=False)
+        CPW_wiggles(self,1,length=1200,maxWidth=270,radius=10,start_bend=False,stop_bend=True)
         CPW_straight(self,1,20,s=195)
         #CPW_straight(self,1,200)
         Inductor_wiggles(self,1,length=200,Width=200,nTurns=10,radius=20,start_bend=True,stop_bend=False,pad_to_width=True)

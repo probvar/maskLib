@@ -40,20 +40,20 @@ def HiVisMarker09(dwg,xpos,ypos,number,width,bg=None,**kwargs):
 # ===============================================================================
 #  UTILITY FUNCTIONS  (Deprecated - use functions from masklib.utilities)
 # ===============================================================================
-def curveAB(a,b,clockwise,angleDeg,ptdensity):
+def curveAB(a,b,clockwise,angleDeg,ptDensity):
     #>>>>>>>> Deprecated, use utilities.curveAB instead <<<<<<<<<<
     
     #generate a segmented curve from A to B specified by angle. Point density = #pts / revolution
     #return list of points
     angle = math.radians(angleDeg)
-    segments = int(angle/(2*math.pi) *ptdensity)
+    segments = int(angle/(2*math.pi) *ptDensity)
     center = vadd(midpoint(a,b),vmul_scalar(rotate_2d(vsub(b,a),-clockwise*math.pi/2),0.5/math.tan(angle/2)))
     points = []
     for i in range(segments+1):
         points.append(vadd(center,rotate_2d(vsub(a,center),-clockwise*i*angle/segments)))
     return points
 
-def corner(vertex,quadrant,clockwise,L,ptdensity):
+def corner(vertex,quadrant,clockwise,L,ptDensity):
     #>>>>>>>> Deprecated, use utilities.cornerRound instead <<<<<<<<<<
     
     #quadrant corresponds to quadrants 1-4
@@ -61,7 +61,7 @@ def corner(vertex,quadrant,clockwise,L,ptdensity):
     ptA = vadd(vertex,rotate_2d((0,L),quadrant * math.pi/2))
     ptB = vadd(vertex,rotate_2d((0,L),(quadrant+1) * math.pi/2))
 
-    return clockwise>0 and curveAB(ptA,ptB,1,90,ptdensity) or curveAB(ptB,ptA,-1,90,ptdensity)
+    return clockwise>0 and curveAB(ptA,ptB,1,90,ptDensity) or curveAB(ptB,ptA,-1,90,ptDensity)
 
 def transformedQuadrants(UD=1,LR=1):
     #>>>>>>>> Deprecated, use utilities.transformedQuadrants instead <<<<<<<<<<
@@ -628,6 +628,9 @@ class Structure:
         #return local position from global position based on previous location and direction
         localPos = vsub(pos,self.last)
         return rotate_2d(localPos,-math.radians(self.last_direction))
+    
+    def clone(self,defaults=None):
+        return Structure(self.chip,start=self.start,direction=self.direction,defaults=defaults is not None and defaults or self.defaults)
     
     def cloneAlong(self,vector=None,distance=None,angle=0,newDirection=0,defaults=None):
         return Structure(self.chip,start=self.getPos(vector=vector,distance=distance,angle=angle),direction=self.direction+newDirection,defaults=defaults is not None and defaults or self.defaults)
