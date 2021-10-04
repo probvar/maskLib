@@ -495,7 +495,7 @@ class Chip:
         if wafer.frame:
             self.add(dxf.rectangle((0,0),self.width,self.height,layer=wafer.lyr('FRAME')))
     
-    def save(self,wafer,drawCopyDXF=False,dicingBorder=True):
+    def save(self,wafer,drawCopyDXF=False,dicingBorder=True,center=False):
         wafer.drawing.blocks.add(self.chipBlock)
         if drawCopyDXF:
             #make a copy DXF with only the chip
@@ -503,7 +503,7 @@ class Chip:
             #height and width don't matter since the next line copies all settings
             temp_wafer.copyPropertiesFrom(wafer)
             temp_wafer.drawing.blocks.add(self.chipBlock)
-            temp_wafer.initChipOnly()
+            temp_wafer.initChipOnly(center=center)
             if dicingBorder:
                 temp_wafer.DicingBorder()
             temp_wafer.setDefaultChip(self)
