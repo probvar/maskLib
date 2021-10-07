@@ -15,6 +15,8 @@ from dxfwrite.vector2d import vadd
 from dxfwrite.algebra import rotate_2d
 
 from maskLib.Entities import SolidPline, CurveRect, RoundRect, InsideCurve
+from maskLib.microwaveLib import Strip_straight, Strip_taper
+
 from maskLib.utilities import curveAB, kwargStrip
 
 import math
@@ -1218,3 +1220,59 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
                 rotate_2d((separation/2-jpadOverhang,
                    (jfingerl-jfingerex)*math.cos(rot)+leadw-jfingerw*math.sin(rot)/2),math.radians(struct().direction))
                 ],bgcolor=bgcolor,layer=JLAYER))
+
+
+def DolanJunction(
+    chip,structure,rotation=0,jfingerw=0.5,jfingerl=1.36,jpadTaper=2-1.36-0.140,
+    jgap=0.140,jpadl=10,jpadw=5,juc_wrap=0.0, outpadl=10,outpadw=5,
+    JANGLE=None, JLAYER=None,ULAYER=None,bgcolor=None,lincolnLabs=False,**kwargs):
+
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if bgcolor is None: #color for junction, not undercut
+        bgcolor = chip.wafer.bg()
+
+    #get layers from wafer
+    if JLAYER is None:
+        try:
+            JLAYER = chip.wafer.JLAYER
+        except AttributeError:
+            setupJunctionLayers(chip.wafer)
+            JLAYER = chip.wafer.JLAYER
+    if ULAYER is None:
+        try:
+            ULAYER = chip.wafer.ULAYER
+        except AttributeError:
+            setupJunctionLayers(chip.wafer)
+            ULAYER = chip.wafer.ULAYER
+
+    if JANGLE is None:
+        try:
+            JANGLE = chip.wafer.JANGLES[0] % 360
+        except AttributeError:
+            setupJunctionAngles(chip.wafer, [struct().direction])
+            JANGLE = chip.wafer.JANGLES[0] % 360
+    assert chip.wafer.JANGLES[0] % 180 == struct().direction % 180, 'Need Dolan junction to be in same direction as structure'
+
+    assert lincolnLabs, 'Not implemented for normal usage'
+    # Junction layer
+    Strip_straight(chip, struct(), length=jpadl, w=jpadw, layer=JLAYER)
+    if lincolnLabs: ucstruct = struct().clone() 
+    Strip_taper(chip, struct(), length=jpadTaper, w0=jpadw, w1=jfingerw, layer=JLAYER)
+    Strip_straight(chip, struct(), length=jfingerl, w=jfingerw, layer=JLAYER)
+
+    struct().shiftPos(jgap) # gap
+
+    Strip_straight(chip, struct(), length=outpadl, w=outpadw, layer=JLAYER)
+
+    # Undercut layer
+    Strip_taper(chip, ucstruct, length=jpadTaper, w0=jpadw, w1=jfingerw, layer=ULAYER)
+    Strip_straight(chip, ucstruct, length=jfingerl+jgap, w=jfingerw, layer=ULAYER)
+
+
+
