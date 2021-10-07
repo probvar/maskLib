@@ -97,7 +97,7 @@ def skewRect(corner,width,height,offset,newLength,edge=1,**kwargs):
 # ===============================================================================
 class Wafer:
 
-    def __init__(self,name,path,chipWidth,chipHeight,waferDiameter=50800,padding=2500,sawWidth=203.2,frame=True,solid=False,multiLayer=True,singleChipRow=False,singleChipColumn=False):
+    def __init__(self,name,path,chipWidth,chipHeight,waferDiameter=50800,padding=2500,sawWidth=203.2,frame=True,markers=True,solid=False,multiLayer=True,singleChipRow=False,singleChipColumn=False):
         # initialize drawing
         self.fileName = name
         self.path = path
@@ -115,14 +115,16 @@ class Wafer:
         self.chipX = chipWidth + sawWidth
         self.chipY = chipHeight + sawWidth
         self.frame = frame              #draw frame layer?
+        self.markers = markers
         self.solid = solid              #draw things solid?
         self.multiLayer = multiLayer    #draw in multiple layers?
         self.singleChipRow = singleChipRow #draw only one row of chips? (horizontal row)
         self.singleChipColumn = singleChipColumn #draw only one column of chips? (vertical column)
         
         # initialize default layers
-        self.layerColors = {'0':7} #colors corresponding to layers
         self.layerNames = ['0']
+        self.layerColors = {'0':7} #colors corresponding to layers
+        self.layerNums = {'0':0} #colors corresponding to layers
         self.defaultLayer = '0' #default layer to draw chips on
         
         # initialize private variables
@@ -133,7 +135,7 @@ class Wafer:
         
         
     # for changing wafer properties later
-    def setProperties(self,chipWidth,chipHeight,waferDiameter=50800,padding=2500,sawWidth=203.2,frame=True,solid=False,multiLayer=True):
+    def setProperties(self,chipWidth,chipHeight,waferDiameter=50800,padding=2500,sawWidth=203.2,frame=True,markers=True,solid=False,multiLayer=True):
         # set the basic properties of the wafer
         self.waferDiameter = waferDiameter
         self.padding = padding
@@ -141,6 +143,7 @@ class Wafer:
         self.chipY = chipWidth + sawWidth
         self.chipX = chipHeight + sawWidth
         self.frame = frame              #draw frame layer?
+        self.markers = markers
         self.solid = solid              #draw things solid?
         self.multiLayer = multiLayer    #draw in multiple layers?
     
@@ -152,10 +155,12 @@ class Wafer:
         self.chipY = wafer.chipY
         self.chipX = wafer.chipX
         self.frame = wafer.frame              #draw frame layer?
+        self.markers = wafer.markers
         self.solid = wafer.solid              #draw things solid?
         self.multiLayer = wafer.multiLayer    #draw in multiple layers?
         
         self.layerColors = wafer.layerColors
+        self.layerNums = wafer.layerNums
         self.layerNames = wafer.layerNames
         self.defaultLayer = wafer.defaultLayer 
         
@@ -179,16 +184,16 @@ class Wafer:
         if layerName not in self.layerNames:
             self.layerNames.append(layerName)
             self.layerColors[layerName]=layerColor
+            self.layerNums[layerName]=len(self.layerNames)-1
 
     def addLayerAt(self, layerName, layerColor, layerNumber=-1):
-        assert layerName not in self.layerNames, f"Layer {layerName} already exists"
+        if layerName in self.layerNames: return
         numLayers = len(self.layerNames)
         if layerNumber == -1: layerNumber = numLayers
-        assert layerNumber >= numLayers, f"Layer number {layerNumber} already exists"
+        if layerNumber < numLayers: return
         fillerLayers = [f'{layerNum}' for layerNum in range(numLayers, layerNumber)]
         for fillerLayerName in fillerLayers:
-            self.layerNames.append(fillerLayerName)
-            self.layerColors[fillerLayerName]=-1 # filler layers are off
+            self.addLayer(fillerLayerName, -1)
         self.addLayer(layerName, layerColor)
     
     def setDefaultChip(self,chip=None):
@@ -212,20 +217,22 @@ class Wafer:
             for i in range(len(self.chipPts)):
                 self.chips.append(self.defaultChip)
     
-    def init(self):
+    def init(self, FRAME_LAYER=['FRAME',8,-1], MARKER_LAYER=['MARKERS',5,-1]):
+        #self.frame and self.markers override presence/absence of FRAME_LAYER/MARKER_LAYER params
         #verify frame is off is multilayer is off
         self.frame = self.multiLayer and self.frame or 0
         #finish setup of DXF file
         if self.multiLayer:
             if self.frame:
-                self.addLayer('FRAME',8)
-            self.addLayer('MARKERS',5)
+                self.addLayerAt(*FRAME_LAYER)
+            if self.markers:
+                self.addLayerAt(*MARKER_LAYER)
         #add layers
         for layer in self.layerNames:
             self.drawing.add_layer(layer,color=self.layerColors[layer])
             
         #cache frame layer string
-        fr = self.lyr('FRAME')
+        fr = self.lyr(FRAME_LAYER)
         #draw wafer for debugging purposes
         if self.frame:
             self.drawing.add(dxf.circle(radius=self.waferDiameter/2,center=(0,0),layer=fr))
@@ -276,15 +283,17 @@ class Wafer:
         #setup the viewport
         self.drawing.add_vport('*ACTIVE',ucs_icon=0,circle_zoom=1000,grid_on=1,center_point=(0,0),aspect_ratio=2*(self.waferDiameter))
     
-    def initChipOnly(self,center=False):
+    def initChipOnly(self,center=False, FRAME_LAYER=['FRAME',8,-1], MARKER_LAYER=['MARKERS',5,-1]):
+        #self.frame and self.markers override presence/absence of FRAME_LAYER/MARKER_LAYER params
         #initialize drawing assuming we only want to draw a single chip
         #verify frame is off is multilayer is off
         self.frame = self.multiLayer and self.frame or 0
         #finish setup of DXF file
         if self.multiLayer:
             if self.frame:
-                self.addLayer('FRAME',8)
-            self.addLayer('MARKERS',5)
+                self.addLayerAt(*FRAME_LAYER)
+            if self.markers:
+                self.addLayerAt(*MARKER_LAYER)
         #add layers
         for layer in self.layerNames:
             self.drawing.add_layer(layer,color=self.layerColors[layer])
@@ -469,7 +478,7 @@ class Chip:
     #cached chip propoerties
     solid = 1
     frame = 1
-    def __init__(self,wafer,chipID,layer,structures=None,defaults=None):
+    def __init__(self,wafer,chipID,layer,structures=None,defaults=None, FRAME_NAME='FRAME'):
         self.wafer = wafer
         self.width = wafer.chipX - wafer.sawWidth
         self.height = wafer.chipY - wafer.sawWidth
@@ -493,9 +502,9 @@ class Chip:
             
         #add a debug frame for actual chip area
         if wafer.frame:
-            self.add(dxf.rectangle((0,0),self.width,self.height,layer=wafer.lyr('FRAME')))
+            self.add(dxf.rectangle((0,0),self.width,self.height,layer=wafer.lyr(FRAME_NAME)))
     
-    def save(self,wafer,drawCopyDXF=False,dicingBorder=True,center=False):
+    def save(self,wafer,drawCopyDXF=False,dicingBorder=True,center=False, FRAME_LAYER=['FRAME',8,-1], MARKER_LAYER=['MARKERS',5,-1]):
         wafer.drawing.blocks.add(self.chipBlock)
         if drawCopyDXF:
             #make a copy DXF with only the chip
@@ -503,7 +512,7 @@ class Chip:
             #height and width don't matter since the next line copies all settings
             temp_wafer.copyPropertiesFrom(wafer)
             temp_wafer.drawing.blocks.add(self.chipBlock)
-            temp_wafer.initChipOnly(center=center)
+            temp_wafer.initChipOnly(center=center, FRAME_LAYER=FRAME_LAYER, MARKER_LAYER=MARKER_LAYER)
             if dicingBorder:
                 temp_wafer.DicingBorder()
             temp_wafer.setDefaultChip(self)
