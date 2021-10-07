@@ -29,7 +29,7 @@ from maskLib.utilities import kwargStrip
 # lumped element resonators
 # ===============================================================================
 
-def JellyfishResonator(chip,structure,width,height,l_ind=None,tiny_cap=False,no_cap=False,w_cap=None,s_cap=None,r_cap=None,w_ind=3,r_ind=6,ialign=const.BOTTOM,nTurns=None,maxWidth=None,CCW=True,bgcolor=None,debug=False,**kwargs):
+def JellyfishResonator(chip,structure,width,height,l_ind=None,tiny_cap=False,no_cap=False,w_cap=None,s_cap=None,w_ind=3,r_ind=6,ialign=const.BOTTOM,nTurns=None,maxWidth=None,CCW=True,bgcolor=None,debug=False,**kwargs):
     #inductor params: wire width = w_ind, radius (sets pitch) = r_ind, total inductor wire length = l_ind. ialign determines where the inductor should align to, (TOP = bunch at capacitor)
     #capacitor params: wire width = w_cap, gap to ground = s_cap, nominal horseshoe bend radius = r_cap (). Width determines overall resonator width assuming jellyfish shape, height determines height of capacitor only
     def struct():
@@ -39,12 +39,6 @@ def JellyfishResonator(chip,structure,width,height,l_ind=None,tiny_cap=False,no_
             return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
-    if r_cap is None:
-        try:
-            r_cap = struct().defaults['radius']
-        except KeyError:
-            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
-            return
     if bgcolor is None:
         bgcolor = chip.wafer.bg()
     if w_cap is None:
@@ -59,8 +53,8 @@ def JellyfishResonator(chip,structure,width,height,l_ind=None,tiny_cap=False,no_
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     if nTurns is None:
         nTurns = wiggle_calc(chip,struct(),length=l_ind,maxWidth=maxWidth,Width=(width - 2*(w_cap+2*s_cap))/2,w=w_ind,radius=r_ind)['nTurns']
-    #override dumb inputs
-    r_cap=min(s_cap+w_cap/2,r_cap)
+    #hard-code r_cap
+    r_cap=s_cap+w_cap/2
     if height > 2*s_cap+w_cap:
         tiny_cap = False
     height = max(height,2*s_cap+w_cap)
@@ -170,7 +164,7 @@ def JellyfishResonator(chip,structure,width,height,l_ind=None,tiny_cap=False,no_
             CPW_straight(chip,s_0,inductor_pad,s=iwidth/2,**kwargs)
         elif ialign is const.MIDDLE:
             CPW_straight(chip,s_0,inductor_pad/2,s=iwidth/2,**kwargs)
-    Inductor_wiggles(chip,s_0,length=l_ind,maxWidth=maxWidth,Width=(iwidth+w_ind)/2,nTurns=nTurns,pad_to_width=True,CCW=CCW,bgcolor=bgcolor,**kwargs)
+    Inductor_wiggles(chip,s_0,length=l_ind,maxWidth=maxWidth,Width=(iwidth+w_ind)/2,nTurns=nTurns,pad_to_width=True,CCW=CCW,bgcolor=bgcolor,debug=debug,**kwargs)
     if inductor_pad > 0:
         if ialign is const.TOP:
             CPW_straight(chip,s_0,inductor_pad,s=iwidth/2,**kwargs)

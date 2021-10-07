@@ -391,7 +391,8 @@ def CPW_stub_open(chip,structure,length=0,r_out=None,r_ins=None,w=None,s=None,fl
             s = struct().defaults['s']
         except KeyError:
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
-    length = max(length,s)
+    if length==0:
+        length = max(length,s)
     if r_out is None:
         try:
             r_out = struct().defaults['r_out']
@@ -828,7 +829,7 @@ def CPW_directTo(chip,from_structure,to_structure,to_flipped=True,w=None,s=None,
 
 #Various wiggles (meander) definitions 
 
-def wiggle_calc(chip,structure,length=None,nTurns=None,maxWidth=None,Width=None,start_bend = True,stop_bend=True,w=None,s=None,radius=None,**kwargs):
+def wiggle_calc(chip,structure,length=None,nTurns=None,maxWidth=None,Width=None,start_bend = True,stop_bend=True,w=None,s=None,radius=None,debug=False,**kwargs):
     #figure out 
     def struct():
         if isinstance(structure,m.Structure):
@@ -858,7 +859,11 @@ def wiggle_calc(chip,structure,length=None,nTurns=None,maxWidth=None,Width=None,
         nTurns = 1
     elif nTurns < 1:
         nTurns = 1
-        
+    
+    #debug
+    if debug:
+        print('w=',w,' s=',s,' nTurns=',nTurns,' length=',length,' Width=',Width,' maxWidth=',maxWidth)
+    
     #is length constrained?
     if length is not None:
         if nTurns is None:
