@@ -11,7 +11,8 @@ from dxfwrite import const
 
 import maskLib.junctionLib as j
 from maskLib.Entities import RoundRect, InsideCurve
-from maskLib.microwaveLib import Strip_taper
+from maskLib.microwaveLib import CPW_stub_open, Strip_straight, Strip_bend
+from maskLib.junctionLib import DolanJunction, JContact_tab
 
 from maskLib.utilities import kwargStrip
 
@@ -246,4 +247,58 @@ def Hamburgermon(chip,pos,rotation=0,
     
     return centerPos,struct().direction
     
+def Elephantmon(
+    chip, structure, rotation=0, totalw=0, totall=0,
+    tpad_width=200, tpad_height=300, tpad_gap_gnd=50,
+    tpad_gap=100, rpad=10, **kwargs):
+
+    """
+    Generates an Elephantmon, which is similar to the Hamburgermon but does NOT use
+    an XOR layer and uses a Dolan junction. Additional params can be passed to
+    junctions used kwargs.
+    If totalw, totall are specified to be non-zero, tpad_width and tpad_height are
+        re-calculated based on tpad_gap and tpad_gap_gnd.
+    """
+    s = structure.clone()
+    s.direction += rotation
+
+    if totalw > 0:
+        tpad_width = totalw-2*tpad_gap_gnd
+    if totall > 0:
+        tpad_height = (totall-2*tpad_gap_gnd-tpad_gap)/2
     
+
+    s.shiftPos(tpad_width/2+tpad_gap_gnd)
+
+    s_right = s.clone()
+    s_right.direction += 90
+    CPW_stub_open(chip, s_right, tpad_gap/2, r_ins=rpad, w=tpad_width, s=tpad_gap_gnd, flipped=True)
+    JContact_tab(chip, s_right)
+
+    s_right = s.cloneAlongLast()
+    s_right.shiftPos(tpad_gap_gnd/2)
+    s_right.direction += 90
+    s_right.shiftPos(tpad_gap/2)
+    Strip_straight(chip, s_right, length=tpad_height-rpad, w=tpad_gap_gnd)
+    Strip_bend(chip, s_right, CCW=True, w=tpad_gap_gnd, radius=rpad+tpad_gap_gnd/2)
+    Strip_straight(chip, s_right, length=tpad_width-2*rpad, w=tpad_gap_gnd)
+    Strip_bend(chip, s_right, CCW=True, w=tpad_gap_gnd, radius=rpad+tpad_gap_gnd/2)
+    Strip_straight(chip, s_right, length=tpad_height-rpad, w=tpad_gap_gnd)
+
+    s_left = s.clone()
+    s_left.direction -= 90
+    CPW_stub_open(chip, s_left, tpad_gap/2, r_ins=rpad, w=tpad_width, s=tpad_gap_gnd, flipped=True)
+    JContact_tab(chip, s_left)
+
+    s_left = s.cloneAlongLast()
+    s_left.shiftPos(tpad_gap_gnd/2)
+    s_left.direction -= 90
+    s_left.shiftPos(tpad_gap/2)
+    Strip_straight(chip, s_left, length=tpad_height-rpad, w=tpad_gap_gnd)
+    Strip_bend(chip, s_left, CCW=False, w=tpad_gap_gnd, radius=rpad+tpad_gap_gnd/2)
+    Strip_straight(chip, s_left, length=tpad_width-2*rpad, w=tpad_gap_gnd)
+    Strip_bend(chip, s_left, CCW=False, w=tpad_gap_gnd, radius=rpad+tpad_gap_gnd/2)
+    Strip_straight(chip, s_left, length=tpad_height-rpad, w=tpad_gap_gnd)
+
+    s.direction -= 90
+    DolanJunction(chip, s, junctionl=tpad_gap, **kwargs)

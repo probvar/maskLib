@@ -1223,9 +1223,12 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
 
 
 def DolanJunction(
-    chip,structure,rotation=0,jfingerw=0.5,jfingerl=1.36,jpadTaper=2-1.36-0.140,
-    jgap=0.140,jpadl=10,jpadw=5,juc_wrap=0.0, outpadl=10,outpadw=5,
+    chip, structure, junctionl, jfingerw=0.5, rotation=0,
+    jarmw=3, jpadw=15, jpadl=20, jpadoverhang=5, # dimensions for contact tab overlap
+    jfingerl=1.36,jtaperl=2-1.36-0.140,jgap=0.140, # fixed for LL
     JANGLE=None, JLAYER=None,ULAYER=None,bgcolor=None,lincolnLabs=False,**kwargs):
+    # centered such that taper starts at current position
+    # junctionl is the gap distance we wish to cover
 
     def struct():
         if isinstance(structure,m.Structure):
@@ -1234,8 +1237,6 @@ def DolanJunction(
             return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
-    if bgcolor is None: #color for junction, not undercut
-        bgcolor = chip.wafer.bg()
 
     #get layers from wafer
     if JLAYER is None:
@@ -1261,17 +1262,21 @@ def DolanJunction(
 
     assert lincolnLabs, 'Not implemented for normal usage'
     # Junction layer
-    Strip_straight(chip, struct(), length=jpadl, w=jpadw, layer=JLAYER)
+    struct().direction += rotation
+    struct().shiftPos(-junctionl/2-jpadw+jpadoverhang)
+    Strip_straight(chip, struct(), jpadw, w=jpadl, layer=JLAYER) # contact pad
+    Strip_straight(chip, struct(), length=junctionl/2-jtaperl-jpadoverhang, w=jarmw, layer=JLAYER)
     if lincolnLabs: ucstruct = struct().clone() 
-    Strip_taper(chip, struct(), length=jpadTaper, w0=jpadw, w1=jfingerw, layer=JLAYER)
+    Strip_taper(chip, struct(), length=jtaperl, w0=jarmw, w1=jfingerw, layer=JLAYER)
     Strip_straight(chip, struct(), length=jfingerl, w=jfingerw, layer=JLAYER)
 
     struct().shiftPos(jgap) # gap
 
-    Strip_straight(chip, struct(), length=outpadl, w=outpadw, layer=JLAYER)
+    Strip_straight(chip, struct(), length=junctionl/2-jgap-jfingerl-jpadoverhang, w=jarmw, layer=JLAYER)
+    Strip_straight(chip, struct(), jpadw, w=jpadl, layer=JLAYER) # contact pad
 
     # Undercut layer
-    Strip_taper(chip, ucstruct, length=jpadTaper, w0=jpadw, w1=jfingerw, layer=ULAYER)
+    Strip_taper(chip, ucstruct, length=jtaperl, w0=jarmw, w1=jfingerw, layer=ULAYER)
     Strip_straight(chip, ucstruct, length=jfingerl+jgap, w=jfingerw, layer=ULAYER)
 
 

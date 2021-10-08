@@ -743,7 +743,35 @@ class BlankCenteredWR10(Chip):
         if wafer.frame:
             self.add(dxf.rectangle(self.centered((-1270,-635)),2540,1270,layer=wafer.lyr('FRAME')))  
 
+# ===============================================================================
+# CHIP CLASS FOR LINCOLN LABS DESIGNS
+# ===============================================================================
 
+class ChipLL(Chip):
+    def __init__(self,wafer,chipID,layer,structures=None,defaults=None, FRAME_NAME='FRAME'):
+        Chip.__init__(self,wafer,chipID,layer,structures=structures, FRAME_NAME=FRAME_NAME)
+        self.defaults = {'w':10, 's':5, 'radius':25,'r_out':0,'r_ins':0}
+        if defaults is not None:
+            #self.defaults = defaults.copy()
+            for d in defaults:
+                self.defaults[d]=defaults[d]
+        if structures is not None:
+            #override default structures
+            self.structures = structures
+        else:
+            self.structures = [#hardwired structures
+            # UPDATE
+                    Structure(self,start=(500,self.height/2),direction=0,defaults=self.defaults),
+                    Structure(self,start=(500,700),direction=45,defaults=self.defaults),
+                    Structure(self,start=(2500,500),direction=90,defaults=self.defaults),
+                    Structure(self,start=(4500,500),direction=90,defaults=self.defaults),
+                    Structure(self,start=(self.width-500,700),direction=135,defaults=self.defaults),
+                    Structure(self,start=(self.width-500,self.height/2),direction=180,defaults=self.defaults),
+                    Structure(self,start=(self.width-500,self.height-700),direction=225,defaults=self.defaults),
+                    Structure(self,start=(4500,self.height-500),direction=270,defaults=self.defaults),
+                    Structure(self,start=(2500,self.height-500),direction=270,defaults=self.defaults),
+                    Structure(self,start=(500,self.height-700),direction=315,defaults=self.defaults)
+                    ]
 
 # ===============================================================================
 #  END CLASS DEFINITIONS   
