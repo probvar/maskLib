@@ -181,7 +181,7 @@ def Strip_bend(chip,structure,angle=90,CCW=True,w=None,radius=None,ptDensity=120
     struct().updatePos(newStart=struct().getPos((radius*math.sin(math.radians(angle)),(CCW and 1 or -1)*radius*(math.cos(math.radians(angle))-1))),angle=CCW and -angle or angle)
 
 
-def Strip_stub_open(chip,structure,flipped=False,curve_out=True,r_out=None,w=None,allow_oversize=True,bgcolor=None,**kwargs):
+def Strip_stub_open(chip,structure,flipped=False,curve_out=True,r_out=None,w=None,allow_oversize=True,length=None,bgcolor=None,**kwargs):
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -219,10 +219,19 @@ def Strip_stub_open(chip,structure,flipped=False,curve_out=True,r_out=None,w=Non
             l=r_out
         else:
             l=min(w/2,r_out)
+        
+        if length is None: length=0
 
-        chip.add(RoundRect(struct().getPos((dx,0)),l,w,l,roundCorners=[0,curve_out,curve_out,0],hflip=flipped,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=l)
+        chip.add(RoundRect(struct().getPos((dx,0)),max(length,l),w,l,roundCorners=[0,curve_out,curve_out,0],hflip=flipped,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=l)
     else:
-        Strip_straight(chip,structure,w/2,w=w,bgcolor=bgcolor,**kwargs)
+        if length is not None:
+            if allow_oversize:
+                l=length
+            else:
+                l=min(w/2,length)
+        else:
+            l=w/2
+        Strip_straight(chip,structure,l,w=w,bgcolor=bgcolor,**kwargs)
 
 def Strip_stub_short(chip,structure,r_ins=None,w=None,flipped=False,extra_straight_section=False,bgcolor=None,**kwargs):
     def struct():
@@ -253,6 +262,38 @@ def Strip_stub_short(chip,structure,r_ins=None,w=None,flipped=False,extra_straig
         chip.add(InsideCurve(struct().getPos((0,w/2)),r_ins,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
         if extra_straight_section and flipped:
                 Strip_straight(chip, struct(), r_ins, w=w,rotation=struct().direction,bgcolor=bgcolor,**kwargs)
+
+def Strip_pad(chip,structure,length,r_out=None,w=None,bgcolor=None,**kwargs):
+    '''
+    Draw a pad with all rounded corners (similar to strip_stub_open + strip_straight + strip_stub_open but only one shape)
+
+    '''
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+    if r_out is None:
+        try:
+            r_out = min(struct().defaults['r_out'],w/2)
+        except KeyError:
+            print('r_out not defined in ',chip.chipID,'!\x1b[0m')
+            r_out=0
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+    
+    
+    if r_out > 0:
+        chip.add(RoundRect(struct().getPos((0,0)),length,w,r_out,roundCorners=[1,1,1,1],valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=length)
+    else:
+        Strip_straight(chip,structure,length,w=w,bgcolor=bgcolor,**kwargs)
 
 # ===============================================================================
 # basic NEGATIVE CPW function definitions
@@ -322,7 +363,7 @@ def CPW_taper(chip,structure,length=None,w0=None,s0=None,w1=None,s1=None,bgcolor
     chip.add(SkewRect(struct().getPos((0,-w0/2)),length,s0,(offset[0],w0/2-w1/2+offset[1]),s1,rotation=struct().direction,valign=const.TOP,edgeAlign=const.TOP,bgcolor=bgcolor,**kwargs))
     chip.add(SkewRect(struct().getPos((0,w0/2)),length,s0,(offset[0],w1/2-w0/2+offset[1]),s1,rotation=struct().direction,valign=const.BOTTOM,edgeAlign=const.BOTTOM,bgcolor=bgcolor,**kwargs),structure=structure,offsetVector=(length+offset[0],offset[1]))
     
-def CPW_stub_short(chip,structure,flipped=False,curve_ins=True,curve_out=True,r_out=None,w=None,s=None,bgcolor=None,**kwargs):
+def CPW_stub_short(chip,structure,flipped=False,curve_ins=True,curve_out=True,r_out=None,w=None,s=None,length=None,bgcolor=None,**kwargs):
     allow_oversize = (curve_ins != curve_out)
     def struct():
         if isinstance(structure,m.Structure):
@@ -371,7 +412,14 @@ def CPW_stub_short(chip,structure,flipped=False,curve_ins=True,curve_out=True,r_
         chip.add(RoundRect(struct().getPos((dx,w/2)),l,s,l,roundCorners=[0,curve_ins,curve_out,0],hflip=flipped,valign=const.BOTTOM,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
         chip.add(RoundRect(struct().getPos((dx,-w/2)),l,s,l,roundCorners=[0,curve_out,curve_ins,0],hflip=flipped,valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=l)
     else:
-        CPW_straight(chip,structure,s/2,w=w,s=s,bgcolor=bgcolor,**kwargs)
+        if length is not None:
+            if allow_oversize:
+                l=length
+            else:
+                l=min(s/2,length)
+        else:
+            l=s/2
+        CPW_straight(chip,structure,l,w=w,s=s,bgcolor=bgcolor,**kwargs)
         
 def CPW_stub_open(chip,structure,length=0,r_out=None,r_ins=None,w=None,s=None,flipped=False,extra_straight_section=False,bgcolor=None,**kwargs):
     def struct():
@@ -718,6 +766,19 @@ def Wire_bend(chip,structure,angle=90,CCW=True,w=None,radius=None,bgcolor=None,*
 # ===============================================================================
 # composite CPW function definitions
 # ===============================================================================
+def CPW_pad(chip,struct,l_pad=0,l_gap=0,padw=300,pads=50,l_lead=None,w=None,s=None,r_ins=None,r_out=None,bgcolor=None,**kwargs):
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            w=0
+            print('\x1b[33mw not defined in ',chip.chipID)
+    CPW_stub_open(chip,struct,length=max(l_gap,pads),r_out=r_out,r_ins=r_ins,w=padw,s=pads,flipped=True,**kwargs)
+    CPW_straight(chip,struct,max(l_pad,padw),w=padw,s=pads,**kwargs)
+    if l_lead is None:
+        l_lead = max(l_gap,pads)
+    CPW_stub_short(chip,struct,length=l_lead,r_out=r_out,r_ins=r_ins,w=w,s=pads+padw/2-w/2,flipped=False,curve_ins=False,**kwargs)
+
 
 def CPW_launcher(chip,struct,l_taper=None,l_pad=0,l_gap=0,padw=300,pads=160,w=None,s=None,r_ins=0,r_out=0,bgcolor=None,**kwargs):
     CPW_stub_open(chip,struct,length=max(l_gap,pads),r_out=r_out,r_ins=r_ins,w=padw,s=pads,flipped=True,**kwargs)

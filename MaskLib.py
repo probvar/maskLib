@@ -232,7 +232,7 @@ class Wafer:
             self.drawing.add_layer(layer,color=self.layerColors[layer])
             
         #cache frame layer string
-        fr = self.lyr(FRAME_LAYER)
+        fr = self.lyr(FRAME_LAYER[0])
         #draw wafer for debugging purposes
         if self.frame:
             self.drawing.add(dxf.circle(radius=self.waferDiameter/2,center=(0,0),layer=fr))
