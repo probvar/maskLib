@@ -584,7 +584,7 @@ def CPW_bend(chip,structure,angle=90,CCW=True,w=None,s=None,radius=None,ptDensit
     struct().updatePos(newStart=struct().getPos((radius*math.sin(math.radians(angle)),(CCW and 1 or -1)*radius*(math.cos(math.radians(angle))-1))),angle=CCW and -angle or angle)
 
 
-def CPW_tee(chip,structure,w=None,s=None,radius=None,r_ins=None,w1=None,s1=None,ptDensity=60,bgcolor=None,hflip=False,branch_off=const.CENTER,**kwargs):
+def CPW_tee(chip,structure,w=None,s=None,radius=None,r_ins=None,w1=None,s1=None,bgcolor=None,hflip=False,branch_off=const.CENTER,**kwargs):
     
     def struct():
         if isinstance(structure,m.Structure):

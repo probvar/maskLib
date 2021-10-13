@@ -272,33 +272,33 @@ def Elephantmon(
 
     s_right = s.clone()
     s_right.direction += 90
-    CPW_stub_open(chip, s_right, tpad_gap/2, r_ins=rpad, w=tpad_width, s=tpad_gap_gnd, flipped=True)
+    CPW_stub_open(chip, s_right, tpad_gap/2, r_ins=rpad, w=tpad_width, s=tpad_gap_gnd, flipped=True, **kwargs)
     JContact_tab(chip, s_right)
 
     s_right = s.cloneAlongLast()
     s_right.shiftPos(tpad_gap_gnd/2)
     s_right.direction += 90
     s_right.shiftPos(tpad_gap/2)
-    Strip_straight(chip, s_right, length=tpad_height-rpad, w=tpad_gap_gnd)
-    Strip_bend(chip, s_right, CCW=True, w=tpad_gap_gnd, radius=rpad+tpad_gap_gnd/2)
-    Strip_straight(chip, s_right, length=tpad_width-2*rpad, w=tpad_gap_gnd)
-    Strip_bend(chip, s_right, CCW=True, w=tpad_gap_gnd, radius=rpad+tpad_gap_gnd/2)
-    Strip_straight(chip, s_right, length=tpad_height-rpad, w=tpad_gap_gnd)
+    Strip_straight(chip, s_right, length=tpad_height-rpad, w=tpad_gap_gnd, **kwargs)
+    Strip_bend(chip, s_right, CCW=True, w=tpad_gap_gnd, radius=rpad+tpad_gap_gnd/2, **kwargs)
+    Strip_straight(chip, s_right, length=tpad_width-2*rpad, w=tpad_gap_gnd, **kwargs)
+    Strip_bend(chip, s_right, CCW=True, w=tpad_gap_gnd, radius=rpad+tpad_gap_gnd/2, **kwargs)
+    Strip_straight(chip, s_right, length=tpad_height-rpad, w=tpad_gap_gnd, **kwargs)
 
     s_left = s.clone()
     s_left.direction -= 90
-    CPW_stub_open(chip, s_left, tpad_gap/2, r_ins=rpad, w=tpad_width, s=tpad_gap_gnd, flipped=True)
-    JContact_tab(chip, s_left)
+    CPW_stub_open(chip, s_left, tpad_gap/2, r_ins=rpad, w=tpad_width, s=tpad_gap_gnd, flipped=True, **kwargs)
+    JContact_tab(chip, s_left, **kwargs)
 
     s_left = s.cloneAlongLast()
     s_left.shiftPos(tpad_gap_gnd/2)
     s_left.direction -= 90
     s_left.shiftPos(tpad_gap/2)
-    Strip_straight(chip, s_left, length=tpad_height-rpad, w=tpad_gap_gnd)
-    Strip_bend(chip, s_left, CCW=False, w=tpad_gap_gnd, radius=rpad+tpad_gap_gnd/2)
-    Strip_straight(chip, s_left, length=tpad_width-2*rpad, w=tpad_gap_gnd)
-    Strip_bend(chip, s_left, CCW=False, w=tpad_gap_gnd, radius=rpad+tpad_gap_gnd/2)
-    Strip_straight(chip, s_left, length=tpad_height-rpad, w=tpad_gap_gnd)
+    Strip_straight(chip, s_left, length=tpad_height-rpad, w=tpad_gap_gnd, **kwargs)
+    Strip_bend(chip, s_left, CCW=False, w=tpad_gap_gnd, radius=rpad+tpad_gap_gnd/2, **kwargs)
+    Strip_straight(chip, s_left, length=tpad_width-2*rpad, w=tpad_gap_gnd, **kwargs)
+    Strip_bend(chip, s_left, CCW=False, w=tpad_gap_gnd, radius=rpad+tpad_gap_gnd/2, **kwargs)
+    Strip_straight(chip, s_left, length=tpad_height-rpad, w=tpad_gap_gnd, **kwargs)
 
     s.direction -= 90
     DolanJunction(chip, s, junctionl=tpad_gap, **kwargs)
