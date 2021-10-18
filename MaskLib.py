@@ -128,7 +128,7 @@ class Wafer:
         self.defaultLayer = '0' #default layer to draw chips on
         
         # initialize private variables
-        self.chipPts = [] #chip offsets, measuring from lower left corner
+        self.chipPts = [] #chip offsets, measring from lower left corner
         self.chipColumns = [] #chip columns
         self.chips = [] #cached chip references
         self.defaultChip = None
@@ -460,7 +460,7 @@ class Wafer:
         self.XLAYER=XLAYER
         self.addLayer(XLAYER, xcolor)
        
-    def setupAirbridgeLayers(self,BRLAYER='BRIDGE',jcolor=1,RRLAYER='TETHER',brcolor=36,rrcolor=41):
+    def setupAirbridgeLayers(self,BRLAYER='BRIDGE',RRLAYER='TETHER',brcolor=36,rrcolor=41):
         #add correct layers to wafer, and cache layer
         self.addLayer(BRLAYER,brcolor)
         self.BRLAYER=BRLAYER

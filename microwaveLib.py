@@ -1173,7 +1173,7 @@ def TwoPinCPW_wiggles(chip,structure,w=None,s_ins=None,s_out=None,s=None,Width=N
 # ===============================================================================
 # Airbridges (Lincoln Labs designs)
 # ===============================================================================
-def setupAirbridgeLayers(wafer:m.Wafer,BRLAYER='BRIDGE',jcolor=1,RRLAYER='TETHER',brcolor=36,rrcolor=41):
+def setupAirbridgeLayers(wafer:m.Wafer,BRLAYER='BRIDGE',RRLAYER='TETHER',brcolor=36,rrcolor=41):
     #add correct layers to wafer, and cache layer
     wafer.addLayer(BRLAYER,brcolor)
     wafer.BRLAYER=BRLAYER
