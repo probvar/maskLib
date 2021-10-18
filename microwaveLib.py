@@ -1170,3 +1170,85 @@ def TwoPinCPW_wiggles(chip,structure,w=None,s_ins=None,s_out=None,s=None,Width=N
     Strip_wiggles(chip, struct(), w=s_ins,maxWidth=maxWidth-w,**kwargs)
 
     
+# ===============================================================================
+# Airbridges (Lincoln Labs designs)
+# ===============================================================================
+def setupAirbridgeLayers(wafer:m.Wafer,BRLAYER='BRIDGE',jcolor=1,RRLAYER='TETHER',brcolor=36,rrcolor=41):
+    #add correct layers to wafer, and cache layer
+    wafer.addLayer(BRLAYER,brcolor)
+    wafer.BRLAYER=BRLAYER
+    wafer.addLayer(RRLAYER,rrcolor)
+    wafer.RRLAYER=RRLAYER
+
+def Airbridge(
+    chip,structure, w=None, s=None, xvr_width=None, xvr_length=None, rr_width=None, rr_length=None,
+    rr_br_gap=None, rr_cpw_gap=None, br_pitch=None,
+    lincolnLabs=False, BRLAYER=None, RRLAYER=None, bgcolor=None, **kwargs):
+    assert lincolnLabs, 'Not implemented for normal usage'
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33mw not defined in ',chip.chipID)
+    if s is None:
+        try:
+            s = struct().defaults['s']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID)
+
+    #get layers from wafer
+    if BRLAYER is None:
+        try:
+            BRLAYER = chip.wafer.BRLAYER
+        except AttributeError:
+            setupAirbridgeLayers(chip.wafer)
+            BRLAYER = chip.wafer.BRLAYER
+    if RRLAYER is None:
+        try:
+            RRLAYER = chip.wafer.RRLAYER
+        except AttributeError:
+            setupAirbridgeLayers(chip.wafer)
+            RRLAYER = chip.wafer.RRLAYER
+
+
+    if lincolnLabs:
+        rr_br_gap = 1.5 # RR.BR.E.1 in Lincoln Labs
+        if rr_cpw_gap is not None: assert rr_cpw_gap >= 1.5
+        else: rr_cpw_gap = 4
+
+        if xvr_length is None:
+            # note need to do length checks if trying to put it on a cpw bend
+            xvr_length = w + 2*s + 2*(rr_cpw_gap-rr_br_gap)
+        if 5 <= xvr_length <= 16:
+            xvr_width = 5
+            rr_length = 8
+        elif 16 < xvr_length <= 27:
+            xvr_width = 7.5
+            rr_length = 10
+        elif 27 < xvr_length <= 32:
+            xvr_width = 10
+            rr_length = 14
+        rr_width = xvr_width + 3
+        br_pitch = 70
+
+    s_left = struct().clone()
+    s_left.direction += 90
+    Strip_straight(chip, s_left, length=xvr_length/2, w=xvr_width, layer=BRLAYER, **kwargs)
+    Strip_straight(chip, s_left, length=rr_length, w=rr_width, layer=BRLAYER, **kwargs)
+    s_left.shiftPos(-rr_length + rr_br_gap)
+    Strip_straight(chip, s_left, length=rr_length-2*rr_br_gap, w=rr_width-2*rr_br_gap, layer=RRLAYER, **kwargs)
+
+    s_right = struct().clone()
+    s_right.direction -= 90
+    Strip_straight(chip, s_right, length=xvr_length/2, w=xvr_width, layer=BRLAYER, **kwargs)
+    Strip_straight(chip, s_right, length=rr_length, w=rr_width, layer=BRLAYER, **kwargs)
+    s_right.shiftPos(-rr_length + rr_br_gap)
+    Strip_straight(chip, s_right, length=rr_length-2*rr_br_gap, w=rr_width-2*rr_br_gap, layer=RRLAYER, **kwargs)
+
