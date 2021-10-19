@@ -18,7 +18,7 @@ from dxfwrite.vector2d import vadd, midpoint ,vsub, vector2angle, magnitude, dis
 from dxfwrite.algebra import rotate_2d
 
 from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideCurve
-from maskLib.utilities import kwargStrip
+from maskLib.utilities import kwargStrip, curveAB
 
 from copy import deepcopy
 from matplotlib.path import Path
@@ -300,7 +300,7 @@ def Strip_pad(chip,structure,length,r_out=None,w=None,bgcolor=None,**kwargs):
 # ===============================================================================
 
 
-def CPW_straight(chip,structure,length,w=None,s=None,bgcolor=None,**kwargs): #note: uses CPW conventions
+def CPW_straight(chip,structure,length,w=None,s=None,bondwires=False,bond_pitch=70,bgcolor=None,**kwargs): #note: uses CPW conventions
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -320,12 +320,18 @@ def CPW_straight(chip,structure,length,w=None,s=None,bgcolor=None,**kwargs): #no
             s = struct().defaults['s']
         except KeyError:
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
-    
+
+    if bondwires: # bond parameters patched through kwargs
+        num_bonds = math.ceil((length-bond_pitch/2)/bond_pitch)
+        this_struct = struct().clone()
+        this_struct.shiftPos(bond_pitch/2)
+        for i in range(num_bonds):
+            Airbridge(chip, this_struct, **kwargs)
+            this_struct.shiftPos(bond_pitch)
     
     chip.add(dxf.rectangle(struct().getPos((0,-w/2)),length,-s,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
     chip.add(dxf.rectangle(struct().getPos((0,w/2)),length,s,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)),structure=structure,length=length)
         
-    
 def CPW_taper(chip,structure,length=None,w0=None,s0=None,w1=None,s1=None,bgcolor=None,offset=(0,0),**kwargs): #note: uses CPW conventions
     def struct():
         if isinstance(structure,m.Structure):
@@ -548,7 +554,7 @@ def CPW_stub_round(chip,structure,w=None,s=None,round_left=True,round_right=True
             chip.add(InsideCurve(struct().getPos((flipped and s or w/2,-w/2)),w/2,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
             chip.add(dxf.rectangle(struct().getPos((s+w/2-dx,-w/2)),-s,w/2,rotation=struct().direction,halign = flipped and const.RIGHT or const.LEFT, bgcolor=bgcolor,**kwargStrip(kwargs)),structure=structure,length=s+w/2)
     
-def CPW_bend(chip,structure,angle=90,CCW=True,w=None,s=None,radius=None,ptDensity=120,bgcolor=None,**kwargs):
+def CPW_bend(chip,structure,angle=90,CCW=True,w=None,s=None,radius=None,ptDensity=120,bondwires=False,incl_end_bond=True,bond_pitch=70,bgcolor=None,**kwargs):
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -578,10 +584,23 @@ def CPW_bend(chip,structure,angle=90,CCW=True,w=None,s=None,radius=None,ptDensit
     while angle < 0:
         angle = angle + 360
     angle = angle%360
+    angleRadians = math.radians(angle)
+
+    startstruct = struct().clone()
         
     chip.add(CurveRect(struct().start,s,radius,angle=angle,ptDensity=ptDensity,roffset=w/2,ralign=const.BOTTOM,rotation=struct().direction,vflip=not CCW,bgcolor=bgcolor,**kwargs))
     chip.add(CurveRect(struct().start,s,radius,angle=angle,ptDensity=ptDensity,roffset=-w/2,ralign=const.TOP,valign=const.TOP,rotation=struct().direction,vflip=not CCW,bgcolor=bgcolor,**kwargs))
-    struct().updatePos(newStart=struct().getPos((radius*math.sin(math.radians(angle)),(CCW and 1 or -1)*radius*(math.cos(math.radians(angle))-1))),angle=CCW and -angle or angle)
+    struct().updatePos(newStart=struct().getPos((radius*math.sin(angleRadians),(CCW and 1 or -1)*radius*(math.cos(angleRadians)-1))),angle=CCW and -angle or angle)
+
+    if bondwires: # bond parameters patched through kwargs
+        bond_angle_density = 8
+        if 'lincolnLabs' in kwargs and kwargs['lincolnLabs']: bond_angle_density = math.ceil((2*math.pi*radius)/bond_pitch)
+        clockwise = 1 if CCW else -1
+        bond_points = curveAB(startstruct.start, struct().start, clockwise=clockwise, angleDeg=angle, ptDensity=bond_angle_density)
+        if not incl_end_bond: bond_points = bond_points[:-1]
+        for i, bond_point in enumerate(bond_points[1:], start=1):
+            this_struct = m.Structure(chip, start=bond_point, direction=startstruct.direction-clockwise*i*(360/bond_angle_density))
+            Airbridge(chip, this_struct, br_radius=radius, clockwise=clockwise, **kwargs)
 
 
 def CPW_tee(chip,structure,w=None,s=None,radius=None,r_ins=None,w1=None,s1=None,bgcolor=None,hflip=False,branch_off=const.CENTER,**kwargs):
@@ -1181,9 +1200,8 @@ def setupAirbridgeLayers(wafer:m.Wafer,BRLAYER='BRIDGE',RRLAYER='TETHER',brcolor
     wafer.RRLAYER=RRLAYER
 
 def Airbridge(
-    chip,structure, w=None, s=None, xvr_width=None, xvr_length=None, rr_width=None, rr_length=None,
-    rr_br_gap=None, rr_cpw_gap=None, br_pitch=None,
-    lincolnLabs=False, BRLAYER=None, RRLAYER=None, bgcolor=None, **kwargs):
+    chip,structure, cpw_w=None, cpw_s=None, xvr_width=None, xvr_length=None, rr_width=None, rr_length=None,
+    rr_br_gap=None, rr_cpw_gap=None, br_radius=0, clockwise=False, lincolnLabs=False, BRLAYER=None, RRLAYER=None, **kwargs):
     assert lincolnLabs, 'Not implemented for normal usage'
     def struct():
         if isinstance(structure,m.Structure):
@@ -1192,14 +1210,14 @@ def Airbridge(
             return m.Structure(chip,structure)
         else:
             return chip.structure(structure)
-    if w is None:
+    if cpw_w is None:
         try:
-            w = struct().defaults['w']
+            cpw_w = struct().defaults['w']
         except KeyError:
             print('\x1b[33mw not defined in ',chip.chipID)
-    if s is None:
+    if cpw_s is None:
         try:
-            s = struct().defaults['s']
+            cpw_s = struct().defaults['s']
         except KeyError:
             print('\x1b[33ms not defined in ',chip.chipID)
 
@@ -1225,7 +1243,7 @@ def Airbridge(
 
         if xvr_length is None:
             # note need to do length checks if trying to put it on a cpw bend
-            xvr_length = w + 2*s + 2*(rr_cpw_gap-rr_br_gap)
+            xvr_length = cpw_w + 2*cpw_s + 2*(rr_cpw_gap-rr_br_gap)
         if 5 <= xvr_length <= 16:
             xvr_width = 5
             rr_length = 8
@@ -1236,18 +1254,28 @@ def Airbridge(
             xvr_width = 10
             rr_length = 14
         rr_width = xvr_width + 3
-        br_pitch = 70
+        delta = 0
+        if br_radius > 0:
+            r = br_radius - cpw_w/2 - cpw_s
+            delta = r*(1-math.sqrt(1-1/r**2*(rr_width/2)**2))
+
+    if clockwise:
+        delta_left = 0
+        delta_right = delta
+    else:
+        delta_right = 0
+        delta_left = delta
 
     s_left = struct().clone()
     s_left.direction += 90
-    Strip_straight(chip, s_left, length=xvr_length/2, w=xvr_width, layer=BRLAYER, **kwargs)
+    Strip_straight(chip, s_left, length=xvr_length/2+delta_left, w=xvr_width, layer=BRLAYER, **kwargs)
     Strip_straight(chip, s_left, length=rr_length, w=rr_width, layer=BRLAYER, **kwargs)
     s_left.shiftPos(-rr_length + rr_br_gap)
     Strip_straight(chip, s_left, length=rr_length-2*rr_br_gap, w=rr_width-2*rr_br_gap, layer=RRLAYER, **kwargs)
 
     s_right = struct().clone()
     s_right.direction -= 90
-    Strip_straight(chip, s_right, length=xvr_length/2, w=xvr_width, layer=BRLAYER, **kwargs)
+    Strip_straight(chip, s_right, length=xvr_length/2+delta_right, w=xvr_width, layer=BRLAYER, **kwargs)
     Strip_straight(chip, s_right, length=rr_length, w=rr_width, layer=BRLAYER, **kwargs)
     s_right.shiftPos(-rr_length + rr_br_gap)
     Strip_straight(chip, s_right, length=rr_length-2*rr_br_gap, w=rr_width-2*rr_br_gap, layer=RRLAYER, **kwargs)
