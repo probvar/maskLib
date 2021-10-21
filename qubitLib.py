@@ -11,7 +11,7 @@ from dxfwrite import const
 
 import maskLib.junctionLib as j
 from maskLib.Entities import RoundRect, InsideCurve
-from maskLib.microwaveLib import CPW_stub_open, Strip_straight, Strip_bend
+from maskLib.microwaveLib import CPW_stub_open, CPW_straight, Strip_straight, Strip_bend, Strip_stub_open
 from maskLib.junctionLib import DolanJunction, JContact_tab
 
 from maskLib.utilities import kwargStrip
@@ -273,7 +273,7 @@ def Elephantmon(
     s_right = s.clone()
     s_right.direction += 90
     CPW_stub_open(chip, s_right, tpad_gap/2, r_ins=rpad, w=tpad_width, s=tpad_gap_gnd, flipped=True, **kwargs)
-    JContact_tab(chip, s_right)
+    JContact_tab(chip, s_right, **kwargs)
 
     s_right = s.cloneAlongLast()
     s_right.shiftPos(tpad_gap_gnd/2)
@@ -302,3 +302,71 @@ def Elephantmon(
 
     s.direction -= 90
     DolanJunction(chip, s, junctionl=tpad_gap, **kwargs)
+
+def Xmon(
+    chip, structure:m.Structure, rotation=0,
+    xmonw=25, xmonl=150, xmon_gapw=20, xmon_gapl=30,
+    r_out=5, r_ins=5,
+    jj_loc=5, jj_reverse=False, **kwargs):
+
+    """
+    Generates an Xmon (does NOT use an XOR layer) with a Dolan junction.
+    Additional params can be passed to junctions used kwargs.
+    jj_loc in [0, 11] decides the location on the cross to place the junction:
+        end of every arm and midway along every arm, counting clockwise
+        from the start.
+    By default, draws the junction pointing toward ground. If jj_reverse, draws pointing toward
+        pad at the specified location.
+    """
+    s_start = structure.clone()
+    s = structure.cloneAlong(distance=xmon_gapl+xmonl, newDirection=rotation) # start in center of X
+    s_jj_locs = [None]*12
+    s_jj_ls = [0]*12
+
+    s_down = s.cloneAlong(newDirection=180)
+    s_down.shiftPos(xmonw/2+xmon_gapw)
+    CPW_straight(chip, s_down, length=xmonl-xmonw/2-xmon_gapw, w=xmonw, s=xmon_gapw, **kwargs)
+    CPW_stub_open(chip, s_down, length=xmon_gapl, r_out=r_out, r_ins=r_ins, w=xmonw, s=xmon_gapw)
+    s_jj_locs[0] = s_down.cloneAlongLast()
+    s_jj_locs[11] = s_down.cloneAlongLast(distance=-(xmonl-xmon_gapw-xmonw/2)/2, newDirection=90).cloneAlong(distance=xmonw/2)
+    s_jj_locs[1] = s_down.cloneAlongLast(distance=-(xmonl-xmon_gapw-xmonw/2)/2, newDirection=-90).cloneAlong(distance=xmonw/2)
+    s_jj_ls[0] = xmon_gapl
+    s_jj_ls[1] = s_jj_ls[11] = xmon_gapw
+
+    s_left = s.cloneAlong(newDirection=90)
+    s_left.shiftPos(xmonw/2)
+    CPW_straight(chip, s_left, length=xmonl-xmonw/2, w=xmonw, s=xmon_gapw, **kwargs)
+    CPW_stub_open(chip, s_left, length=xmon_gapl, r_out=r_out, r_ins=r_ins, w=xmonw, s=xmon_gapw)
+    s_jj_locs[3] = s_left.cloneAlongLast()
+    s_jj_locs[2] = s_left.cloneAlongLast(distance=-(xmonl-xmon_gapw-xmonw/2)/2, newDirection=90).cloneAlong(distance=xmonw/2)
+    s_jj_locs[4] = s_left.cloneAlongLast(distance=-(xmonl-xmon_gapw-xmonw/2)/2, newDirection=-90).cloneAlong(distance=xmonw/2)
+    s_jj_ls[3] = xmon_gapl
+    s_jj_ls[2] = s_jj_ls[4] = xmon_gapw
+
+    s_right = s.cloneAlong(newDirection=-90)
+    s_right.shiftPos(xmonw/2)
+    CPW_straight(chip, s_right, length=xmonl-xmonw/2, w=xmonw, s=xmon_gapw, **kwargs)
+    CPW_stub_open(chip, s_right, length=xmon_gapl, r_out=r_out, r_ins=r_ins, w=xmonw, s=xmon_gapw)
+    s_jj_locs[9] = s_right.cloneAlongLast()
+    s_jj_locs[8] = s_right.cloneAlongLast(distance=-(xmonl-xmon_gapw-xmonw/2)/2, newDirection=90).cloneAlong(distance=xmonw/2)
+    s_jj_locs[10] = s_right.cloneAlongLast(distance=-(xmonl-xmon_gapw-xmonw/2)/2, newDirection=-90).cloneAlong(distance=xmonw/2)
+    s_jj_ls[9] = xmon_gapl
+    s_jj_ls[8] = s_jj_ls[10] = xmon_gapw
+
+    s_up = s.cloneAlong(newDirection=0)
+    s_up.shiftPos(xmonw/2+xmon_gapw)
+    CPW_straight(chip, s_up, length=xmonl-xmonw/2-xmon_gapw, w=xmonw, s=xmon_gapw, **kwargs)
+    CPW_stub_open(chip, s_up, length=xmon_gapl, r_out=r_out, r_ins=r_ins, w=xmonw, s=xmon_gapw)
+    s_jj_locs[6] = s_up.cloneAlongLast()
+    s_jj_locs[5] = s_up.cloneAlongLast(distance=-(xmonl-xmon_gapw-xmonw/2)/2, newDirection=90).cloneAlong(distance=xmonw/2)
+    s_jj_locs[7] = s_up.cloneAlongLast(distance=-(xmonl-xmon_gapw-xmonw/2)/2, newDirection=-90).cloneAlong(distance=xmonw/2)
+    s_jj_ls[6] = xmon_gapl
+    s_jj_ls[5] = s_jj_ls[7] = xmon_gapw
+
+    s_jj = s_jj_locs[jj_loc]
+    junctionl = s_jj_ls[jj_loc]
+    JContact_tab(chip, s_jj.cloneAlong(newDirection=180), **kwargs)
+    DolanJunction(chip, s_jj.cloneAlong(distance=junctionl/2), junctionl=junctionl, backward=jj_reverse, **kwargs)
+    JContact_tab(chip, s_jj.cloneAlong(distance=junctionl), **kwargs)
+
+    structure.updatePos(s_start.getPos())

@@ -1226,6 +1226,7 @@ def DolanJunction(
     chip, structure, junctionl, jfingerw=0.5, rotation=0,
     jarmw=3, jpadw=15, jpadl=20, jpadoverhang=5, # dimensions for contact tab overlap
     jfingerl=1.36,jtaperl=2-1.36-0.140,jgap=0.140, # fixed for LL
+    backward=False, # if True, draw so points toward current structure location
     JANGLE=None, JLAYER=None,ULAYER=None,bgcolor=None,lincolnLabs=False,**kwargs):
     # centered such that taper starts at current position
     # junctionl is the gap distance we wish to cover
@@ -1258,11 +1259,13 @@ def DolanJunction(
         except AttributeError:
             setupJunctionAngles(chip.wafer, [struct().direction])
             JANGLE = chip.wafer.JANGLES[0] % 360
-    assert chip.wafer.JANGLES[0] % 180 == struct().direction % 180, 'Need Dolan junction to be in same direction as structure'
+    # assert chip.wafer.JANGLES[0] % 180 == struct().direction % 180, 'Need Dolan junction to be in same direction as JANGLE'
 
     assert lincolnLabs, 'Not implemented for normal usage'
+
     # Junction layer
     struct().direction += rotation
+    if backward: struct().direction += 180
     struct().shiftPos(-junctionl/2-jpadw+jpadoverhang)
     Strip_straight(chip, struct(), jpadw, w=jpadl, layer=JLAYER) # contact pad
     Strip_straight(chip, struct(), length=junctionl/2-jtaperl-jpadoverhang, w=jarmw, layer=JLAYER)

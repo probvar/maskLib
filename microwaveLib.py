@@ -300,7 +300,7 @@ def Strip_pad(chip,structure,length,r_out=None,w=None,bgcolor=None,**kwargs):
 # ===============================================================================
 
 
-def CPW_straight(chip,structure,length,w=None,s=None,bondwires=False,bond_pitch=70,bgcolor=None,**kwargs): #note: uses CPW conventions
+def CPW_straight(chip,structure,length,w=None,s=None,bondwires=False,bond_pitch=70,incl_end_bond=True,bgcolor=None,**kwargs): #note: uses CPW conventions
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -322,9 +322,10 @@ def CPW_straight(chip,structure,length,w=None,s=None,bondwires=False,bond_pitch=
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
 
     if bondwires: # bond parameters patched through kwargs
-        num_bonds = math.ceil((length-bond_pitch/2)/bond_pitch)
+        num_bonds = int(length/bond_pitch)
         this_struct = struct().clone()
-        this_struct.shiftPos(bond_pitch/2)
+        this_struct.shiftPos(bond_pitch)
+        if not incl_end_bond: num_bonds -= 1
         for i in range(num_bonds):
             Airbridge(chip, this_struct, **kwargs)
             this_struct.shiftPos(bond_pitch)
@@ -594,12 +595,12 @@ def CPW_bend(chip,structure,angle=90,CCW=True,w=None,s=None,radius=None,ptDensit
 
     if bondwires: # bond parameters patched through kwargs
         bond_angle_density = 8
-        if 'lincolnLabs' in kwargs and kwargs['lincolnLabs']: bond_angle_density = math.ceil((2*math.pi*radius)/bond_pitch)
+        if 'lincolnLabs' in kwargs and kwargs['lincolnLabs']: bond_angle_density = int((2*math.pi*radius)/bond_pitch)
         clockwise = 1 if CCW else -1
         bond_points = curveAB(startstruct.start, struct().start, clockwise=clockwise, angleDeg=angle, ptDensity=bond_angle_density)
         if not incl_end_bond: bond_points = bond_points[:-1]
         for i, bond_point in enumerate(bond_points[1:], start=1):
-            this_struct = m.Structure(chip, start=bond_point, direction=startstruct.direction-clockwise*i*(360/bond_angle_density))
+            this_struct = m.Structure(chip, start=bond_point, direction=startstruct.direction-clockwise*i*360/bond_angle_density)
             Airbridge(chip, this_struct, br_radius=radius, clockwise=clockwise, **kwargs)
 
 
@@ -1188,11 +1189,44 @@ def TwoPinCPW_wiggles(chip,structure,w=None,s_ins=None,s_out=None,s=None,Width=N
     Inductor_wiggles(chip, s0, w=s_ins+2*w,Width=Width,maxWidth=maxWidth,**kwargs)
     Strip_wiggles(chip, struct(), w=s_ins,maxWidth=maxWidth-w,**kwargs)
 
+def CPW_pincer(chip,struct,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r=None,w=None,s=None,bgcolor=None,**kwargs):
+    if w is None:
+        try:
+            w = struct.defaults['w']
+        except KeyError:
+            w=0
+            print('\x1b[33mw not defined in ',chip.chipID)
+    if s is None:
+        try:
+            s = struct.defaults['s']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+    if pad_r is None:
+        try:
+            pad_r = pincer_padw/2 + s
+        except KeyError:
+            print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
+            return
+    s_start = struct.clone()
+    s_left, s_right = CPW_tee(chip, struct, w=w, s=s, w1=pincer_padw, s1=s, radius=pincer_tee_r + s, **kwargs)
+
+    CPW_straight(chip, s_left, length=(pincer_w-w-2*s-2*(pincer_tee_r-s))/2, **kwargs)
+    CPW_bend(chip, s_left, CCW=True, w=pincer_padw, s=s, radius=pad_r, **kwargs)
+    CPW_straight(chip, s_left, length=pincer_l-s, **kwargs)
+    CPW_stub_open(chip, s_left, w=pincer_padw, s=s, r_ins=0, **kwargs)
+
+    CPW_straight(chip, s_right, length=(pincer_w-w-2*s-2*(pincer_tee_r-s))/2, **kwargs)
+    CPW_bend(chip, s_right, CCW=False, w=pincer_padw, s=s, radius=pad_r, **kwargs)
+    CPW_straight(chip, s_right, length=pincer_l-s, **kwargs)
+    CPW_stub_open(chip, s_right, w=pincer_padw, s=s, r_ins=0, **kwargs)
+
+    s_start.shiftPos(pincer_padw+pincer_tee_r+2*s)
+    struct.updatePos(s_start.getPos())
     
 # ===============================================================================
 # Airbridges (Lincoln Labs designs)
 # ===============================================================================
-def setupAirbridgeLayers(wafer:m.Wafer,BRLAYER='BRIDGE',RRLAYER='TETHER',brcolor=36,rrcolor=41):
+def setupAirbridgeLayers(wafer:m.Wafer,BRLAYER='BRIDGE',RRLAYER='TETHER',brcolor=41,rrcolor=32):
     #add correct layers to wafer, and cache layer
     wafer.addLayer(BRLAYER,brcolor)
     wafer.BRLAYER=BRLAYER
