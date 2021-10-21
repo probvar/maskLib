@@ -791,6 +791,44 @@ class ChipLL_6port(Chip):
             Structure(self,start=(1200,100),direction=90,defaults=self.defaults),
             ]
 
+class ChipLL_20port(Chip):
+    def __init__(self,wafer,chipID,layer,structures=None,defaults=None, FRAME_NAME='FRAME'):
+        Chip.__init__(self,wafer,chipID,layer,structures=structures, FRAME_NAME=FRAME_NAME)
+        self.defaults = {'w':10, 's':5, 'radius':25,'r_out':0,'r_ins':0}
+        if defaults is not None:
+            #self.defaults = defaults.copy()
+            for d in defaults:
+                self.defaults[d]=defaults[d]
+        if structures is not None:
+            #override default structures
+            self.structures = structures
+        else:
+            self.structures = [#hardwired structures
+            Structure(self,start=(100,700),direction=0,defaults=self.defaults),
+            Structure(self,start=(100,1900),direction=0,defaults=self.defaults),
+            Structure(self,start=(100,3100),direction=0,defaults=self.defaults),
+            Structure(self,start=(100,4300),direction=0,defaults=self.defaults),
+
+            Structure(self,start=(625, self.height-25),direction=-90,defaults=self.defaults),
+            Structure(self,start=(1375,self.height-100),direction=-90,defaults=self.defaults),
+            Structure(self,start=(2125,self.height-100),direction=-90,defaults=self.defaults),
+            Structure(self,start=(2875,self.height-100),direction=-90,defaults=self.defaults),
+            Structure(self,start=(3625,self.height-100),direction=-90,defaults=self.defaults),
+            Structure(self,start=(4375,self.height-25),direction=-90,defaults=self.defaults),
+
+            Structure(self,start=(self.width-100,4300),direction=180,defaults=self.defaults),
+            Structure(self,start=(self.width-100,3100),direction=180,defaults=self.defaults),
+            Structure(self,start=(self.width-100,1900),direction=180,defaults=self.defaults),
+            Structure(self,start=(self.width-100,700),direction=180,defaults=self.defaults),
+
+            Structure(self,start=(4375,25),direction=90,defaults=self.defaults),
+            Structure(self,start=(3625,100),direction=90,defaults=self.defaults),
+            Structure(self,start=(2875,100),direction=90,defaults=self.defaults),
+            Structure(self,start=(2125,100),direction=90,defaults=self.defaults),
+            Structure(self,start=(1375,100),direction=90,defaults=self.defaults),
+            Structure(self,start=(625,25),direction=90,defaults=self.defaults),
+            ]
+
 
 # ===============================================================================
 #  END CLASS DEFINITIONS   
