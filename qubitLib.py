@@ -369,4 +369,5 @@ def Xmon(
     DolanJunction(chip, s_jj.cloneAlong(distance=junctionl/2), junctionl=junctionl, backward=jj_reverse, **kwargs)
     JContact_tab(chip, s_jj.cloneAlong(distance=junctionl), **kwargs)
 
-    structure.updatePos(s_start.getPos())
+    structure.updatePos(s_start.getPos()) # initial starting position
+    return s # center of xmon

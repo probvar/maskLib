@@ -1189,7 +1189,7 @@ def TwoPinCPW_wiggles(chip,structure,w=None,s_ins=None,s_out=None,s=None,Width=N
     Inductor_wiggles(chip, s0, w=s_ins+2*w,Width=Width,maxWidth=maxWidth,**kwargs)
     Strip_wiggles(chip, struct(), w=s_ins,maxWidth=maxWidth-w,**kwargs)
 
-def CPW_pincer(chip,struct,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r=None,w=None,s=None,bgcolor=None,**kwargs):
+def CPW_pincer(chip,struct:m.Structure,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r=None,w=None,s=None,pincer_flipped=False,bgcolor=None,**kwargs):
     if w is None:
         try:
             w = struct.defaults['w']
@@ -1207,7 +1207,12 @@ def CPW_pincer(chip,struct,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r=No
         except KeyError:
             print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
             return
-    s_start = struct.clone()
+    if not pincer_flipped: s_start = struct.clone()
+    else:
+        struct.shiftPos(pincer_padw+pincer_tee_r+2*s)
+        struct.direction += 180
+        s_start = struct.clone()
+
     s_left, s_right = CPW_tee(chip, struct, w=w, s=s, w1=pincer_padw, s1=s, radius=pincer_tee_r + s, **kwargs)
 
     CPW_straight(chip, s_left, length=(pincer_w-w-2*s-2*(pincer_tee_r-s))/2, **kwargs)
@@ -1220,8 +1225,12 @@ def CPW_pincer(chip,struct,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r=No
     CPW_straight(chip, s_right, length=pincer_l-s, **kwargs)
     CPW_stub_open(chip, s_right, w=pincer_padw, s=s, r_ins=0, **kwargs)
 
-    s_start.shiftPos(pincer_padw+pincer_tee_r+2*s)
-    struct.updatePos(s_start.getPos())
+    if not pincer_flipped:
+        s_start.shiftPos(pincer_padw+pincer_tee_r+2*s)
+        struct.updatePos(s_start.getPos())
+    else: 
+        struct.updatePos(s_start.getPos())
+        struct.direction = s_start.direction + 180
     
 # ===============================================================================
 # Airbridges (Lincoln Labs designs)

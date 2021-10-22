@@ -766,8 +766,8 @@ class ChipLL_2port(Chip):
             self.structures = structures
         else:
             self.structures = [#hardwired structures
-            Structure(self,start=(100,self.height/2),direction=0,defaults=self.defaults),
-            Structure(self,start=(self.width-100,self.height/2),direction=180,defaults=self.defaults),
+            Structure(self,start=(self.width/2, 100),direction=90,defaults=self.defaults),
+            Structure(self,start=(self.width/2, self.height-100),direction=-90,defaults=self.defaults),
             ]
 
 class ChipLL_6port(Chip):
@@ -783,12 +783,12 @@ class ChipLL_6port(Chip):
             self.structures = structures
         else:
             self.structures = [#hardwired structures
-            Structure(self,start=(100,self.height/2),direction=0,defaults=self.defaults),
-            Structure(self,start=(1200,self.height-100),direction=-90,defaults=self.defaults),
-            Structure(self,start=(self.width-1200,self.height-100),direction=-90,defaults=self.defaults),
-            Structure(self,start=(self.width-100,self.height/2),direction=180,defaults=self.defaults),
-            Structure(self,start=(self.width-1200,100),direction=90,defaults=self.defaults),
-            Structure(self,start=(1200,100),direction=90,defaults=self.defaults),
+            Structure(self,start=(100,1200),direction=0,defaults=self.defaults),
+            Structure(self,start=(100,self.height-1200),direction=0,defaults=self.defaults),
+            Structure(self,start=(self.width/2,self.height-100),direction=-90,defaults=self.defaults),
+            Structure(self,start=(self.width-100,self.height-1200),direction=180,defaults=self.defaults),
+            Structure(self,start=(self.width-100,1200),direction=180,defaults=self.defaults),
+            Structure(self,start=(self.width/2,100),direction=90,defaults=self.defaults),
             ]
 
 class ChipLL_20port(Chip):
