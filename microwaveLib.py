@@ -949,8 +949,8 @@ def wiggle_calc(chip,structure,length=None,nTurns=None,maxWidth=None,Width=None,
     if length is not None:
         if nTurns is None:
             nTurns = 1
-        h = (length - (((start_bend+stop_bend)/2+2*nTurns)*math.pi - 2))/(4*nTurns)
-        
+        h = (length - nTurns*2*math.pi*radius - (start_bend+stop_bend)*(math.pi/2-1)*radius)/(4*nTurns)
+
         #is width constrained?
         if Width is not None or maxWidth is not None:
             #maxWidth corresponds to the wiggle width, while Width corresponds to the total width filled
@@ -963,7 +963,7 @@ def wiggle_calc(chip,structure,length=None,nTurns=None,maxWidth=None,Width=None,
                 maxWidth = Width
             while h+radius+w/2+s/2>maxWidth:
                 nTurns = nTurns+1
-                h = (length - (((start_bend+stop_bend)/2+2*nTurns)*math.pi - 2))/(4*nTurns)
+                h = (length - nTurns*2*math.pi*radius - (start_bend+stop_bend)*(math.pi/2-1)*radius)/(4*nTurns)
     else: #length is not contrained
         h= maxWidth-radius-w/2-s
     h = max(h,radius)
