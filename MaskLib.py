@@ -756,7 +756,7 @@ class BlankCenteredWR10(Chip):
 class ChipLL_2port(Chip):
     def __init__(self,wafer,chipID,layer,structures=None,defaults=None, FRAME_NAME='FRAME'):
         Chip.__init__(self,wafer,chipID,layer,structures=structures, FRAME_NAME=FRAME_NAME)
-        self.defaults = {'w':10, 's':5, 'radius':25,'r_out':0,'r_ins':0}
+        self.defaults = {'w':10, 's':6, 'radius':50,'r_out':0,'r_ins':0}
         if defaults is not None:
             #self.defaults = defaults.copy()
             for d in defaults:
@@ -773,7 +773,7 @@ class ChipLL_2port(Chip):
 class ChipLL_6port(Chip):
     def __init__(self,wafer,chipID,layer,structures=None,defaults=None, FRAME_NAME='FRAME'):
         Chip.__init__(self,wafer,chipID,layer,structures=structures, FRAME_NAME=FRAME_NAME)
-        self.defaults = {'w':10, 's':5, 'radius':25,'r_out':0,'r_ins':0}
+        self.defaults = {'w':10, 's':6, 'radius':50,'r_out':0,'r_ins':0}
         if defaults is not None:
             #self.defaults = defaults.copy()
             for d in defaults:
@@ -794,7 +794,7 @@ class ChipLL_6port(Chip):
 class ChipLL_20port(Chip):
     def __init__(self,wafer,chipID,layer,structures=None,defaults=None, FRAME_NAME='FRAME'):
         Chip.__init__(self,wafer,chipID,layer,structures=structures, FRAME_NAME=FRAME_NAME)
-        self.defaults = {'w':10, 's':5, 'radius':25,'r_out':0,'r_ins':0}
+        self.defaults = {'w':10, 's':6, 'radius':50,'r_out':0,'r_ins':0}
         if defaults is not None:
             #self.defaults = defaults.copy()
             for d in defaults:

@@ -1258,7 +1258,7 @@ def setupAirbridgeLayers(wafer:m.Wafer,BRLAYER='BRIDGE',RRLAYER='TETHER',brcolor
 
 def Airbridge(
     chip, structure, cpw_w=None, cpw_s=None, xvr_width=None, xvr_length=None, rr_width=None, rr_length=None,
-    rr_br_gap=None, rr_cpw_gap=None, xvr_overlap=0, br_radius=0, clockwise=False, lincolnLabs=False, BRLAYER=None, RRLAYER=None, **kwargs):
+    rr_br_gap=None, rr_cpw_gap=None, shape_overlap=0, br_radius=0, clockwise=False, lincolnLabs=False, BRLAYER=None, RRLAYER=None, **kwargs):
     """
     Define either cpw_w and cpw_s (refers to the cpw that the airbridge goes across) or xvr_length.
     xvr_length overrides cpw_w and cpw_s.
@@ -1314,7 +1314,7 @@ def Airbridge(
             xvr_width = 10
             rr_length = 14
         rr_width = xvr_width + 3 # RR.W.1
-        xvr_overlap = 0.1 # LL requires >= 0.1
+        shape_overlap = 0.1 # LL requires >= 0.1
         delta = 0
         if br_radius > 0:
             r = br_radius - cpw_w/2 - cpw_s
@@ -1331,8 +1331,9 @@ def Airbridge(
 
     s_left = struct().clone()
     s_left.direction += 90
-    Strip_straight(chip, s_left, length=(xvr_length+xvr_overlap)/2+delta_left, w=xvr_width, layer=BRLAYER, **kwargs)
-    s_left.shiftPos(-xvr_overlap/2)
+    s_left.shiftPos(-shape_overlap)
+    Strip_straight(chip, s_left, length=xvr_length/2+delta_left+2*shape_overlap, w=xvr_width, layer=BRLAYER, **kwargs)
+    s_left.shiftPos(-shape_overlap)
     Strip_straight(chip, s_left, length=rr_length + 2*rr_br_gap, w=rr_width + 2*rr_br_gap, layer=BRLAYER, **kwargs)
     s_l = s_left.clone()
     s_left.shiftPos(-rr_length - rr_br_gap)
@@ -1340,8 +1341,9 @@ def Airbridge(
 
     s_right = struct().clone()
     s_right.direction -= 90
-    Strip_straight(chip, s_right, length=(xvr_length+xvr_overlap)/2+delta_right, w=xvr_width, layer=BRLAYER, **kwargs)
-    s_right.shiftPos(-xvr_overlap/2)
+    s_right.shiftPos(-shape_overlap)
+    Strip_straight(chip, s_right, length=xvr_length/2+delta_right+2*shape_overlap, w=xvr_width, layer=BRLAYER, **kwargs)
+    s_right.shiftPos(-shape_overlap)
     Strip_straight(chip, s_right, length=rr_length + 2*rr_br_gap, w=rr_width + 2*rr_br_gap, layer=BRLAYER, **kwargs)
     s_r = s_right.clone()
     s_right.shiftPos(-rr_length - rr_br_gap)
@@ -1404,3 +1406,72 @@ def CPW_bridge(chip, structure, xvr_length=None, w=None, s=None, lincolnLabs=Fal
     CPW_taper(chip, s_right, length=rr_length + 2*rr_br_gap, w0=rr_width + 2*rr_br_gap, s0=s, w1=w, s1=s, **kwargs)
 
     return s_left, s_right
+
+
+# ===============================================================================
+# DRAW TEXT SHAPES
+# (adapted from slab maskmaker)  
+# ===============================================================================
+alphanum_dict = {
+'a': [[(0,0), (0,16), (12,16), (12,0), (8,0), (8,14), (4,14), (4,0), (0,0)], [(4,8), (4,10), (8,10), (8,8), (4,8)]],
+'b': [[(0,0), (4,0), (4,16), (0,16), (0,0)], [(4,0), (8,0), (12,2), (12,6), (8,8), (12,10), (12,14), (8,16), (4,16), (4,14), (8,14), (8,10), (4,10), (4,6), (8,6), (8,2), (4,2), (4,0)]],
+'c': [[(0,0), (0,16), (12,16), (12,14), (4,14), (4,2), (12,2), (12,0), (0,0), (0,0)]],
+'d': [[(0,0), (4,0), (4,16), (0,16), (0,0)], [(4,0), (8,0), (12,2), (12,14), (8,16), (4,16), (4,14), (8,14), (8,2), (4,2), (4,0)]],
+'e': [[(0,0), (0,16), (12,16), (12,14), (4,14), (4,10), (8,10), (8,8), (4,8), (4,2), (12,2), (12,0), (0,0), (0,0)]],
+'f': [[(0,0), (0,16), (12,16), (12,14), (4,14), (4,10), (8,10), (8,8), (4,8), (4,0), (0,0), (0,0)]],
+'g': [[(0,0), (12,0), (12,8), (6,8), (6,6), (8,6), (8,2), (4,2), (4,14), (12,14), (12,16), (0,16), (0,0), (0,0)]],
+'h': [[(0,0), (4,0), (4,8), (8,8), (8,0), (12,0), (12,16), (8,16), (8,10), (4,10), (4,16), (0,16), (0,0), (0,0)]],
+'i': [[(0,0), (12,0), (12,2), (8,2), (8,14), (12,14), (12,16), (0,16), (0,14), (4,14), (4,2), (0,2), (0,0), (0,0)]],
+'j': [[(0,0), (12,0), (12,16), (8,16), (8,2), (4,2), (4,6), (0,6), (0,0), (0,0)]],
+'k': [[(0,0), (4,0), (4,6), (8,0), (12,0), (6,8), (12,16), (8,16), (4,10), (4,16), (0,16), (0,0), (0,0)]],
+'l': [[(0,0), (0,16), (4,16), (4,2), (12,2), (12,0), (0,0), (0,0)]],
+'m': [[(0,0), (4,0), (4,8), (6,2), (8,8), (8,0), (12,0), (12,16), (8,16), (6,10), (4,16), (0,16), (0,0), (0,0)]],
+'n': [[(0,0), (4,0), (4,10), (8,0), (12,0), (12,16), (8,16), (8,4), (4,16), (0,16), (0,0), (0,0)]],
+'o': [[(0,0), (4,0), (4,16), (0,16), (0,0)], [(4,0), (12,0), (12,16), (4,16), (4,14), (8,14), (8,2), (4,2), (4,0)]],
+'p': [[(0,0), (4,0), (4,16), (0,16), (0,0)], [(4,8), (12,8), (12,16), (4,16), (4,14), (8,14), (8,10), (4,10), (4,8)]],
+'q': [[(0,0), (4,0), (4,16), (0,16), (0,0)], [(4,2), (6,2), (6,4), (8,4), (8,14), (4,14), (4,16), (12,16), (12,-1), (8,-1), (8,0), (4,0), (4,2)]],
+'r': [[(0.,0.), (4.,0.), (4.,16.), (0.,16.), (0.,0.)], [(4.,8.), (8.,0.), (12.,0.), (8.,8.), (12.,8.), (12.,16.), (4.,16.), (4.,14.), (8.,14.), (8.,10.), (4.,10.), (4.,8.)]],
+'s': [[(0,0), (12,0), (12,10), (4,10), (4,14), (12,14), (12,16), (0,16), (0,8), (8,8), (8,2), (0,2), (0,0), (0,0)]],
+'t': [[(4,0), (8,0), (8,14), (12,14), (12,16), (0,16), (0,14), (4,14), (4,0), (4,0)]],
+'u': [[(0,0), (12,0), (12,16), (8,16), (8,2), (4,2), (4,16), (0,16), (0,0), (0,0)]],
+'v': [[(4,0), (8,0), (12,16), (8,16), (6,6), (4,16), (0,16), (4,0), (4,0)]],
+'w': [[(0,0), (4,0), (6,3), (8,0), (12,0), (12,16), (8,16), (8,4), (6,7), (4,4), (4,16), (0,16), (0,0), (0,0)]],
+'x': [[(0,0), (4,0), (6,6), (8,0), (12,0), (8,8), (12,16), (8,16), (6,10), (4,16), (0,16), (4,8), (0,0), (0,0)]],
+'y': [[(4,0), (8,0), (8,6), (12,16), (8,16), (6,8), (4,16), (0,16), (4,6), (4,0), (4,0)]],
+'z': [[(0,0), (12,0), (12,2), (4,2), (12,14), (12,16), (0,16), (0,14), (8,14), (0,2), (0,0), (0,0)]],
+'0': [[(0,2), (4,0), (4,16), (0,14), (0,2)], [(4,0), (8,0), (12,2), (12,14), (8,16), (4,16), (4,14), (8,14), (8,2), (4,2), (4,0)], [(4,2), (6,2), (8,13), (8,14), (6,14), (4,3), (4,2)]],
+'1': [[(0,0), (12,0), (12,2), (8,2), (8,16), (4,16), (0,14), (0,12), (4,12), (4,2), (0,2), (0,0), (0,0)]],
+'2': [[(0,0), (12,0), (12,2), (4,2), (4,4), (12,12), (12,16), (0,16), (0,14), (8,14), (8,12), (0,4), (0,0), (0,0)]],
+'3': [[(0,0), (12,0), (12,16), (0,16), (0,14), (8,14), (8,9), (4,9), (4,7), (8,7), (8,2), (0,2), (0,0), (0,0)]],
+'4': [[(8,0), (12,0), (12,16), (8,16), (8,10), (4,10), (4,16), (0,16), (0,8), (8,8), (8,0), (8,0)]],
+'5': [[(0,0), (12,0), (12,10), (4,10), (4,14), (12,14), (12,16), (0,16), (0,8), (8,8), (8,2), (0,2), (0,0), (0,0)]],
+'6': [[(0,0), (4,0), (4,16), (0,16), (0,0)], [(4,0), (12,0), (12,8), (4,8), (4,6), (8,6), (8,2), (4,2), (4,0)]],
+'7': [[(8,0), (12,0), (12,16), (0,16), (0,14), (8,14), (8,0), (8,0)]],
+'8': [[(0,0), (4,0), (4,16), (0,16), (0,10), (4,8), (0,6), (0,0)], [(4,0), (12,0), (12,6), (8,8), (12,10), (12,16), (4,16), (4,14), (8,14), (8,10), (4,10), (4,6), (8,6), (8,2), (4,2), (4,0)]],
+'9': [[(8,0), (12,0), (12,16), (8,16), (8,0)], [(8,16), (0,16), (0,8), (8,8), (8,10), (4,10), (4,14), (8,14), (8,16)]],
+'+': [[(0,6),(4,6),(4,2),(8,2),(8,6),(12,6),(12,10),(8,10),(8,14),(4,14),(4,10),(0,10),(0,6)]]
+}
+
+def AlphaNumStr(chip, structure, string, size, centered=False, bgcolor=None, **kwargs):
+    """
+    Draws block letters with size (x, y).
+    """
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+
+    if centered: struct().shiftPos(-size[0]*len(string)/2)
+    for letter in string:
+        letter = letter.lower()
+        assert letter in alphanum_dict.keys()
+        scaled_size = (size[0] / 16., size[1] / 16.)
+        for pts in alphanum_dict[letter]:
+            scaled_pts = [(p[0]*scaled_size[0], p[1]*scaled_size[1]) for p in pts]
+            chip.add(SolidPline(insert=struct().getPos(), rotation=structure.direction, points=scaled_pts, **kwargs))
+        struct().shiftPos(size[0])
