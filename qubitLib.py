@@ -12,8 +12,8 @@ from dxfwrite import const
 from dxfwrite.vector2d import midpoint, vadd, vsub, distance
 
 import maskLib.junctionLib as j
-from maskLib.Entities import RoundRect, InsideCurve
-from maskLib.microwaveLib import CPW_stub_open, CPW_straight, Strip_straight, Strip_bend, Strip_taper, CPW_launcher, CPW_taper
+from maskLib.Entities import RoundRect, InsideCurve, CurveRect
+from maskLib.microwaveLib import CPW_stub_open, CPW_straight, Strip_straight, Strip_bend, Strip_taper, CPW_launcher, CPW_taper, Strip_stub_open
 from maskLib.junctionLib import DolanJunction, JContact_tab
 
 from maskLib.utilities import kwargStrip
@@ -308,7 +308,7 @@ def Elephantmon(
 def Xmon(
     chip, structure:m.Structure, rotation=0,
     xmonw=25, xmonl=150, xmon_gapw=20, xmon_gapl=30,
-    r_out=5, r_ins=5,
+    r_out=5, r_ins=5, r_arm5=None,
     jj_loc=5, jj_reverse=False, **kwargs):
 
     """
@@ -396,19 +396,49 @@ def Xmon(
         assert xmon_gapw[l] == xmon_gapw[cur], 'Currently unsupported'
         s_temp = s_down.cloneAlong(vector=(xmonw[l]/2, xmonw[cur]/2), newDirection=45)
         s_temp.shiftPos(xmonw[4]/2 + xmon_gapw[cur]/np.sqrt(2))
-        # s_temp_l = s_temp.cloneAlong(newDirection=90)
-        # s_temp_l.shiftPos(xmonw[4]/2)
-        # Strip_taper(chip,s_temp_l, length=xmon_gapw[l]/np.sqrt(2), w0=xmon_gapw[l]*np.sqrt(2), w1=0, **kwargs)
-        # s_temp_r = s_temp.cloneAlong(newDirection=-90)
-        # s_temp_r.shiftPos(xmonw[4]/2)
-        # Strip_taper(chip,s_temp_r, length=xmon_gapw[cur]/np.sqrt(2), w0=xmon_gapw[cur]*np.sqrt(2), w1=0, **kwargs)
+
         s_temp.shiftPos(xmon_gapw[cur]/np.sqrt(2) + xmon_gapw[4])
         s_temp_temp = s_temp.cloneAlong(newDirection=180)
         CPW_taper(chip, s_temp_temp, length=xmon_gapw[4], w0=xmonw[4], s0=xmon_gapw[4], w1=xmonw[4], s1=0, **kwargs)
-        CPW_taper(chip, s_temp, length=xmon_gapw[4], w0=xmonw[4]+2*xmon_gapw[4], s0=0, w1=xmonw[4]+2*xmon_gapw[4], s1=xmon_gapw[4], **kwargs)
-        s_temp = s_temp.cloneAlongLast()
+
+        # inner rounded triangles
+        if r_arm5 == None:
+            r_arm5 = xmon_gapw[l]/4
+        s_temp_l = s_temp_temp.cloneAlong(newDirection=-90)
+        s_temp_l.shiftPos(xmonw[4]/2)
+        s_temp_l.direction += 45
+        s_temp_l = s_temp_l.cloneAlong(vector=(xmon_gapw[l]-r_arm5,0), newDirection=135)
+        sub_tri_height = xmon_gapw[l]-r_arm5
+        Strip_taper(chip, s_temp_l, length=(sub_tri_height)/np.sqrt(2), w0=0, w1=sub_tri_height*np.sqrt(2), **kwargs)
+        s_temp_l = s_temp_l.cloneAlongLast(newDirection=-45)
+        s_temp_l = s_temp_l.cloneAlongLast(vector=(0,-r_arm5/2))
+        Strip_straight(chip, s_temp_l, sub_tri_height-r_arm5, w=r_arm5, **kwargs)
+        s_temp_l = s_temp_l.cloneAlong(vector=(0,r_arm5/2), newDirection=-45)
+        chip.add(CurveRect(s_temp_l.getPos(), height=r_arm5, radius=r_arm5, ralign=const.TOP,angle=90,rotation=0, **kwargs))
+
+        s_temp_r = s_temp_temp.cloneAlong(newDirection=90)
+        s_temp_r.shiftPos(xmonw[4]/2)
+        s_temp_r.direction -= 45
+        s_temp_r = s_temp_r.cloneAlong(vector=(xmon_gapw[cur]-r_arm5,0), newDirection=-135)
+        sub_tri_height = xmon_gapw[cur]-r_arm5
+        Strip_taper(chip, s_temp_r, length=(sub_tri_height)/np.sqrt(2), w0=0, w1=sub_tri_height*np.sqrt(2), **kwargs)
+        s_temp_r = s_temp_r.cloneAlongLast(newDirection=45)
+        s_temp_r = s_temp_r.cloneAlongLast(vector=(0,r_arm5/2))
+        Strip_straight(chip, s_temp_r, sub_tri_height-r_arm5, w=r_arm5, **kwargs)
+        s_temp_r = s_temp_r.cloneAlong(vector=(0,-r_arm5/2), newDirection=45)
+        chip.add(CurveRect(s_temp_r.getPos(), height=r_arm5, radius=r_arm5, ralign=const.TOP, angle=90, rotation=0, **kwargs))
+
+        # fill in outer triangles
+        s_temp_r = s_temp.cloneAlong(vector=(0,-xmonw[4]/2-xmon_gapw[4]))
+        chip.add(InsideCurve(s_temp_r.getPos(), height=r_arm5, radius=r_arm5, ralign=const.TOP, angle=45, rotation=0, **kwargs))
+        s_temp_l = s_temp.cloneAlong(vector=(0,xmonw[4]/2+xmon_gapw[4]))
+        chip.add(InsideCurve(s_temp_l.getPos(), height=r_arm5, radius=r_arm5, ralign=const.TOP, angle=45, rotation=45, **kwargs))
+
+        # fill in actual arm of arm
         CPW_straight(chip, s_temp, length=xmonl[4]-distance(s_temp.getPos(), s.getPos()), w=xmonw[4], s=xmon_gapw[4], **kwargs)
         CPW_stub_open(chip, s_temp, length=xmon_gapl[4], r_out=r_out, r_ins=r_ins, w=xmonw[4], s=xmon_gapw[4], **kwargs)
+
+        # fill in the leftover corners that would have been filled in here if there was no arm
         s_temp = s_down.cloneAlong(vector=(xmonw[l]/2+xmon_gapw[l]+xmonw[4]/np.sqrt(2), (xmon_gapw[cur]+xmonw[cur])/2))
         Strip_straight(chip, s_temp, length=center_to_start_arm_ud-(xmonw[l]/2+xmon_gapw[l]), w=xmon_gapw[cur], **kwargs)
 
