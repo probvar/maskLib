@@ -164,8 +164,8 @@ def SlotToCPS_taper(chip,structure,offset,slot_length=400,slot_s0=1270,slot_s1=N
             print('\x1b[33mw or s not defined in ',chip.chipID,'!\x1b[0m')
             
     Slot_straight(chip, struct(), offset, bgcolor=bgcolor,**kwargs)
-    chip.add(RoundRect(struct().getPos((0,slot_s0/2)),slot_length,slot_bevel,slot_bevel*0.999,hflip=True,roundCorners=[0,0,1,0],rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-    chip.add(RoundRect(struct().getPos((0,-slot_s0/2)),slot_length,slot_bevel,slot_bevel*0.999,valign=const.TOP,hflip=True,roundCorners=[0,1,0,0],rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+    chip.add(RoundRect(struct().getPos((0,slot_s0/2)),slot_length,slot_bevel,min(slot_bevel,slot_length)*0.999,hflip=True,roundCorners=[0,0,1,0],rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+    chip.add(RoundRect(struct().getPos((0,-slot_s0/2)),slot_length,slot_bevel,min(slot_bevel,slot_length)*0.999,valign=const.TOP,hflip=True,roundCorners=[0,1,0,0],rotation=struct().direction,bgcolor=bgcolor,**kwargs))
     #lower
     chip.add(SolidPline(struct().start,rotation=struct().direction,bgcolor=bgcolor,
                        points=[(0,-slot_s0/2)]+[((t-1)*slot_length,-slot_s0/2+(slot_s0/2-slot_s1/2)*math.sqrt((t**(1/x))*(2-t**(1/x)))) for t in np.linspace(0., 1.,ptDensity, endpoint=True)],
