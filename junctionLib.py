@@ -1263,6 +1263,8 @@ def DolanJunction(
 
     assert lincolnLabs, 'Not implemented for normal usage'
 
+    if lincolnLabs: assert 0.1 < jfingerw < 3 # recommended: 0.150 < jfingerw < 3
+
     # Junction layer
     struct().direction += rotation
     if backward: struct().direction += 180

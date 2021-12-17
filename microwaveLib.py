@@ -1215,15 +1215,29 @@ def CPW_pincer(chip,struct:m.Structure,pincer_w,pincer_l,pincer_padw,pincer_tee_
 
     s_left, s_right = CPW_tee(chip, struct, w=w, s=s, w1=pincer_padw, s1=s, radius=pincer_tee_r + s, **kwargs)
 
-    CPW_straight(chip, s_left, length=(pincer_w-w-2*s-2*(pincer_tee_r-s))/2, **kwargs)
-    CPW_bend(chip, s_left, CCW=True, w=pincer_padw, s=s, radius=pad_r, **kwargs)
-    CPW_straight(chip, s_left, length=pincer_l-s, **kwargs)
-    CPW_stub_open(chip, s_left, w=pincer_padw, s=s, r_ins=0, **kwargs)
+    CPW_straight(chip, s_left, length=(pincer_w-w-2*s-2*pincer_tee_r)/2, **kwargs)
+    CPW_straight(chip, s_right, length=(pincer_w-w-2*s-2*pincer_tee_r)/2, **kwargs)
 
-    CPW_straight(chip, s_right, length=(pincer_w-w-2*s-2*(pincer_tee_r-s))/2, **kwargs)
-    CPW_bend(chip, s_right, CCW=False, w=pincer_padw, s=s, radius=pad_r, **kwargs)
-    CPW_straight(chip, s_right, length=pincer_l-s, **kwargs)
-    CPW_stub_open(chip, s_right, w=pincer_padw, s=s, r_ins=0, **kwargs)
+    if pincer_l > s:
+        CPW_bend(chip, s_left, CCW=True, w=pincer_padw, s=s, radius=pad_r, **kwargs)
+        CPW_straight(chip, s_left, length=pincer_l - s, **kwargs)
+        CPW_stub_open(chip, s_left, w=pincer_padw, s=s, r_ins=0, **kwargs)
+
+        CPW_bend(chip, s_right, CCW=False, w=pincer_padw, s=s, radius=pad_r, **kwargs)
+        CPW_straight(chip, s_right, length=pincer_l - s, **kwargs)
+        CPW_stub_open(chip, s_right, w=pincer_padw, s=s, r_ins=0, **kwargs)
+    else:
+        s_left = s_left.cloneAlong(vector=(0,pincer_padw/2+s/2))
+        Strip_bend(chip, s_left, CCW=True, w=s, radius=pad_r + pincer_padw/2 - s/2, **kwargs)
+        s_left = s_left.cloneAlong(vector=(s/2,s/2), newDirection=-90)
+        Strip_straight(chip, s_left, length=pad_r + pincer_padw/2, w=s)
+
+        s_right = s_right.cloneAlong(vector=(0,-pincer_padw/2-s/2))
+        Strip_bend(chip, s_right, CCW=False, w=s, radius=pad_r + pincer_padw/2 - s/2, **kwargs)
+        s_right = s_right.cloneAlong(vector=(s/2,-s/2), newDirection=90)
+        Strip_straight(chip, s_right, length=pad_r + pincer_padw/2, w=s)
+
+
 
     if not pincer_flipped:
         s_start.shiftPos(pincer_padw+pincer_tee_r+2*s)
@@ -1243,8 +1257,12 @@ def setupAirbridgeLayers(wafer:m.Wafer,BRLAYER='BRIDGE',RRLAYER='TETHER',brcolor
     wafer.RRLAYER=RRLAYER
 
 def Airbridge(
-    chip,structure, cpw_w=None, cpw_s=None, xvr_width=None, xvr_length=None, rr_width=None, rr_length=None,
-    rr_br_gap=None, rr_cpw_gap=None, br_radius=0, clockwise=False, lincolnLabs=False, BRLAYER=None, RRLAYER=None, **kwargs):
+    chip, structure, cpw_w=None, cpw_s=None, xvr_width=None, xvr_length=None, rr_width=None, rr_length=None,
+    rr_br_gap=None, rr_cpw_gap=None, shape_overlap=0, br_radius=0, clockwise=False, lincolnLabs=False, BRLAYER=None, RRLAYER=None, **kwargs):
+    """
+    Define either cpw_w and cpw_s (refers to the cpw that the airbridge goes across) or xvr_length.
+    xvr_length overrides cpw_w and cpw_s.
+    """
     assert lincolnLabs, 'Not implemented for normal usage'
     def struct():
         if isinstance(structure,m.Structure):
@@ -1278,29 +1296,31 @@ def Airbridge(
             setupAirbridgeLayers(chip.wafer)
             RRLAYER = chip.wafer.RRLAYER
 
-
     if lincolnLabs:
-        rr_br_gap = 1.5 # RR.BR.E.1 in Lincoln Labs
-        if rr_cpw_gap is not None: assert rr_cpw_gap >= 1.5
-        else: rr_cpw_gap = 4
+        rr_br_gap = 1.5 # RR.BR.E.1
+        if rr_cpw_gap is None: rr_cpw_gap = 2 # LL requires >= 0 (RR.E.1)
+        else: assert rr_cpw_gap + rr_br_gap >= 1.5 # RR.E.1
 
         if xvr_length is None:
-            # note need to do length checks if trying to put it on a cpw bend
-            xvr_length = cpw_w + 2*cpw_s + 2*(rr_cpw_gap-rr_br_gap)
-        if 5 <= xvr_length <= 16:
+            xvr_length = cpw_w + 2*cpw_s + 2*(rr_cpw_gap)
+
+        if 5 <= xvr_length <= 16: # BR.W.1, RR.L.1
             xvr_width = 5
             rr_length = 8
-        elif 16 < xvr_length <= 27:
+        elif 16 < xvr_length <= 27: # BR.W.2, RR.L.2
             xvr_width = 7.5
             rr_length = 10
-        elif 27 < xvr_length <= 32:
+        elif 27 < xvr_length <= 32: # BR.W.3, RR.L.3
             xvr_width = 10
             rr_length = 14
-        rr_width = xvr_width + 3
+        rr_width = xvr_width + 3 # RR.W.1
+        shape_overlap = 0.1 # LL requires >= 0.1
         delta = 0
         if br_radius > 0:
             r = br_radius - cpw_w/2 - cpw_s
-            delta = r*(1-math.sqrt(1-1/r**2*(rr_width/2)**2))
+            delta = r*(1-math.sqrt(1-1/r**2*((rr_width + 2*rr_br_gap)/2)**2))
+        # this code does not check if your bend is super severe and the necessary delta
+        # changes the necessary xvr_widths and rr_lengths, so don't do anything extreme
 
     if clockwise:
         delta_left = 0
@@ -1311,15 +1331,78 @@ def Airbridge(
 
     s_left = struct().clone()
     s_left.direction += 90
-    Strip_straight(chip, s_left, length=xvr_length/2+delta_left, w=xvr_width, layer=BRLAYER, **kwargs)
-    Strip_straight(chip, s_left, length=rr_length, w=rr_width, layer=BRLAYER, **kwargs)
-    s_left.shiftPos(-rr_length + rr_br_gap)
-    Strip_straight(chip, s_left, length=rr_length-2*rr_br_gap, w=rr_width-2*rr_br_gap, layer=RRLAYER, **kwargs)
+    s_left.shiftPos(-shape_overlap)
+    Strip_straight(chip, s_left, length=xvr_length/2+delta_left+2*shape_overlap, w=xvr_width, layer=BRLAYER, **kwargs)
+    s_left.shiftPos(-shape_overlap)
+    Strip_straight(chip, s_left, length=rr_length + 2*rr_br_gap, w=rr_width + 2*rr_br_gap, layer=BRLAYER, **kwargs)
+    s_l = s_left.clone()
+    s_left.shiftPos(-rr_length - rr_br_gap)
+    Strip_straight(chip, s_left, length=rr_length, w=rr_width, layer=RRLAYER, **kwargs)
 
     s_right = struct().clone()
     s_right.direction -= 90
-    Strip_straight(chip, s_right, length=xvr_length/2+delta_right, w=xvr_width, layer=BRLAYER, **kwargs)
-    Strip_straight(chip, s_right, length=rr_length, w=rr_width, layer=BRLAYER, **kwargs)
-    s_right.shiftPos(-rr_length + rr_br_gap)
-    Strip_straight(chip, s_right, length=rr_length-2*rr_br_gap, w=rr_width-2*rr_br_gap, layer=RRLAYER, **kwargs)
+    s_right.shiftPos(-shape_overlap)
+    Strip_straight(chip, s_right, length=xvr_length/2+delta_right+2*shape_overlap, w=xvr_width, layer=BRLAYER, **kwargs)
+    s_right.shiftPos(-shape_overlap)
+    Strip_straight(chip, s_right, length=rr_length + 2*rr_br_gap, w=rr_width + 2*rr_br_gap, layer=BRLAYER, **kwargs)
+    s_r = s_right.clone()
+    s_right.shiftPos(-rr_length - rr_br_gap)
+    Strip_straight(chip, s_right, length=rr_length, w=rr_width, layer=RRLAYER, **kwargs)
 
+    return s_l, s_r
+
+
+def CPW_bridge(chip, structure, xvr_length=None, w=None, s=None, lincolnLabs=False, BRLAYER=None, RRLAYER=None, **kwargs):
+    """
+    Draws an airbridge to bridge two sections of CPW, as well as the necessary connections.
+    w, s are for the CPW we want to connect.
+    structure is oriented at the same place as the structure for Airbridge.
+    """
+    assert lincolnLabs, 'Not implemented for normal usage'
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33mw not defined in ',chip.chipID)
+    if s is None:
+        try:
+            s = struct().defaults['s']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID)
+
+    if lincolnLabs:
+        rr_br_gap = 1.5 # RR.BR.E.1
+        rr_cpw_gap = 0 # LL requires >= 0 (RR.E.1)
+        if xvr_length is None:
+            xvr_length = w + 2*s + 2*(rr_cpw_gap)
+        if 5 <= xvr_length <= 16:
+            xvr_width = 5
+            rr_length = 8
+        elif 16 < xvr_length <= 27:
+            xvr_width = 7.5
+            rr_length = 10
+        elif 27 < xvr_length <= 32:
+            xvr_width = 10
+            rr_length = 14
+        else:
+            assert False, f'xvr_length {xvr_length} is out of range'
+        rr_width = xvr_width + 3
+
+    s_left, s_right = Airbridge(chip, struct(), xvr_length=xvr_length, lincolnLabs=lincolnLabs, **kwargs)
+
+    s_left.shiftPos(-rr_length - 2*rr_br_gap - rr_cpw_gap)
+    CPW_straight(chip, s_left, length=rr_length + 2*rr_br_gap + rr_cpw_gap, w=rr_width + 2*rr_br_gap, s=s, **kwargs)
+    CPW_taper(chip, s_left, length=rr_length + 2*rr_br_gap, w0=rr_width+2*rr_br_gap, s0=s, w1=w, s1=s, **kwargs)
+
+    s_right.shiftPos(-rr_length - 2*rr_br_gap - rr_cpw_gap)
+    CPW_straight(chip, s_right, length=rr_length + 2*rr_br_gap + rr_cpw_gap, w=rr_width + 2*rr_br_gap, s=s, **kwargs)
+    CPW_taper(chip, s_right, length=rr_length + 2*rr_br_gap, w0=rr_width + 2*rr_br_gap, s0=s, w1=w, s1=s, **kwargs)
+
+    return s_left, s_right
