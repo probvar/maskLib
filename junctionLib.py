@@ -15,7 +15,7 @@ from dxfwrite.vector2d import vadd
 from dxfwrite.algebra import rotate_2d
 
 from maskLib.Entities import SolidPline, CurveRect, RoundRect, InsideCurve
-from maskLib.microwaveLib import Strip_straight, Strip_taper
+from maskLib.microwaveLib import Strip_straight, Strip_taper, Strip_pad
 
 from maskLib.utilities import curveAB, kwargStrip
 
@@ -1224,7 +1224,7 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
 
 def DolanJunction(
     chip, structure, junctionl, jfingerw=0.5, rotation=0,
-    jarmw=3, jpadw=15, jpadl=20, jpadoverhang=5, # dimensions for contact tab overlap
+    jarmw=3, jpadw=15, jpadl=20, jpadr=0,jpadoverhang=5, # dimensions for contact tab overlap
     jfingerl=1.36,jtaperl=2-1.36-0.140,jgap=0.140, # fixed for LL
     backward=False, # if True, draw so points toward current structure location
     JANGLE=None, JLAYER=None,ULAYER=None,bgcolor=None,lincolnLabs=False,**kwargs):
@@ -1267,7 +1267,7 @@ def DolanJunction(
     struct().direction += rotation
     if backward: struct().direction += 180
     struct().shiftPos(-junctionl/2-jpadw+jpadoverhang)
-    Strip_straight(chip, struct(), jpadw, w=jpadl, layer=JLAYER) # contact pad
+    Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr,layer=JLAYER) # contact pad
     Strip_straight(chip, struct(), length=junctionl/2-jtaperl-jpadoverhang, w=jarmw, layer=JLAYER)
     if lincolnLabs: ucstruct = struct().clone() 
     Strip_taper(chip, struct(), length=jtaperl, w0=jarmw, w1=jfingerw, layer=JLAYER)
@@ -1279,7 +1279,7 @@ def DolanJunction(
         Strip_straight(chip, struct(), length=jgap, w=max(jarmw,jfingerw), layer=ULAYER)
 
     Strip_straight(chip, struct(), length=junctionl/2-jgap-jfingerl-jpadoverhang, w=jarmw, layer=JLAYER)
-    Strip_straight(chip, struct(), jpadw, w=jpadl, layer=JLAYER) # contact pad
+    Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr, layer=JLAYER) # contact pad
 
     # Undercut layer
     if lincolnLabs:
