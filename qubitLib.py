@@ -506,7 +506,7 @@ def Xmon(
     s_jj = s_jj_locs[jj_loc]
     junctionl = s_jj_ls[jj_loc]
     JContact_tab(chip, s_jj.cloneAlong(newDirection=180), **kwargs)
-    #DolanJunction(chip, s_jj.cloneAlong(distance=junctionl/2), junctionl=junctionl, backward=jj_reverse, **kwargs)
+    DolanJunction(chip, s_jj.cloneAlong(distance=junctionl/2), junctionl=junctionl, backward=jj_reverse, **kwargs)
     JContact_tab(chip, s_jj.cloneAlong(distance=junctionl), **kwargs)
 
     structure.updatePos(s_start.getPos()) # initial starting position
