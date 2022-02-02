@@ -14,7 +14,7 @@ from dxfwrite.vector2d import midpoint, vadd, vsub, distance
 import maskLib.junctionLib as j
 from maskLib.Entities import RoundRect, InsideCurve, CurveRect
 from maskLib.microwaveLib import CPW_stub_open, CPW_straight, Strip_straight, Strip_bend, Strip_taper, CPW_launcher, CPW_taper, Strip_stub_open
-from maskLib.junctionLib import DolanJunction, JContact_tab
+from maskLib.junctionLib import DolanJunction, JContact_tab, ManhattanJunction
 
 from maskLib.utilities import kwargStrip
 
@@ -309,7 +309,7 @@ def Xmon(
     chip, structure:m.Structure, rotation=0,
     xmonw=25, xmonl=150, xmon_gapw=20, xmon_gapl=30,
     r_out=5, r_ins=5, r_arm5=None,
-    jj_loc=5, jj_reverse=False, **kwargs):
+    jj_loc=5, jj_reverse=False, junctionClass=DolanJunction,**kwargs):
 
     """
     Generates an Xmon (does NOT use an XOR layer) with a Dolan junction.
@@ -506,7 +506,8 @@ def Xmon(
     s_jj = s_jj_locs[jj_loc]
     junctionl = s_jj_ls[jj_loc]
     JContact_tab(chip, s_jj.cloneAlong(newDirection=180), **kwargs)
-    DolanJunction(chip, s_jj.cloneAlong(distance=junctionl/2), junctionl=junctionl, backward=jj_reverse, **kwargs)
+    #keep junction method general
+    junctionClass(chip,s_jj.cloneAlong(distance=junctionl/2), junctionl=junctionl, backward=jj_reverse, **kwargs)
     JContact_tab(chip, s_jj.cloneAlong(distance=junctionl), **kwargs)
 
     structure.updatePos(s_start.getPos()) # initial starting position

@@ -1261,9 +1261,7 @@ def DolanJunction(
             JANGLE = chip.wafer.JANGLES[0] % 360
     # assert chip.wafer.JANGLES[0] % 180 == struct().direction % 180, 'Need Dolan junction to be in same direction as JANGLE'
 
-    assert lincolnLabs, 'Not implemented for normal usage'
-
-    if lincolnLabs: assert 0.1 < jfingerw < 3 # recommended: 0.150 < jfingerw < 3
+    if lincolnLabs and not (0.1 < jfingerw < 3): print('WARNING: fingerw out of range. Recommended 0.150 < jfingerw < 3')
 
     # Junction layer
     struct().direction += rotation
@@ -1275,14 +1273,18 @@ def DolanJunction(
     Strip_taper(chip, struct(), length=jtaperl, w0=jarmw, w1=jfingerw, layer=JLAYER)
     Strip_straight(chip, struct(), length=jfingerl, w=jfingerw, layer=JLAYER)
 
-    struct().shiftPos(jgap) # gap
+    if lincolnLabs:
+        struct().shiftPos(jgap) # gap
+    else:
+        Strip_straight(chip, struct(), length=jgap, w=max(jarmw,jfingerw), layer=ULAYER)
 
     Strip_straight(chip, struct(), length=junctionl/2-jgap-jfingerl-jpadoverhang, w=jarmw, layer=JLAYER)
     Strip_straight(chip, struct(), jpadw, w=jpadl, layer=JLAYER) # contact pad
 
     # Undercut layer
-    Strip_taper(chip, ucstruct, length=jtaperl, w0=jarmw, w1=jfingerw, layer=ULAYER)
-    Strip_straight(chip, ucstruct, length=jfingerl+jgap, w=jfingerw, layer=ULAYER)
+    if lincolnLabs:
+        Strip_taper(chip, ucstruct, length=jtaperl, w0=jarmw, w1=jfingerw, layer=ULAYER)
+        Strip_straight(chip, ucstruct, length=jfingerl+jgap, w=jfingerw, layer=ULAYER)
 
 
 
