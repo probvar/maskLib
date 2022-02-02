@@ -588,17 +588,22 @@ class Chip:
 class Structure:
     #start = current coordinates, direction is angle of +x axis in degrees
     
-    def __init__(self,chip,start=(0,0),direction=0,defaults=None):
+    def __init__(self,chip,start=(0,0),direction=0,defaults=None,current_length=0.0):
         self.chip = chip #parent block reference
         self.start = start
         self.direction = direction #in degrees
         self.last = start
         self.last_direction = direction #in degrees
+        self.current_length = current_length #for keeping track of length
+        self.last_length = current_length
         if defaults is None:
             self.defaults = chip.defaults.copy()
         else:
             self.defaults = defaults.copy()
         
+    def zeroLength(self):
+        self.current_length=0.0
+    
     def updatePos(self,newStart=(0,0), angle=0, newDir=None): #set exact start position, add angle to direction, or set new direction
         self.last = self.start
         self.last_direction = self.direction
