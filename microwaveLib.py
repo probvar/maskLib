@@ -473,7 +473,7 @@ def CPW_stub_open(chip,structure,length=0,r_out=None,r_ins=None,w=None,s=None,fl
         chip.add(InsideCurve(struct().getPos((dx,w/2)),r_ins,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs))
         chip.add(InsideCurve(struct().getPos((dx,-w/2)),r_ins,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
 
-    chip.add(RoundRect(struct().getPos((dx,0)),length,w+2*s,r_out,roundCorners=[0,1,1,0],hflip=flipped,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=length)
+    chip.add(RoundRect(struct().getPos((dx,0)),length,w+2*s,min(r_out,length),roundCorners=[0,1,1,0],hflip=flipped,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=length)
     if extra_straight_section and flipped:
         CPW_straight(chip, struct(), r_ins, w=w,s=s,rotation=struct().direction,bgcolor=bgcolor,**kwargs)
 
@@ -1189,16 +1189,23 @@ def TwoPinCPW_wiggles(chip,structure,w=None,s_ins=None,s_out=None,s=None,Width=N
     Inductor_wiggles(chip, s0, w=s_ins+2*w,Width=Width,maxWidth=maxWidth,**kwargs)
     Strip_wiggles(chip, struct(), w=s_ins,maxWidth=maxWidth-w,**kwargs)
 
-def CPW_pincer(chip,struct:m.Structure,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r=None,w=None,s=None,pincer_flipped=False,bgcolor=None,**kwargs):
+def CPW_pincer(chip,structure,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r=None,w=None,s=None,pincer_flipped=False,bgcolor=None,**kwargs):
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
     if w is None:
         try:
-            w = struct.defaults['w']
+            w = struct().defaults['w']
         except KeyError:
             w=0
             print('\x1b[33mw not defined in ',chip.chipID)
     if s is None:
         try:
-            s = struct.defaults['s']
+            s = struct().defaults['s']
         except KeyError:
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     if pad_r is None:
@@ -1207,13 +1214,13 @@ def CPW_pincer(chip,struct:m.Structure,pincer_w,pincer_l,pincer_padw,pincer_tee_
         except KeyError:
             print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
             return
-    if not pincer_flipped: s_start = struct.clone()
+    if not pincer_flipped: s_start = struct().clone()
     else:
-        struct.shiftPos(pincer_padw+pincer_tee_r+2*s)
-        struct.direction += 180
-        s_start = struct.clone()
+        struct().shiftPos(pincer_padw+pincer_tee_r+2*s,angle=180)
+        #struct().direction += 180
+        s_start = struct().clone()
 
-    s_left, s_right = CPW_tee(chip, struct, w=w, s=s, w1=pincer_padw, s1=s, radius=pincer_tee_r + s, **kwargs)
+    s_left, s_right = CPW_tee(chip, struct(), w=w, s=s, w1=pincer_padw, s1=s, radius=pincer_tee_r + s, **kwargs)
 
     CPW_straight(chip, s_left, length=(pincer_w-w-2*s-2*pincer_tee_r)/2, **kwargs)
     CPW_straight(chip, s_right, length=(pincer_w-w-2*s-2*pincer_tee_r)/2, **kwargs)
@@ -1221,11 +1228,11 @@ def CPW_pincer(chip,struct:m.Structure,pincer_w,pincer_l,pincer_padw,pincer_tee_
     if pincer_l > s:
         CPW_bend(chip, s_left, CCW=True, w=pincer_padw, s=s, radius=pad_r, **kwargs)
         CPW_straight(chip, s_left, length=pincer_l - s, **kwargs)
-        CPW_stub_open(chip, s_left, w=pincer_padw, s=s, r_ins=0, **kwargs)
+        CPW_stub_open(chip, s_left, w=pincer_padw, s=s, **kwargs)
 
         CPW_bend(chip, s_right, CCW=False, w=pincer_padw, s=s, radius=pad_r, **kwargs)
         CPW_straight(chip, s_right, length=pincer_l - s, **kwargs)
-        CPW_stub_open(chip, s_right, w=pincer_padw, s=s, r_ins=0, **kwargs)
+        CPW_stub_open(chip, s_right, w=pincer_padw, s=s, **kwargs)
     else:
         s_left = s_left.cloneAlong(vector=(0,pincer_padw/2+s/2))
         Strip_bend(chip, s_left, CCW=True, w=s, radius=pad_r + pincer_padw/2 - s/2, **kwargs)
@@ -1241,10 +1248,10 @@ def CPW_pincer(chip,struct:m.Structure,pincer_w,pincer_l,pincer_padw,pincer_tee_
 
     if not pincer_flipped:
         s_start.shiftPos(pincer_padw+pincer_tee_r+2*s)
-        struct.updatePos(s_start.getPos())
+        struct().updatePos(s_start.getPos())
     else: 
-        struct.updatePos(s_start.getPos())
-        struct.direction = s_start.direction + 180
+        struct().updatePos(s_start.getPos(),angle=180)
+        #struct.direction = s_start.direction + 180
     
 # ===============================================================================
 # Airbridges (Lincoln Labs designs)
