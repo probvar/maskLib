@@ -1190,6 +1190,16 @@ def TwoPinCPW_wiggles(chip,structure,w=None,s_ins=None,s_out=None,s=None,Width=N
     Strip_wiggles(chip, struct(), w=s_ins,maxWidth=maxWidth-w,**kwargs)
 
 def CPW_pincer(chip,structure,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r=None,w=None,s=None,pincer_flipped=False,bgcolor=None,**kwargs):
+    '''
+    pincer_w :      
+    pincer_l :      length of pincer arms
+    pincer_padw :   pincer pad trace width
+    pincer_tee_r :  radius of tee
+    pad_r:          inside radius of pincer bends
+    w:              original trace width
+    s:              pincer trace gap
+    pincer_flipped: equivalent to hflip
+    '''
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -1209,11 +1219,12 @@ def CPW_pincer(chip,structure,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r
         except KeyError:
             print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
     if pad_r is None:
-        try:
-            pad_r = pincer_padw/2 + s
-        except KeyError:
-            print('\x1b[33mradius not defined in ',chip.chipID,'!\x1b[0m')
-            return
+        pincer_r = pincer_padw/2 + s
+        pad_r=0
+    else:
+        pincer_r = pincer_padw/2+s+abs(pad_r)#prevent negative entries
+        pad_r = abs(pad_r)
+        
     if not pincer_flipped: s_start = struct().clone()
     else:
         struct().shiftPos(pincer_padw+pincer_tee_r+2*s,angle=180)
@@ -1222,25 +1233,25 @@ def CPW_pincer(chip,structure,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r
 
     s_left, s_right = CPW_tee(chip, struct(), w=w, s=s, w1=pincer_padw, s1=s, radius=pincer_tee_r + s, **kwargs)
 
-    CPW_straight(chip, s_left, length=(pincer_w-w-2*s-2*pincer_tee_r)/2, **kwargs)
-    CPW_straight(chip, s_right, length=(pincer_w-w-2*s-2*pincer_tee_r)/2, **kwargs)
+    CPW_straight(chip, s_left, length=(pincer_w-w-2*s-2*pincer_tee_r)/2-pad_r, **kwargs)
+    CPW_straight(chip, s_right, length=(pincer_w-w-2*s-2*pincer_tee_r)/2-pad_r, **kwargs)
 
     if pincer_l > s:
-        CPW_bend(chip, s_left, CCW=True, w=pincer_padw, s=s, radius=pad_r, **kwargs)
-        CPW_straight(chip, s_left, length=pincer_l - s, **kwargs)
+        CPW_bend(chip, s_left, CCW=True, w=pincer_padw, s=s, radius=pincer_r, **kwargs)
+        CPW_straight(chip, s_left, length=pincer_l - s-pad_r, **kwargs)
         CPW_stub_open(chip, s_left, w=pincer_padw, s=s, **kwargs)
 
-        CPW_bend(chip, s_right, CCW=False, w=pincer_padw, s=s, radius=pad_r, **kwargs)
-        CPW_straight(chip, s_right, length=pincer_l - s, **kwargs)
+        CPW_bend(chip, s_right, CCW=False, w=pincer_padw, s=s, radius=pincer_r, **kwargs)
+        CPW_straight(chip, s_right, length=pincer_l - s-pad_r, **kwargs)
         CPW_stub_open(chip, s_right, w=pincer_padw, s=s, **kwargs)
     else:
         s_left = s_left.cloneAlong(vector=(0,pincer_padw/2+s/2))
-        Strip_bend(chip, s_left, CCW=True, w=s, radius=pad_r + pincer_padw/2 - s/2, **kwargs)
+        Strip_bend(chip, s_left, CCW=True, w=s, radius=pincer_r + pincer_padw/2 - s/2, **kwargs)
         s_left = s_left.cloneAlong(vector=(s/2,s/2), newDirection=-90)
         Strip_straight(chip, s_left, length=pad_r + pincer_padw/2, w=s)
 
         s_right = s_right.cloneAlong(vector=(0,-pincer_padw/2-s/2))
-        Strip_bend(chip, s_right, CCW=False, w=s, radius=pad_r + pincer_padw/2 - s/2, **kwargs)
+        Strip_bend(chip, s_right, CCW=False, w=s, radius=pincer_r + pincer_padw/2 - s/2, **kwargs)
         s_right = s_right.cloneAlong(vector=(s/2,-s/2), newDirection=90)
         Strip_straight(chip, s_right, length=pad_r + pincer_padw/2, w=s)
 

@@ -11,10 +11,10 @@ from dxfwrite import DXFEngine as dxf
 from dxfwrite import const
 from dxfwrite.vector2d import midpoint, vadd, vsub, distance
 
-import maskLib.junctionLib as j
+#import maskLib.junctionLib as j
 from maskLib.Entities import RoundRect, InsideCurve, CurveRect
 from maskLib.microwaveLib import CPW_stub_open, CPW_straight, Strip_straight, Strip_bend, Strip_taper, CPW_launcher, CPW_taper, Strip_stub_open
-from maskLib.junctionLib import DolanJunction, JContact_tab, ManhattanJunction
+from maskLib.junctionLib import DolanJunction, JContact_tab, ManhattanJunction, JcalcTabDims, JContact_slot, JContact_tab, JSingleProbePad, JProbePads
 
 from maskLib.utilities import kwargStrip
 
@@ -73,7 +73,7 @@ def TransmonPad(chip,pos,padwidth=250,padheight=None,padradius=25,tab=False,tabS
             #print('\x1b[33mr_out not defined in ',chip.chipID,'!\x1b[0m')
             padradius = 0
     
-    tablength,tabhwidth = j.JcalcTabDims(chip,pos,**kwargs)    
+    tablength,tabhwidth = JcalcTabDims(chip,pos,**kwargs)    
     
     if tab:
         #positive tab
@@ -81,7 +81,7 @@ def TransmonPad(chip,pos,padwidth=250,padheight=None,padradius=25,tab=False,tabS
             chip.add(RoundRect(struct().start,padwidth,padheight,padradius,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=struct(),length=padwidth)
             if tabShoulder:
                 chip.add(RoundRect(struct().start,tabShoulderLength,tabShoulderWidth,tabShoulderRadius,roundCorners=[0,1,1,0],valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=struct(),length=tabShoulderLength)
-        j.JContact_tab(chip,struct(),hflip = flipped,**kwargs)
+        JContact_tab(chip,struct(),hflip = flipped,**kwargs)
         if flipped:
             if tabShoulder:
                 chip.add(RoundRect(struct().start,tabShoulderLength,tabShoulderWidth,tabShoulderRadius,roundCorners=[1,0,0,1],valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=struct(),length=tabShoulderLength)
@@ -98,7 +98,7 @@ def TransmonPad(chip,pos,padwidth=250,padheight=None,padradius=25,tab=False,tabS
                 chip.add(RoundRect(struct().getPos((0,tabhwidth)),padwidth,padheight/2 - tabhwidth,padradius,roundCorners=[0,0,1,1],rotation=struct().direction,bgcolor=bgcolor,**kwargs))
                 chip.add(RoundRect(struct().getPos((0,-tabhwidth)),padwidth,padheight/2 - tabhwidth,padradius,roundCorners=[1,1,0,0],valign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
                 chip.add(dxf.rectangle(struct().start,padwidth-tablength,2*tabhwidth,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)),structure=struct(),length=padwidth-tablength)
-        j.JContact_slot(chip,struct(),hflip = not flipped,**kwargs)
+        JContact_slot(chip,struct(),hflip = not flipped,**kwargs)
         if flipped:
             if tabShoulder:
                 chip.add(RoundRect(struct().getPos((-tablength,tabhwidth)),tabShoulderLength,tabShoulderWidth/2 - tabhwidth,min(tabShoulderRadius,(tabShoulderWidth/2 - tabhwidth)/2),roundCorners=[0,0,0,1],rotation=struct().direction,bgcolor=bgcolor,**kwargs))
@@ -115,7 +115,8 @@ def TransmonPad(chip,pos,padwidth=250,padheight=None,padradius=25,tab=False,tabS
 def Transmon3D(chip,pos,rotation=0,bgcolor=None,padh=200,padh2=200,padw=3000,padw2=3000,
                taperw=0,taperw2=0,leadw=85,leadw2=85,leadh=20,leadh2=20,separation=20,
                r_out=0.75,r_ins=0.75,taboffs=-0.05,steml=1.5,gapl=1.5,tabl=2,stemw=3,gapw=3,tabw=0.5,
-               jpadTaper=10,jpadw=25,jpadh=16,jpadSeparation=28,jfingerl=4.5,jfingerex=1.5,jleadw=1,**kwargs):
+               jpadTaper=10,jpadw=25,jpadh=16,jpadSeparation=28,jfingerl=4.5,jfingerex=1.5,jleadw=1,
+               junctionClass=ManhattanJunction,**kwargs):
     '''
     Generates transmon paddles with a manhattan junction at the center. 
     Junction and contact tab parameters are monkey patched to Junction function through kwargs.
@@ -147,15 +148,15 @@ def Transmon3D(chip,pos,rotation=0,bgcolor=None,padh=200,padh2=200,padw=3000,pad
         
     #start where the junction is, move left to where left pad starts
     struct().shiftPos(-separation/2-leadw-padw)
-    j.JSingleProbePad(chip,struct(),padwidth=padw,padheight=padh,tabShoulder=True,tabShoulderWidth=leadh,tabShoulderLength=leadw,flipped=False,padradius=None,
+    JSingleProbePad(chip,struct(),padwidth=padw,padheight=padh,tabShoulder=True,tabShoulderWidth=leadh,tabShoulderLength=leadw,flipped=False,padradius=None,
                       r_out=r_out,r_ins=r_ins,taboffs=taboffs,gapl=gapl,tabl=tabl,gapw=gapw,tabw=tabw,absoluteDimensions=True,**kwargs)
     struct().shiftPos(separation)
-    j.JSingleProbePad(chip,struct(),padwidth=padw2,padheight=padh2,tabShoulder=True,tabShoulderWidth=leadh2,tabShoulderLength=leadw2,flipped=True,padradius=None,
+    JSingleProbePad(chip,struct(),padwidth=padw2,padheight=padh2,tabShoulder=True,tabShoulderWidth=leadh2,tabShoulderLength=leadw2,flipped=True,padradius=None,
                       r_out=r_out,r_ins=r_ins,taboffs=taboffs,gapl=gapl,tabl=tabl,gapw=gapw,tabw=tabw,absoluteDimensions=True,**kwargs)
                     #r_out=0,r_ins=0,taboffs=3,gapl=0,tabl=0,gapw=gapw,tabw=2,absoluteDimensions=True,**kwargs)
     
     #write the junction
-    j.ManhattanJunction(chip, j_struct,rotation=struct().direction,jpadTaper=jpadTaper,jpadw=jpadw,jpadh=jpadh,separation=jpadSeparation+jpadTaper,jfingerl=jfingerl,jfingerex=jfingerex,leadw=jleadw,**kwargs)
+    junctionClass(chip, j_struct,rotation=struct().direction,jpadTaper=jpadTaper,jpadw=jpadw,jpadh=jpadh,separation=jpadSeparation+jpadTaper,jfingerl=jfingerl,jfingerex=jfingerex,leadw=jleadw,**kwargs)
     
     
 
@@ -242,10 +243,10 @@ def Hamburgermon(chip,pos,rotation=0,
     chip.add(RoundRect(struct().getPos((jxpos-qbunseparation/2-qbunthick,qccap_padw/2+qccap_gap)),qccapl,qccapw,qccapr_out,roundCorners=[1,0,0,1],halign=const.RIGHT,rotation=struct().direction,layer=XLAYER,bgcolor=chip.bg(XLAYER),**kwargs))
     chip.add(RoundRect(struct().getPos((jxpos-qbunseparation/2-qbunthick,-qccap_padw/2-qccap_gap)),qccapl,qccapw,qccapr_out,roundCorners=[1,0,0,1],halign=const.RIGHT,vflip=True,rotation=struct().direction,layer=XLAYER,bgcolor=chip.bg(XLAYER),**kwargs))
     
-    j.JProbePads(chip, centerPos,rotation=struct().direction,padwidth=qbunthick,padheight=qbunwidth,padradius=qbunr,separation=qbunseparation,
+    JProbePads(chip, centerPos,rotation=struct().direction,padwidth=qbunthick,padheight=qbunwidth,padradius=qbunr,separation=qbunseparation,
                  layer=XLAYER,bgcolor=chip.bg(XLAYER),**kwargs)
     
-    j.ManhattanJunction(chip, centerPos, rotation=struct().direction,separation=qbunseparation, **kwargs)
+    ManhattanJunction(chip, centerPos, rotation=struct().direction,separation=qbunseparation, **kwargs)
     
     return centerPos,struct().direction
     
@@ -306,13 +307,13 @@ def Elephantmon(
     DolanJunction(chip, s, junctionl=tpad_gap, **kwargs)
 
 def Xmon(
-    chip, structure:m.Structure, rotation=0,
+    chip, structure, rotation=0,
     xmonw=25, xmonl=150, xmon_gapw=20, xmon_gapl=30,
-    r_out=5, r_ins=5, r_arm5=None,
-    jj_loc=5, jj_reverse=False, junctionClass=DolanJunction,**kwargs):
+    r_out=None, r_ins=None, r_arm5=None,
+    jj_loc=6, jj_reverse=False, junctionClass=ManhattanJunction,**kwargs):
 
     """
-    Generates an Xmon (does NOT use an XOR layer) with a Dolan junction.
+    Generates an Xmon (does NOT use an XOR layer) with a junction method specified by junctionClass.
     Additional params can be passed to junctions used kwargs.
     jj_loc in [0, 11] decides the location on the cross to place the junction:
         end of every arm and midway along every arm, counting clockwise
@@ -322,6 +323,26 @@ def Xmon(
     By default, draws the junction pointing toward ground. If jj_reverse, draws pointing toward
         pad at the specified location.
     """
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if r_out is None:
+        try:
+            r_out = struct().defaults['r_out']
+        except KeyError:
+            print('\x1b[33mr_out not defined in ',chip.chipID,'!\x1b[0m')
+            r_out=0
+    if r_ins is None:
+        try:
+            r_ins = struct().defaults['r_ins']
+        except KeyError:
+            #print('r_ins not defined in ',chip.chipID,'!\x1b[0m')
+            r_ins=0
+    
     if np.isscalar(xmonl): xmonl = [xmonl]*4
     if np.isscalar(xmonw): xmonw = [xmonw]*4
     if np.isscalar(xmon_gapl): xmon_gapl = [xmon_gapl]*4
@@ -344,8 +365,8 @@ def Xmon(
         add_arm = True
         # Add arm capability is very limited in cases where gap widths are not all equal
 
-    s_start = structure.clone()
-    s = structure.cloneAlong(distance=xmon_gapl[0]+xmonl[0], newDirection=rotation) # start in center of X
+    s_start = struct().clone()
+    s = struct().cloneAlong(distance=xmon_gapl[0]+xmonl[0], newDirection=rotation) # start in center of X
     s_jj_locs = [None]*12
     s_jj_ls = [0]*12
 
@@ -507,8 +528,8 @@ def Xmon(
     junctionl = s_jj_ls[jj_loc]
     JContact_tab(chip, s_jj.cloneAlong(newDirection=180), **kwargs)
     #keep junction method general
-    junctionClass(chip,s_jj.cloneAlong(distance=junctionl/2), junctionl=junctionl, backward=jj_reverse, **kwargs)
+    junctionClass(chip,s_jj.cloneAlong(distance=junctionl/2), junctionl=junctionl, backward=jj_reverse, separation=junctionl,**kwargs)
     JContact_tab(chip, s_jj.cloneAlong(distance=junctionl), **kwargs)
 
-    structure.updatePos(s_start.getPos()) # initial starting position
+    struct().updatePos(s_start.getPos()) # initial starting position
     return s # center of xmon

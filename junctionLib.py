@@ -355,18 +355,14 @@ def JSingleProbePad(chip,pos,padwidth=250,padheight=None,padradius=25,tab=False,
                 chip.add(dxf.rectangle(struct().start,padwidth-tablength,2*tabhwidth,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
             
             
-def JProbePads(chip,pos,padwidth=250,separation=40,rotation=0,**kwargs):
-    thisStructure = None
-    if isinstance(pos,tuple):
-        thisStructure = m.Structure(chip,start=pos,direction=rotation)
-        
+def JProbePads(chip,structure,padwidth=250,separation=40,rotation=0,**kwargs):
     def struct():
-        if isinstance(pos,m.Structure):
-            return pos
-        elif isinstance(pos,tuple):
-            return thisStructure
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
-            return chip.structure(pos)
+            return chip.structure(structure)
     
     struct().shiftPos(-separation/2-padwidth)
     JSingleProbePad(chip,struct(),padwidth=padwidth,flipped=False,**kwargs)
@@ -374,7 +370,7 @@ def JProbePads(chip,pos,padwidth=250,separation=40,rotation=0,**kwargs):
     JSingleProbePad(chip,struct(),padwidth=padwidth,flipped=True,**kwargs)          
     
     
-def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=None,jpadOverhang=5,jpadTaper=0,
+def ManhattanJunction(chip,structure,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=None,jpadOverhang=5,jpadTaper=0,
                       jfingerw=0.13,jfingerl=5.0,jfingerex=1.0,
                       leadw=2.0,leadr=0.5,
                       ucdist=0.6,
@@ -383,17 +379,13 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
     '''
     Set jpadr to None to use chip-wide defaults (r_out).
     '''
-    thisStructure = None
-    if isinstance(pos,tuple):
-        thisStructure = m.Structure(chip,start=pos,direction=rotation)
-        
     def struct():
-        if isinstance(pos,m.Structure):
-            return pos
-        elif isinstance(pos,tuple):
-            return thisStructure
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
         else:
-            return chip.structure(pos)
+            return chip.structure(structure)
     if jpadr is None:
         try:
             jpadr = struct().defaults['r_out']
@@ -419,9 +411,11 @@ def ManhattanJunction(chip,pos,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=N
             ULAYER = chip.wafer.ULAYER
     
     #cache start position and figure out if we're using structures or not
+    '''
     if thisStructure is None:
         #using structures
         struct().shiftPos(separation/2)
+    '''
     centerPos = struct().start
     
     if JANGLE2 is None:
