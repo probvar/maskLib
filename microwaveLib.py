@@ -125,7 +125,7 @@ def Strip_straight(chip,structure,length,w=None,bgcolor=None,**kwargs): #note: u
     
     chip.add(dxf.rectangle(struct().start,length,w,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)),structure=structure,length=length)
 
-def Strip_taper(chip,structure,length=None,w0=None,w1=None,bgcolor=None,**kwargs): #note: uses CPW conventions
+def Strip_taper(chip,structure,length=None,w0=None,w1=None,bgcolor=None,offset=(0,0),**kwargs): #note: uses CPW conventions
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -149,7 +149,7 @@ def Strip_taper(chip,structure,length=None,w0=None,w1=None,bgcolor=None,**kwargs
     if length is None:
         length = math.sqrt(3)*abs(w0/2-w1/2)
     
-    chip.add(SkewRect(struct().start,length,w0,(0,0),w1,rotation=struct().direction,valign=const.MIDDLE,edgeAlign=const.MIDDLE,bgcolor=bgcolor,**kwargs),structure=structure,length=length)
+    chip.add(SkewRect(struct().start,length,w0,offset,w1,rotation=struct().direction,valign=const.MIDDLE,edgeAlign=const.MIDDLE,bgcolor=bgcolor,**kwargs),structure=structure,offsetVector=vadd((length,0),offset))
 
 def Strip_bend(chip,structure,angle=90,CCW=True,w=None,radius=None,ptDensity=120,bgcolor=None,**kwargs):
     def struct():
