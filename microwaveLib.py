@@ -101,7 +101,7 @@ def waffle(chip, grid_x, grid_y=None,width=10,height=None,exclude=None,padx=0,pa
         for j in range(int(pady/grid_y),ny-int(pady/grid_y)):
             if not second_pass[i][j]:
                 pos = i*grid_x + grid_x/2., j*grid_y + grid_y/2.
-                chip.add(dxf.rectangle(pos,width,height,bgcolor=chip.wafer.bg(),halign=const.CENTER,valign=const.MIDDLE,layer=layer) )   
+                chip.add(dxf.rectangle(pos,width,height,bgcolor=chip.wafer.bg(layer),halign=const.CENTER,valign=const.MIDDLE,layer=layer) )   
 
 # ===============================================================================
 # basic POSITIVE microstrip function definitions
@@ -514,7 +514,7 @@ def CPW_cap(chip,structure,gap,r_ins=None,w=None,s=None,bgcolor=None,angle=90,**
 
         
 def CPW_stub_round(chip,structure,w=None,s=None,round_left=True,round_right=True,flipped=False,bgcolor=None,**kwargs):
-    #same as stub_open, but preserves gap width along turn (so radii are defined by w, s)
+    #same as stub_open, but preserves gap width along turn (so radii are nominally defined by w, s)
     def struct():
         if isinstance(structure,m.Structure):
             return structure

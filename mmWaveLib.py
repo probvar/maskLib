@@ -37,6 +37,7 @@ class BlankCenteredWR10(m.Chip):
 
 class VivaldiTaperChip(m.Chip):
     def __init__(self,wafer,chipID,layer,left=False,right=False,defaults=None,structures=None,
+                 taperLength=870,
                  l_waveguide=870,h_waveguide=1270,r_waveguide=400,
                  slot_width=2270,slot_height=2110,r_slot=400,**kwargs):
         m.Chip.__init__(self,wafer,chipID,layer)
@@ -58,19 +59,19 @@ class VivaldiTaperChip(m.Chip):
             self.add(RoundRect(self.center,slot_width,slot_height,r_slot,halign=const.CENTER,valign=const.MIDDLE,layer=wafer.lyr('FRAME')))
         
         if left:
-            Slot_vivaldi_taper(self,0,**kwargs)
+            Slot_vivaldi_taper(self,0,length=taperLength,**kwargs)
         if right:
-            Slot_vivaldi_taper(self,1,**kwargs)
+            Slot_vivaldi_taper(self,1,length=taperLength,**kwargs)
             
 class VivaldiTaperChipThru(VivaldiTaperChip):
-    def __init__(self,wafer,chipID,layer,defaults=None,structures=None,**kwargs):
-        VivaldiTaperChip.__init__(self,wafer,chipID,layer,left=True,right=True,defaults=defaults,structures=structures,**kwargs)
-        Slot_straight(self,0,self.width-2*870)
+    def __init__(self,wafer,chipID,layer,defaults=None,structures=None,taperLength=870,**kwargs):
+        VivaldiTaperChip.__init__(self,wafer,chipID,layer,left=True,right=True,defaults=defaults,structures=structures,taperLength=taperLength,**kwargs)
+        Slot_straight(self,0,self.width-2*taperLength)
         
 class VivaldiTaperChipReflect(VivaldiTaperChip):
-    def __init__(self,wafer,chipID,layer,defaults=None,structures=None,**kwargs):
-        VivaldiTaperChip.__init__(self,wafer,chipID,layer,left=True,right=False,defaults=defaults,structures=structures,**kwargs)
-        Slot_straight(self,0,(self.width-2*870)/2)
+    def __init__(self,wafer,chipID,layer,defaults=None,structures=None,taperLength=870,**kwargs):
+        VivaldiTaperChip.__init__(self,wafer,chipID,layer,left=True,right=False,defaults=defaults,structures=structures,taperLength=taperLength,**kwargs)
+        Slot_straight(self,0,(self.width-2*taperLength)/2)
 
 # ===============================================================================
 # Slot (same as strip) functions
@@ -387,12 +388,14 @@ class StuddedWR10(m.BlankCenteredWR10):
         
 class ResistancePad(m.BlankCenteredWR10):
     #for metal defining mask
-    def __init__(self,wafer,chipID,w=40,l=1500,pad_extend=1000,offset=(0,0)):
-        m.BlankCenteredWR10.__init__(self,wafer,chipID,wafer.defaultLayer,offset)
+    def __init__(self,wafer,chipID,w=40,l=1500,pad_extend=1000,offset=(0,0),layer=None):
+        if layer is None:
+            layer = wafer.defaultLayer
+        m.BlankCenteredWR10.__init__(self,wafer,chipID,layer,offset)
         #put in a resistance bar
-        self.add(dxf.rectangle((-pad_extend+offset[0],0),pad_extend+self.width/2-l/2,self.height,bgcolor=wafer.bg(wafer.defaultLayer)))
-        self.add(dxf.rectangle((self.width/2 + l/2+offset[0],0),pad_extend+self.width/2-l/2,self.height,bgcolor=wafer.bg(wafer.defaultLayer)))
-        self.add(dxf.rectangle(self.centered((-l/2,-w/2)),l,w,bgcolor=wafer.bg(wafer.defaultLayer)))
+        self.add(dxf.rectangle((-pad_extend+offset[0],0),pad_extend+self.width/2-l/2,self.height,layer=layer,bgcolor=wafer.bg(layer)))
+        self.add(dxf.rectangle((self.width/2 + l/2+offset[0],0),pad_extend+self.width/2-l/2,self.height,layer=layer,bgcolor=wafer.bg(layer)))
+        self.add(dxf.rectangle(self.centered((-l/2,-w/2)),l,w,layer=layer,bgcolor=wafer.bg(layer)))
         
 class InverseResistancePad(m.BlankCenteredWR10):
     #for etch defining mask
@@ -403,6 +406,20 @@ class InverseResistancePad(m.BlankCenteredWR10):
         #self.add(dxf.rectangle((self.width/2 + l/2+offset[0],0),pad_extend+self.width/2-l/2,self.height,bgcolor=wafer.bg(wafer.defaultLayer)))
         self.add(dxf.rectangle(self.centered((0,-w/2)),l,self.height/2-w/2+overhang,halign=const.CENTER,valign=const.BOTTOM,bgcolor=wafer.bg(wafer.defaultLayer)))
         self.add(dxf.rectangle(self.centered((0,w/2)),l,self.height/2-w/2+overhang,halign=const.CENTER,valign=const.TOP,bgcolor=wafer.bg(wafer.defaultLayer)))
+        
+class BilayerResistancePad(m.BlankCenteredWR10):
+    #for etch defining mask
+    def __init__(self,wafer,chipID,w=40,l=1500,pad_extend=1000,offset=(0,0),overhang=80,layer=None):
+        m.BlankCenteredWR10.__init__(self,wafer,chipID,wafer.defaultLayer,offset)
+        #put in holes to define a resistance bar
+        self.add(dxf.rectangle(self.centered((0,0)),l+2*overhang,self.height/2+overhang,halign=const.CENTER,valign=const.BOTTOM,bgcolor=wafer.bg(wafer.defaultLayer)))
+        self.add(dxf.rectangle(self.centered((0,0)),l+2*overhang,self.height/2+overhang,halign=const.CENTER,valign=const.TOP,bgcolor=wafer.bg(wafer.defaultLayer)))
+        if layer is None:
+            layer = wafer.defaultLayer
+        #put in a resistance bar on 'layer'
+        self.add(dxf.rectangle((-pad_extend+offset[0],0),pad_extend+self.width/2-l/2,self.height,layer=layer,bgcolor=wafer.bg(layer)))
+        self.add(dxf.rectangle((self.width/2 + l/2+offset[0],0),pad_extend+self.width/2-l/2,self.height,layer=layer,bgcolor=wafer.bg(layer)))
+        self.add(dxf.rectangle(self.centered((-l/2,-w/2)),l,w,layer=layer,bgcolor=wafer.bg(layer)))
         
         
         
