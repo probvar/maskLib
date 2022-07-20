@@ -10,6 +10,7 @@ Library for drawing standard components for DC measurements (Four probe resistan
 import maskLib.MaskLib as m
 from dxfwrite import DXFEngine as dxf
 from dxfwrite import const
+from microwaveLib import Strip_straight, Strip_stub_open, Strip_stub_short
 
 
 # ===============================================================================
@@ -38,3 +39,30 @@ class Rbar(m.Chip):
         #outer
         self.add(dxf.rectangle(self.centered((bar_offs + pad_sep/2 +bar_width/2,0)),self.width/2 - bar_offs - pad_x - pad_sep/2 - bar_width/2,bar_length,valign=const.MIDDLE,bgcolor=wafer.bg(),layer=wafer.defaultLayer))
         self.add(dxf.rectangle(self.centered((-bar_offs - pad_sep/2 -bar_width/2,0)),self.width/2 - bar_offs - pad_x - pad_sep/2 - bar_width/2,bar_length,halign=const.RIGHT,valign=const.MIDDLE,bgcolor=wafer.bg(),layer=wafer.defaultLayer))
+        
+def ResistanceBarBilayer(self,chip,structure,bgcolor=None,length=1500,width=40,pad=600,gap=50,secondlayer='SECONDLAYER'):
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if bgcolor is None:
+        bgcolor = chip.wafer.bg()
+        
+    #top
+    struct().shiftPos(-length/2-pad-gap)
+    srBar=struct().clone(defaults={'w':pad,'s':gap,'r_out':gap})
+    Strip_stub_open(self,srBar,flipped=True,w=pad+2*gap)
+    srBar2 = srBar.cloneAlong()
+    Strip_straight(self,srBar,pad,w=pad+2*gap)
+    Strip_stub_open(self,srBar,flipped=False,w=pad+2*gap)
+    Strip_straight(self, srBar, length-2*gap, w=width+2*gap)
+    Strip_stub_open(self,srBar,flipped=True,w=pad+2*gap)
+    Strip_straight(self,srBar,pad,w=pad+2*gap)
+    Strip_stub_open(self,srBar,w=pad+2*gap)
+    
+    Strip_straight(self,srBar2,pad,w=pad,layer=secondlayer)
+    Strip_straight(self, srBar2, length, w=width,layer=secondlayer)
+    Strip_straight(self,srBar2,pad,w=pad,layer=secondlayer)
