@@ -102,6 +102,8 @@ def waffle(chip, grid_x, grid_y=None,width=10,height=None,exclude=None,padx=0,pa
             if not second_pass[i][j]:
                 pos = i*grid_x + grid_x/2., j*grid_y + grid_y/2.
                 chip.add(dxf.rectangle(pos,width,height,bgcolor=chip.wafer.bg(layer),halign=const.CENTER,valign=const.MIDDLE,layer=layer) )   
+                
+    return chip
 
 # ===============================================================================
 # basic POSITIVE microstrip function definitions
