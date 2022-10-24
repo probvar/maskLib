@@ -124,8 +124,16 @@ class ReflectionPurcellQubit(m.Chip7mm):
         #contact pads
         for y in range(5):
             for x in range(2):
-                JProbePads(self,self.chipSpace((830+300*x,3180+170-500*y)),rotation=90,padwidth=padwidth,padradius=padradius,layer=self.wafer.XLAYER,**kwargs)
-                ManhattanJunction(self,self.chipSpace((830+300*x,3180+170-500*y)),rotation=90,jfingerw=jfingerw,**kwargs)
+                pos = self.chipSpace((830+300*x,3180+170-500*y))
+                #notice we're calling the probepads and manhattan functions with the position tuple instead of a structure class.
+                JProbePads(self,pos,rotation=90,padwidth=padwidth,padradius=padradius,layer=self.wafer.XLAYER,**kwargs)
+                ManhattanJunction(self,pos,rotation=90,jfingerw=jfingerw,**kwargs)
+                
+                #optionally, we can do the same with structures:
+                #s1 = m.Structure(self,pos,direction=90)
+                #JProbePads(self,s1,padwidth=padwidth,padradius=padradius,layer=self.wafer.XLAYER,**kwargs)
+                #ManhattanJunction(self,s1,jfingerw=jfingerw,**kwargs)
+                
                 
    
 

@@ -356,18 +356,24 @@ def JSingleProbePad(chip,pos,padwidth=250,padheight=None,padradius=25,tab=False,
             
             
 def JProbePads(chip,structure,padwidth=250,separation=40,rotation=0,**kwargs):
+    #cache the structure locally. needed since we call structure methods (shiftPos) on the structure
+    thisStructure = None
+    if isinstance(structure,tuple):
+        thisStructure = m.Structure(chip,start=structure,direction=rotation)
     def struct():
         if isinstance(structure,m.Structure):
             return structure
         elif isinstance(structure,tuple):
-            return m.Structure(chip,structure)
+            return thisStructure
         else:
             return chip.structure(structure)
-    
+    #cache start
+    pos = struct().start
     struct().shiftPos(-separation/2-padwidth)
     JSingleProbePad(chip,struct(),padwidth=padwidth,flipped=False,**kwargs)
     struct().shiftPos(separation)
-    JSingleProbePad(chip,struct(),padwidth=padwidth,flipped=True,**kwargs)          
+    JSingleProbePad(chip,struct(),padwidth=padwidth,flipped=True,**kwargs) 
+    struct().updatePos(pos) #shift back to where we started        
     
     
 def ManhattanJunction(chip,structure,rotation=0,separation=40,jpadw=20,jpadr=2,jpadh=None,jpadOverhang=5,jpadTaper=0,
@@ -379,11 +385,15 @@ def ManhattanJunction(chip,structure,rotation=0,separation=40,jpadw=20,jpadr=2,j
     '''
     Set jpadr to None to use chip-wide defaults (r_out).
     '''
+    #cache the structure locally. needed since we call structure methods (shiftPos) on the structure
+    thisStructure = None
+    if isinstance(structure,tuple):
+        thisStructure = m.Structure(chip,start=structure,direction=rotation)
     def struct():
         if isinstance(structure,m.Structure):
             return structure
         elif isinstance(structure,tuple):
-            return m.Structure(chip,structure)
+            return thisStructure
         else:
             return chip.structure(structure)
     if jpadr is None:
