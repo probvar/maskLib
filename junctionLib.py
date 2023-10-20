@@ -1230,7 +1230,13 @@ def DolanJunction(
     chip, structure, junctionl, jfingerw=0.5, rotation=0,
     jarmw=3, jpadw=15, jpadl=20, jpadr=0,jpadoverhang=5, # dimensions for contact tab overlap
     jfingerl=1.36,jtaperl=2-1.36-0.140,jgap=0.140, # fixed for LL
-    backward=False, # if True, draw so points toward current structure location
+    jarm_shift = 0, # shift junction arm from center
+    jpad_shift = 0, # shift junction pad from edge
+    loop_height = 40, # height of loop
+    loop_width = 20, # width of loop
+    backward=False,# if True, draw so points toward current structure location
+    sidelink=False, # if True the junction is linking to pad on the side
+    squid = False, # if True, draw squid junction
     JANGLE=None, JLAYER=None,ULAYER=None,bgcolor=None,lincolnLabs=False,**kwargs):
     # centered such that taper starts at current position
     # junctionl is the gap distance we wish to cover
@@ -1267,28 +1273,138 @@ def DolanJunction(
 
     if lincolnLabs and not (0.1 < jfingerw < 3): print('WARNING: fingerw out of range. Recommended 0.150 < jfingerw < 3')
 
-    # Junction layer
-    struct().direction += rotation
-    if backward: struct().direction += 180
-    struct().shiftPos(-junctionl/2-jpadw+jpadoverhang)
-    Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr,layer=JLAYER) # contact pad
-    Strip_straight(chip, struct(), length=junctionl/2-jtaperl-jpadoverhang, w=jarmw, layer=JLAYER)
-    if lincolnLabs: ucstruct = struct().clone() 
-    Strip_taper(chip, struct(), length=jtaperl, w0=jarmw, w1=jfingerw, layer=JLAYER)
-    Strip_straight(chip, struct(), length=jfingerl, w=jfingerw, layer=JLAYER)
+    if not(sidelink):
+        # Junction layer
+        struct().direction += rotation
+        if backward: struct().direction += 180
+        struct().shiftPos(-junctionl/2-jpadw+jpadoverhang)
+        Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr,layer=JLAYER) # contact pad
+        Strip_straight(chip, struct(), length=junctionl/2-jtaperl-jpadoverhang, w=jarmw, layer=JLAYER)
+        if lincolnLabs: ucstruct = struct().clone() 
+        Strip_taper(chip, struct(), length=jtaperl, w0=jarmw, w1=jfingerw, layer=JLAYER)
+        Strip_straight(chip, struct(), length=jfingerl, w=jfingerw, layer=JLAYER)
 
-    if lincolnLabs:
-        struct().shiftPos(jgap) # gap
+        if lincolnLabs:
+            struct().shiftPos(jgap) # gap
+        else:
+            Strip_straight(chip, struct(), length=jgap, w=max(jarmw,jfingerw), layer=ULAYER)
+
+        Strip_straight(chip, struct(), length=junctionl/2-jgap-jfingerl-jpadoverhang, w=jarmw, layer=JLAYER)
+        Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr, layer=JLAYER) # contact pad
+
+        # Undercut layer
+        if lincolnLabs:
+            Strip_taper(chip, ucstruct, length=jtaperl, w0=jarmw, w1=jfingerw, layer=ULAYER)
+            Strip_straight(chip, ucstruct, length=jfingerl+jgap, w=jfingerw, layer=ULAYER)
+
     else:
-        Strip_straight(chip, struct(), length=jgap, w=max(jarmw,jfingerw), layer=ULAYER)
 
-    Strip_straight(chip, struct(), length=junctionl/2-jgap-jfingerl-jpadoverhang, w=jarmw, layer=JLAYER)
-    Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr, layer=JLAYER) # contact pad
+        if not(squid):
+            struct().direction += rotation
+            if backward: struct().direction += 180
+            struct().translatePos(vector=(-junctionl/2-jpadw/2, -jpad_shift))
+            Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr,layer=JLAYER)
+            struct().translatePos(vector=(0, -jarm_shift))
+            Strip_straight(chip, struct(), length=junctionl/2-jpadw/2, w=jarmw, layer=JLAYER)
+            if lincolnLabs: ucstruct = struct().clone()
+            Strip_taper(chip, struct(), length=jtaperl, w0=jarmw, w1=jfingerw, layer=JLAYER)
+            Strip_straight(chip, struct(), length=jfingerl, w=jfingerw, layer=JLAYER)
+            if lincolnLabs:
+                struct().shiftPos(jgap) # gap
+            else:
+                Strip_straight(chip, struct(), length=jgap, w=max(jarmw,jfingerw), layer=ULAYER)
 
-    # Undercut layer
-    if lincolnLabs:
-        Strip_taper(chip, ucstruct, length=jtaperl, w0=jarmw, w1=jfingerw, layer=ULAYER)
-        Strip_straight(chip, ucstruct, length=jfingerl+jgap, w=jfingerw, layer=ULAYER)
+            Strip_straight(chip, struct(), length=junctionl/2-jgap-jfingerl-jpadw/2, w=jarmw, layer=JLAYER)
+            struct().translatePos(vector=(0, jarm_shift))
+            Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr, layer=JLAYER) # contact pad
+
+            # Undercut layer
+            if lincolnLabs:
+                Strip_taper(chip, ucstruct, length=jtaperl, w0=jarmw, w1=jfingerw, layer=ULAYER)
+                Strip_straight(chip, ucstruct, length=jfingerl+jgap, w=jfingerw, layer=ULAYER)
+
+        else:
+
+            if type(jfingerw) == float:
+                jfingerw = [jfingerw]*2 # we consider a symetric squid
+
+            struct().direction += rotation
+            if backward: struct().direction += 180
+            #first pad 
+            struct().translatePos(vector=(-junctionl/2-jpadw/2, -jpad_shift))
+            Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr,layer=JLAYER)
+            #arm linking the two pads
+            struct().translatePos(vector=(0, -jpadl/2+jarmw/2))
+            # Strip_straight(chip, struct(), length=junctionl-jpadw, w=jarmw, layer=JLAYER)
+            Strip_straight(chip, struct(), length=loop_width + (junctionl-jpadw - loop_width)/2 + jarmw, w=jarmw, layer=JLAYER)
+            # first arm of the loop 
+            # struct().translatePos(vector=(-(junctionl/2+jpadw/2 + jarmw/2), -jarmw/2), angle=-90)
+            struct().translatePos(vector=(-(loop_width + 3*jarmw/2), -jarmw/2), angle=-90)
+            Strip_straight(chip, struct(), length=loop_height/5-jtaperl, w=jarmw, layer=JLAYER)
+            if lincolnLabs: ucstruct = struct().clone()
+            Strip_taper(chip, struct(), length=jtaperl, w0=jarmw, w1=jfingerw[0], layer=JLAYER)
+            Strip_straight(chip, struct(), length=jfingerl, w=jfingerw[0], layer=JLAYER)
+            if lincolnLabs:
+                struct().shiftPos(jgap) # gap
+            else:
+                Strip_straight(chip, struct(), length=jgap, w=max(jarmw,jfingerw[0]), layer=ULAYER)
+
+            Strip_straight(chip, struct(), length=4*loop_height/5-jgap-jfingerl, w=jarmw, layer=JLAYER)
+
+            # link between the two arms 
+
+            struct().translatePos(vector=(-jarmw/2, jarmw/2), angle=90)
+            Strip_straight(chip, struct(), length=loop_width, w=jarmw, layer=JLAYER)
+
+            # second arm of the loop
+            
+            struct().translatePos(vector=(jarmw/2, -jarmw/2), angle=90)
+            Strip_straight(chip, struct(), length=4*loop_height/5-jgap-jfingerl, w=jarmw, layer=JLAYER)
+            if lincolnLabs:
+                struct().shiftPos(jgap)
+            else:
+                Strip_straight(chip, struct(), length=jgap, w=max(jarmw,jfingerw[1]), layer=ULAYER)
+
+            Strip_straight(chip, struct(), length=jfingerl, w=jfingerw[1], layer=JLAYER)
+            Strip_taper(chip, struct(), length=jtaperl, w0=jfingerw[1], w1=jarmw, layer=JLAYER)
+            Strip_straight(chip, struct(), length=loop_height/5-jtaperl, w=jarmw, layer=JLAYER)
+
+
+            # arm to second pad 
+            struct().translatePos(vector=(-2*loop_height/5, -jarmw/2), angle=-90)
+            Strip_straight(chip, struct(), length=(junctionl-jpadw - loop_width)/2 + jarmw, w=jarmw, layer=JLAYER)
+            struct().translatePos(vector=(jarmw/2, -jarmw/2), angle=90)
+            Strip_straight(chip, struct(), length=2*loop_height/5 + jarmw/2, w=jarmw, layer=JLAYER)
+
+
+
+            # second pad
+
+            # struct().translatePos(vector=(-jarmw/2 + jpadw/2, -jarmw/2), angle=90)
+            struct().translatePos(vector=(jpadl/2,-jpadw/2), angle=90)
+
+            # # struct().translatePos(vector=((junctionl- loop_width)/2 + jarmw/2, jarmw/2), angle=-90)
+            # struct().direction -= 90
+
+            # print(junctionl)
+            # print(loop_width)
+            # print((junctionl - jpadw- loop_width)/2)
+            # struct().translatePos(vector=((junctionl - jpadw- loop_width- jarmw)/2,jpadl/2), angle=0)
+            # # struct().translatePos(vector=(0,0), angle=0)
+            Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr,layer=JLAYER)
+
+
+
+            
+
+
+
+
+
+
+
+
+
 
 
 
