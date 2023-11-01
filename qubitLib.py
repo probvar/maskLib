@@ -310,7 +310,7 @@ def Xmon(
     chip, structure, rotation=0,
     xmonw=25, xmonl=150, xmon_gapw=20, xmon_gapl=30,
     r_out=None, r_ins=None, r_arm5=None,
-    jj_loc=6, jj_reverse=False, junctionClass=ManhattanJunction,**kwargs):
+    jj_loc=6, jj_reverse=False, junctionClass=DolanJunction,**kwargs):
 
     """
     Generates an Xmon (does NOT use an XOR layer) with a junction method specified by junctionClass.
@@ -856,14 +856,16 @@ def Starmon(chip, pos, widths=[10], heights=[100], dist_to_ground_heights = [10]
         # ManhattanJunction(chip, sjj, rotation=sjj.direction,separation = junctionl, **kwargs)
 
 
-def Headsetmon(chip, pos, pad_width=100, pad_length=100, pad_distance=40, pad_radius=10, ground_distance=10,jcont_dist =60,
+def Headsetmon(chip, pos, pad_width=100, pad_length=100, pad_distance=40, pad_radius=10, ground_distance=10,jcont_dist=60,
                ground_pocket_width= 75, ground_pocket_length=40, ground_pocket_radius=5,
                offset=0, rotation=0, r_out=None,
                 r_ins=None, bgcolor=None, XLAYER=None, MLAYER=None,squid=False, jj_loc='down', jj_reverse=False, junctionClass=DolanJunction,**kwargs):
     
 
     thisStructure = None
-    if isinstance(pos,tuple):
+    if isinstance(pos, m.Structure):
+        rotation = pos.direction
+    elif isinstance(pos,tuple):
         thisStructure = m.Structure(chip,start=pos,direction=rotation)
         
     def struct():
@@ -888,23 +890,24 @@ def Headsetmon(chip, pos, pad_width=100, pad_length=100, pad_distance=40, pad_ra
 
     # add the first pad which is a round rect
 
-    s = struct().cloneAlong(distance=0, newDirection=0)
+    s = struct().cloneAlong(vector=(0,0), newDirection=0)
     pad1 = RoundRect(s.getPos(), height=pad_length, radius=pad_radius, width=pad_width, ralign=const.TOP, angle=90, rotation=rotation, layer=MLAYER, bgcolor=chip.bg(MLAYER), **kwargs)
     chip.add(pad1)
 
     # add the second pad which is a round rect
 
-    s = struct().cloneAlong(distance=pad_distance + pad_width, newDirection=0)
+    s = struct().cloneAlong(vector=(pad_distance + pad_width,0), newDirection=0)
     pad2 = RoundRect(s.getPos(), height=pad_length, radius=pad_radius, width=pad_width, ralign=const.TOP, angle=90, rotation=rotation, layer=MLAYER, bgcolor=chip.bg(MLAYER), **kwargs)
     chip.add(pad2)
 
 
+
     # add the ground layer around the pads
 
-    s = struct().cloneAlongLast(vector=(-ground_distance,-ground_distance) , newDirection=0)
+    s = struct().cloneAlongLast(vector=(-ground_distance,-ground_distance), newDirection=0)
 
     ground_plane = RoundRect(s.getPos(), height=pad_length + 2*ground_distance, radius=pad_radius, width=2*pad_width + 2*ground_distance + pad_distance, 
-                             ralign=const.TOP, angle=90, rotation=rotation, bgcolor=bgcolor, **kwargs)
+                             ralign=const.TOP, angle=s.direction+90, rotation=rotation, bgcolor=bgcolor, **kwargs)
     
     chip.add(ground_plane)
 

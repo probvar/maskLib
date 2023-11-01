@@ -11,7 +11,7 @@ import maskLib.MaskLib as m
 from dxfwrite import DXFEngine as dxf
 from dxfwrite import const
 from maskLib.microwaveLib import Strip_straight, Strip_stub_open
-from maskLib.microwaveLib import CPW_stub_open,CPW_stub_short,CPW_straight
+from maskLib.microwaveLib import CPW_stub_open,CPW_stub_short,CPW_straight,CPW_taper
 
 
 # ===============================================================================
@@ -112,3 +112,75 @@ def ResistanceBar(chip,structure,length=1500,width=40,pad=600,r_out=50,secondlay
     Strip_straight(chip,srBar,pad,w=pad,layer=secondlayer)
     Strip_straight(chip, srBar, length, w=width,layer=secondlayer)
     Strip_straight(chip,srBar,pad,w=pad,layer=secondlayer)
+
+# ===============================================================================
+# Flux line tips
+# ===============================================================================
+
+def FluxLineLTee(chip, structure, tee_width, tee_offset, tee_extend, tee_left=True, w=None, s=None, **kwargs):
+    '''
+    tee_width: total width of top part of tee
+    tee_offset: offset of center of top of tee from center of cpw
+    tee_extend: vertical distance of tee from last segment of cpw
+    tee_left: determines whether the current is pushed to the left (True) or right (False)
+    '''
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            w=0
+            print('\x1b[33mw not defined in ',chip.chipID)
+    if s is None:
+        try:
+            s = struct().defaults['s']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+
+    if tee_left: s_extend = struct().cloneAlong(vector=(0, s/2 + w/2))
+    else: s_extend = struct().cloneAlong(vector=(0, -s/2 - w/2))
+    
+    Strip_straight(chip, s_extend, length=tee_extend, w=s, **kwargs)
+
+    s_tee = struct().cloneAlong(vector=(tee_extend + s/2, tee_offset - tee_width/2), newDirection=90)
+    Strip_straight(chip, s_tee, length=tee_width, w=s, **kwargs)
+
+
+def FluxLineFlagTee(chip, structure, tee_width, tee_extend, w=None, s=None, r_out=0, **kwargs):
+    '''
+    tee_width: total width of top part of tee
+    tee_offset: offset of center of top of tee from center of cpw
+    tee_extend: vertical distance of tee from last segment of cpw
+    tee_left: determines whether the current is pushed to the left (True) or right (False)
+    '''
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            w=0
+            print('\x1b[33mw not defined in ',chip.chipID)
+    if s is None:
+        try:
+            s = struct().defaults['s']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+
+    CPW_taper(chip, struct(), length=tee_extend, w0=w, s0=s, w1=w, s1=tee_width)
+    s_left = struct().cloneAlong(vector=(0, w/2+tee_width/2))
+    s_right = struct().cloneAlong(vector=(0,-(w/2+tee_width/2)))
+    Strip_stub_open(chip, s_left, w=tee_width, r_out=r_out)
+    Strip_stub_open(chip, s_right, w=tee_width, r_out=r_out)
+
