@@ -1432,7 +1432,10 @@ def CPW_bridge(chip, structure, xvr_length=None, w=None, s=None, lincolnLabs=Fal
 
 
 
-def Capa_linker(chip, pos, length, width, dist_ground_height, dist_ground_width, dist_ground_strip, width_pad, height_pad, radius,rotation, w=None, s=None,
+def Capa_linker(chip, pos, length, width, dist_ground_height, 
+                dist_ground_width, dist_ground_strip, width_pad,
+                 height_pad, radius,rotation, w=None, s=None,
+                 bondwires=False,bond_pitch=70,incl_end_bond=True,
                  bgcolor=None, XLAYER=None, MLAYER=None, **kwargs):
 
     thisStructure = None
@@ -1481,10 +1484,9 @@ def Capa_linker(chip, pos, length, width, dist_ground_height, dist_ground_width,
     dl = 10e-3
 
 
-
     def Linker(chip, pos, length, width, width_pad, height_pad, radius,rotation, **kwargs):
 
-        # adujst the lenght of the linker to account for the width of the pads
+        # adujst the length of the linker to account for the width of the pads
 
         length = length - width_pad[0] - width_pad[1]
         sin = np.sin(np.pi/180*rotation)
@@ -1523,9 +1525,6 @@ def Capa_linker(chip, pos, length, width, dist_ground_height, dist_ground_width,
 
     #add the linker to the structure
 
-    print('width')
-    print(width)
-
     start = pos
 
     Linker(chip, start, length, width, width_pad, height_pad, radius,rotation,layer=MLAYER,bgcolor=chip.bg(MLAYER))
@@ -1543,18 +1542,18 @@ def Capa_linker(chip, pos, length, width, dist_ground_height, dist_ground_width,
     sin = np.sin(np.pi/180*rotation)
     cos = np.cos(np.pi/180*rotation)
     
-    # start_ground = (start[0] - dist_ground_width[0] + sin*(-dl + dist_ground_height[0]/2 ),
-    #                  start[1]  - cos*(dl/2) - sin*(dist_ground_width[0]))
-    
-    # start_ground = (start[0] -  dist_ground_width[0] +sin*dist_ground_height[0]/2,
-    #                  start[1] - sin*dist_ground_width[0])
 
     start_ground = (start[0] - cos*(dist_ground_width[0] -dl),start[1] - sin*(dist_ground_width[0] - dl))
-
-    print('width')
-    print(dist_ground_width)
-
     Linker(chip, start_ground, length_ground, width_ground, width_pad, height_pad, radius,rotation)
+
+    if bondwires: # bond parameters patched through kwargs
+        num_bonds = int(length/bond_pitch)
+        this_struct = struct().clone()
+        this_struct.shiftPos(bond_pitch)
+        if not incl_end_bond: num_bonds -= 1
+        for i in range(num_bonds):
+            Airbridge(chip, this_struct, **kwargs)
+            this_struct.shiftPos(bond_pitch)
 
 
 
