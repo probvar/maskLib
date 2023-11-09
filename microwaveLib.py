@@ -1420,13 +1420,16 @@ def CPW_bridge(chip, structure, xvr_length=None, w=None, s=None, lincolnLabs=Fal
 
     s_left, s_right = Airbridge(chip, struct(), xvr_length=xvr_length, lincolnLabs=lincolnLabs, **kwargs)
 
+    w0 = rr_width+2*rr_br_gap
+    s0 = s/w * w0
+
     s_left.shiftPos(-rr_length - 2*rr_br_gap - rr_cpw_gap)
-    CPW_straight(chip, s_left, length=rr_length + 2*rr_br_gap + rr_cpw_gap, w=rr_width + 2*rr_br_gap, s=s, **kwargs)
-    CPW_taper(chip, s_left, length=rr_length + 2*rr_br_gap, w0=rr_width+2*rr_br_gap, s0=s, w1=w, s1=s, **kwargs)
+    CPW_straight(chip, s_left, length=rr_length + 2*rr_br_gap + rr_cpw_gap, w=rr_width + 2*rr_br_gap, s=s0, **kwargs)
+    CPW_taper(chip, s_left, length=rr_length + 2*rr_br_gap, w0=w0, s0=s0, w1=w, s1=s, **kwargs)
 
     s_right.shiftPos(-rr_length - 2*rr_br_gap - rr_cpw_gap)
-    CPW_straight(chip, s_right, length=rr_length + 2*rr_br_gap + rr_cpw_gap, w=rr_width + 2*rr_br_gap, s=s, **kwargs)
-    CPW_taper(chip, s_right, length=rr_length + 2*rr_br_gap, w0=rr_width + 2*rr_br_gap, s0=s, w1=w, s1=s, **kwargs)
+    CPW_straight(chip, s_right, length=rr_length + 2*rr_br_gap + rr_cpw_gap, w=rr_width + 2*rr_br_gap, s=s0, **kwargs)
+    CPW_taper(chip, s_right, length=rr_length + 2*rr_br_gap, w0=w0, s0=s0, w1=w, s1=s, **kwargs)
 
     return s_left, s_right
 
