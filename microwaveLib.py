@@ -476,7 +476,7 @@ def CPW_stub_open(chip,structure,length=0,r_out=None,r_ins=None,w=None,s=None,fl
         if extra_straight_section and not flipped:
             CPW_straight(chip, struct(), r_ins, w=w,s=s,rotation=struct().direction,bgcolor=bgcolor,**kwargs)
         d_angle = 0
-        if polygon_overlap: d_angle = 0.01
+        if polygon_overlap: d_angle = 0.03
         chip.add(InsideCurve(struct().getPos((dx,w/2)),r_ins, angle=90+d_angle, rotation=struct().direction - d_angle/2,hflip=flipped,bgcolor=bgcolor,**kwargs))
         chip.add(InsideCurve(struct().getPos((dx,-w/2)),r_ins, angle=90+d_angle, rotation=struct().direction + d_angle/2,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
 
@@ -690,7 +690,7 @@ def CPW_tee(chip,structure,w=None,s=None,radius=None,r_ins=None,w1=None,s1=None,
     if radius <= min(s,s1) and r_ins > 0:
         #inside edges are square
         d_angle = 0
-        if polygon_overlap: d_angle = 0.02
+        if polygon_overlap: d_angle = 0.03
         chip.add(InsideCurve(struct().getPos((0,w/2+s)),r_ins,hflip=hflip,vflip=True,ralign=const.TOP, angle=90+d_angle, rotation=struct().direction + d_angle/2, bgcolor=bgcolor,**kwargs))
         chip.add(InsideCurve(struct().getPos((0,-w/2-s)),r_ins,hflip=hflip,vflip=False,ralign=const.TOP, angle=90+d_angle, rotation=struct().direction - d_angle/2, bgcolor=bgcolor,**kwargs))
     
