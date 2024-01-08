@@ -1556,12 +1556,189 @@ def Capa_linker(chip, pos, length, width, dist_ground_height,
             this_struct.shiftPos(bond_pitch)
 
 
+def Capa_linker_tee(chip, pos, length, width, dist_ground_height, 
+                dist_ground_width, dist_ground_strip, width_pad,
+                 height_pad, radius,rotation,width_tee=[0], height_tee=[0], w=None, s=None,
+                 bondwires=False,bond_pitch=70,incl_end_bond=True,
+                 bgcolor=None, XLAYER=None, MLAYER=None, **kwargs):
+
+    thisStructure = None
+    if isinstance(pos,tuple):
+        thisStructure = m.Structure(chip,start=pos,direction=rotation)
+        
+    def struct():
+        if isinstance(pos,m.Structure):
+            return pos
+        elif isinstance(pos,tuple):
+            return thisStructure
+        else:
+            return chip.structure(pos)
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            print('\x1b[33mw not defined in ',chip.chipID)
+    if s is None:
+        try:
+            s = struct().defaults['s']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID)
 
 
 
+    #get layers from wafer
+    if XLAYER is None:
+        try:
+            XLAYER = chip.wafer.XLAYER
+        except AttributeError:
+            chip.wafer.setupXORlayer()
+            XLAYER = chip.wafer.XLAYER
+
+
+
+    if len(width_pad)==1:
+        width_pad = [width_pad[0]]*2
+    if len(height_pad)==1:
+        height_pad = [height_pad[0]]*2
+    if len(dist_ground_width)==1:
+        dist_ground_width = [dist_ground_width[0]]*2
+    if len(dist_ground_height)==1:
+        dist_ground_height = [dist_ground_height[0]]*2
+    if len(width_tee)==1:
+        width_tee = [width_tee[0]]*2
+    if len(height_tee)==1:
+        height_tee = [height_tee[0]]*2
+
+    dl = 10e-3
+
+
+    def Linker_tee(chip, pos, length, width, width_pad, height_pad, width_tee, height_tee, radius,rotation, **kwargs):
+
+        # adujst the length of the linker to account for the width of the pads
+
+        length = length - width_pad[0] - width_pad[1]
+        sin = np.sin(np.pi/180*rotation)
+        cos = np.cos(np.pi/180*rotation)
+
+        # draw the first pad as a rounded rectangle
+
+        start_point = (pos[0] + sin*height_pad[0]/2, pos[1]- cos*height_pad[0]/2)
+
+        
+        
+        if width_tee[0] != 0:
+
+            pad1 = RoundRect(start_point, height=height_pad[0], radius=radius,width=width_pad[0], roundCorners=[0,1,1,0],
+                                                rotation= rotation,**kwargs)
+            chip.add(pad1)
+
+        else:
+
+            pad1 = RoundRect(start_point, height=height_pad[0], radius=radius,width=width_pad[0], roundCorners=[1,1,1,1],
+                                                rotation= rotation,**kwargs)
+            chip.add(pad1)
+
+
+        if width_tee[0] != 0:
+
+            start_point = (pos[0] + sin*(height_pad[0]/2) - cos*(width_tee[0]), pos[1]- cos*(height_pad[0]/2) - sin*width_tee[0])
+
+            tee1_up = RoundRect(start_point, height=height_tee[0], radius=radius,width=width_tee[0], roundCorners=[1,0,0,1],
+                                                rotation= rotation,**kwargs)
+            
+            chip.add(tee1_up)
+
+            # start_point = (pos[0] - sin*(height_pad[0]/2) - cos*(width_tee[0]), pos[1]+ cos*(height_pad[0]/2) + sin*width_tee[0]) 
+            # start_point = (pos[0] - cos*(width_tee[0]), pos[1] + sin*width_tee[0]) 
+            # start_point = (pos[0] -sin*(height_pad[0]/2 - height_tee[0]/2), pos[1] - cos*(height_pad[0]/2 - height_tee[0]/2))
+            start_point = (pos[0] -sin*(height_pad[0]/2-height_tee[0]) -cos*width_tee[0], pos[1] + cos*(height_pad[0]/2-height_tee[0])-sin*width_tee[0])
+
+            tee1_down = RoundRect(start_point, height=height_tee[0], radius=radius,width=width_tee[0], roundCorners=[1,0,0,1],
+                                                rotation= rotation,**kwargs)
+            
+            chip.add(tee1_down)
+
+
+        # draw the linker as a rectangle
+
+        start_point = (pos[0] + sin*width/2 + (width_pad[0]-dl)*cos, pos[1]- cos*width/2 + (width_pad[0] - dl)*sin)
+
+
+        linker = RoundRect(start_point, height=width, width=length, radius=0, rotation= rotation,
+                            roundCorners=[0,0,0,0], **kwargs)
+        
+        chip.add(linker)
+
+        # draw the second pad as a rounded rectangle
+
+        start_point = (start_point[0] + (length-2*dl)*cos + sin*(height_pad[1]/2 - width/2) , start_point[1] + (length-2*dl)*sin - cos*(height_pad[1]/2 - width/2))
+
+        if width_tee[1] != 0:
+
+            pad2 = RoundRect(start_point, height=height_pad[1], radius=radius,width=width_pad[1], roundCorners=[1,0,0,1],
+                                                rotation= rotation, **kwargs)
+            
+            chip.add(pad2)
+
+        else:
+
+            pad2 = RoundRect(start_point, height=height_pad[1], radius=radius,width=width_pad[1], roundCorners=[1,1,1,1],
+                                                rotation= rotation, **kwargs)
+            
+            chip.add(pad2)
+
+        # add the tee to the second pad
+
+        if width_tee[1] != 0:
+
+            start_point = (start_point[0] + cos*width_pad[1], start_point[1]+ sin*width_pad[1])
+
+            tee2_up = RoundRect(start_point, height=height_tee[1], radius=radius,width=width_tee[1], roundCorners=[0,1,1,0],
+                                                rotation= rotation,**kwargs)
+            
+            chip.add(tee2_up)
+
+            start_point = (start_point[0] - sin*(height_pad[1] - height_tee[1]), start_point[1] + cos*(height_pad[1] - height_tee[1]))
+
+            tee2_down = RoundRect(start_point, height=height_tee[1], radius=radius,width=width_tee[1], roundCorners=[0,1,1,0],
+                                                rotation= rotation,**kwargs)
+            
+            chip.add(tee2_down)
+
+            
+
+    #add the linker to the structure
+
+    start = pos
+
+    Linker_tee(chip, start, length, width, width_pad, height_pad, width_tee, height_tee,radius,rotation,layer=MLAYER,bgcolor=chip.bg(MLAYER))
+
+    #add the ground plane to the structure
+    # correct the pad size to account for ground plane distance 
+
+    width_pad = [width_pad[0] + 2*dist_ground_width[0], width_pad[1] + 2*dist_ground_width[1]]
+    height_pad = [height_pad[0] + 2*dist_ground_height[0], height_pad[1] + 2*dist_ground_height[1]]
+
+    length_ground = length + dist_ground_width[0] + dist_ground_width[1]
+    width_ground = width + 2*dist_ground_strip
+
+    # width_tee = [width_tee[0] + 2*dist_ground_width[0], width_tee[1] + 2*dist_ground_width[1]]
+    height_tee = [height_tee[0] + 2*dist_ground_height[0], height_tee[1] + 2*dist_ground_height[1]]
+
+
+    sin = np.sin(np.pi/180*rotation)
+    cos = np.cos(np.pi/180*rotation)
     
 
+    start_ground = (start[0] - cos*(dist_ground_width[0] -dl),start[1] - sin*(dist_ground_width[0] - dl))
+    Linker_tee(chip, start_ground, length_ground, width_ground, width_pad, height_pad, width_tee, height_tee,radius,rotation)
 
+    if bondwires: # bond parameters patched through kwargs
+        num_bonds = int(length/bond_pitch)
+        this_struct = struct().clone()
+        this_struct.shiftPos(bond_pitch)
+        if not incl_end_bond: num_bonds -= 1
+        for i in range(num_bonds):
+            Airbridge(chip, this_struct, **kwargs)
+            this_struct.shiftPos(bond_pitch)
 
-
-    

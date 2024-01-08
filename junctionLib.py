@@ -1270,8 +1270,11 @@ def DolanJunction(
             setupJunctionAngles(chip.wafer, [struct().direction])
             JANGLE = chip.wafer.JANGLES[0] % 360
     # assert chip.wafer.JANGLES[0] % 180 == struct().direction % 180, 'Need Dolan junction to be in same direction as JANGLE'
-
-    if lincolnLabs and not (0.1 < jfingerw < 3): print('WARNING: fingerw out of range. Recommended 0.150 < jfingerw < 3')
+    if type(jfingerw) == float:
+        if lincolnLabs and not (0.1 < jfingerw < 3): print('WARNING: fingerw out of range. Recommended 0.150 < jfingerw < 3')
+    else: 
+        if lincolnLabs and not (0.1 < jfingerw[0] < 3): print('WARNING: fingerw out of range. Recommended 0.150 < jfingerw < 3')
+        if lincolnLabs and not (0.1 < jfingerw[1] < 3): print('WARNING: fingerw out of range. Recommended 0.150 < jfingerw < 3')
 
     if not(sidelink):
         # Junction layer
