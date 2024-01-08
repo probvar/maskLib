@@ -433,7 +433,7 @@ def CPW_stub_short(chip,structure,flipped=False,curve_ins=True,curve_out=True,r_
             l=s/2
         CPW_straight(chip,structure,l,w=w,s=s,bgcolor=bgcolor,**kwargs)
         
-def CPW_stub_open(chip,structure,length=0,r_out=None,r_ins=None,w=None,s=None,flipped=False,extra_straight_section=False,bgcolor=None,**kwargs):
+def CPW_stub_open(chip,structure,length=0,r_out=None,r_ins=None,w=None,s=None,flipped=False,extra_straight_section=False,bgcolor=None, polygon_overlap=False, **kwargs):
     def struct():
         if isinstance(structure,m.Structure):
             return structure
@@ -475,8 +475,10 @@ def CPW_stub_open(chip,structure,length=0,r_out=None,r_ins=None,w=None,s=None,fl
     if r_ins > 0:
         if extra_straight_section and not flipped:
             CPW_straight(chip, struct(), r_ins, w=w,s=s,rotation=struct().direction,bgcolor=bgcolor,**kwargs)
-        chip.add(InsideCurve(struct().getPos((dx,w/2)),r_ins,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs))
-        chip.add(InsideCurve(struct().getPos((dx,-w/2)),r_ins,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
+        d_angle = 0
+        if polygon_overlap: d_angle = 0.03
+        chip.add(InsideCurve(struct().getPos((dx,w/2)),r_ins, angle=90+d_angle, rotation=struct().direction - d_angle/2,hflip=flipped,bgcolor=bgcolor,**kwargs))
+        chip.add(InsideCurve(struct().getPos((dx,-w/2)),r_ins, angle=90+d_angle, rotation=struct().direction + d_angle/2,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
 
     chip.add(RoundRect(struct().getPos((dx,0)),length,w+2*s,min(r_out,length),roundCorners=[0,1,1,0],hflip=flipped,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=length)
     if extra_straight_section and flipped:
@@ -609,7 +611,7 @@ def CPW_bend(chip,structure,angle=90,CCW=True,w=None,s=None,radius=None,ptDensit
             Airbridge(chip, this_struct, br_radius=radius, clockwise=clockwise, **kwargs)
 
 
-def CPW_tee(chip,structure,w=None,s=None,radius=None,r_ins=None,w1=None,s1=None,bgcolor=None,hflip=False,branch_off=const.CENTER,**kwargs):
+def CPW_tee(chip,structure,w=None,s=None,radius=None,r_ins=None,w1=None,s1=None,bgcolor=None,hflip=False,branch_off=const.CENTER, polygon_overlap=False, **kwargs):
     
     def struct():
         if isinstance(structure,m.Structure):
@@ -687,8 +689,10 @@ def CPW_tee(chip,structure,w=None,s=None,radius=None,r_ins=None,w1=None,s1=None,
             chip.add(dxf.rectangle(struct().getPos((0,w/2+radius)),hflip and -radius or radius,(s-s1),rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)))
     if radius <= min(s,s1) and r_ins > 0:
         #inside edges are square
-        chip.add(InsideCurve(struct().getPos((0,w/2+s)),r_ins,hflip=hflip,vflip=True,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
-        chip.add(InsideCurve(struct().getPos((0,-w/2-s)),r_ins,hflip=hflip,vflip=False,ralign=const.TOP,rotation=struct().direction,bgcolor=bgcolor,**kwargs))
+        d_angle = 0
+        if polygon_overlap: d_angle = 0.03
+        chip.add(InsideCurve(struct().getPos((0,w/2+s)),r_ins,hflip=hflip,vflip=True,ralign=const.TOP, angle=90+d_angle, rotation=struct().direction + d_angle/2, bgcolor=bgcolor,**kwargs))
+        chip.add(InsideCurve(struct().getPos((0,-w/2-s)),r_ins,hflip=hflip,vflip=False,ralign=const.TOP, angle=90+d_angle, rotation=struct().direction - d_angle/2, bgcolor=bgcolor,**kwargs))
     
     
     if branch_off == const.CENTER:  
@@ -1194,7 +1198,7 @@ def TwoPinCPW_wiggles(chip,structure,w=None,s_ins=None,s_out=None,s=None,Width=N
     Inductor_wiggles(chip, s0, w=s_ins+2*w,Width=Width,maxWidth=maxWidth,**kwargs)
     Strip_wiggles(chip, struct(), w=s_ins,maxWidth=maxWidth-w,**kwargs)
 
-def CPW_pincer(chip,structure,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r=None,w=None,s=None,pincer_flipped=False,bgcolor=None,**kwargs):
+def CPW_pincer(chip,structure,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r=None,w=None,s=None,pincer_flipped=False,bgcolor=None, polygon_overlap=True, **kwargs):
     '''
     pincer_w :      
     pincer_l :      length of pincer arms
@@ -1236,7 +1240,7 @@ def CPW_pincer(chip,structure,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r
         s_start = struct().clone()
 
 
-    s_left, s_right = CPW_tee(chip, struct(), w=w, s=s, w1=pincer_padw, s1=s, radius=pincer_tee_r + s, **kwargs)
+    s_left, s_right = CPW_tee(chip, struct(), w=w, s=s, w1=pincer_padw, s1=s, radius=pincer_tee_r + s, polygon_overlap=polygon_overlap, **kwargs)
 
     CPW_straight(chip, s_left, length=(pincer_w-w-2*s-2*pincer_tee_r)/2-pad_r, **kwargs)
     CPW_straight(chip, s_right, length=(pincer_w-w-2*s-2*pincer_tee_r)/2-pad_r, **kwargs)
@@ -1244,11 +1248,11 @@ def CPW_pincer(chip,structure,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r
     if pincer_l > s:
         CPW_bend(chip, s_left, CCW=True, w=pincer_padw, s=s, radius=pincer_r, **kwargs)
         CPW_straight(chip, s_left, length=pincer_l - s-pad_r, **kwargs)
-        CPW_stub_open(chip, s_left, w=pincer_padw, s=s, **kwargs)
+        CPW_stub_open(chip, s_left, w=pincer_padw, s=s, polygon_overlap=polygon_overlap, **kwargs)
 
         CPW_bend(chip, s_right, CCW=False, w=pincer_padw, s=s, radius=pincer_r, **kwargs)
         CPW_straight(chip, s_right, length=pincer_l - s-pad_r, **kwargs)
-        CPW_stub_open(chip, s_right, w=pincer_padw, s=s, **kwargs)
+        CPW_stub_open(chip, s_right, w=pincer_padw, s=s, polygon_overlap=polygon_overlap, **kwargs)
     else:
         s_left = s_left.cloneAlong(vector=(0,pincer_padw/2+s/2))
         Strip_bend(chip, s_left, CCW=True, w=s, radius=pincer_r + pincer_padw/2 - s/2, **kwargs)
@@ -1420,13 +1424,16 @@ def CPW_bridge(chip, structure, xvr_length=None, w=None, s=None, lincolnLabs=Fal
 
     s_left, s_right = Airbridge(chip, struct(), xvr_length=xvr_length, lincolnLabs=lincolnLabs, **kwargs)
 
+    w0 = rr_width+2*rr_br_gap
+    s0 = s/w * w0
+
     s_left.shiftPos(-rr_length - 2*rr_br_gap - rr_cpw_gap)
-    CPW_straight(chip, s_left, length=rr_length + 2*rr_br_gap + rr_cpw_gap, w=rr_width + 2*rr_br_gap, s=s, **kwargs)
-    CPW_taper(chip, s_left, length=rr_length + 2*rr_br_gap, w0=rr_width+2*rr_br_gap, s0=s, w1=w, s1=s, **kwargs)
+    CPW_straight(chip, s_left, length=rr_length + 2*rr_br_gap + rr_cpw_gap, w=rr_width + 2*rr_br_gap, s=s0, **kwargs)
+    CPW_taper(chip, s_left, length=rr_length + 2*rr_br_gap, w0=w0, s0=s0, w1=w, s1=s, **kwargs)
 
     s_right.shiftPos(-rr_length - 2*rr_br_gap - rr_cpw_gap)
-    CPW_straight(chip, s_right, length=rr_length + 2*rr_br_gap + rr_cpw_gap, w=rr_width + 2*rr_br_gap, s=s, **kwargs)
-    CPW_taper(chip, s_right, length=rr_length + 2*rr_br_gap, w0=rr_width + 2*rr_br_gap, s0=s, w1=w, s1=s, **kwargs)
+    CPW_straight(chip, s_right, length=rr_length + 2*rr_br_gap + rr_cpw_gap, w=rr_width + 2*rr_br_gap, s=s0, **kwargs)
+    CPW_taper(chip, s_right, length=rr_length + 2*rr_br_gap, w0=w0, s0=s0, w1=w, s1=s, **kwargs)
 
     return s_left, s_right
 

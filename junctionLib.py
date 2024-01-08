@@ -1283,22 +1283,21 @@ def DolanJunction(
         struct().shiftPos(-junctionl/2-jpadw+jpadoverhang)
         Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr,layer=JLAYER) # contact pad
         Strip_straight(chip, struct(), length=junctionl/2-jtaperl-jpadoverhang, w=jarmw, layer=JLAYER)
+
         if lincolnLabs: ucstruct = struct().clone() 
         Strip_taper(chip, struct(), length=jtaperl, w0=jarmw, w1=jfingerw, layer=JLAYER)
         Strip_straight(chip, struct(), length=jfingerl, w=jfingerw, layer=JLAYER)
-
-        if lincolnLabs:
-            struct().shiftPos(jgap) # gap
-        else:
-            Strip_straight(chip, struct(), length=jgap, w=max(jarmw,jfingerw), layer=ULAYER)
-
-        Strip_straight(chip, struct(), length=junctionl/2-jgap-jfingerl-jpadoverhang, w=jarmw, layer=JLAYER)
-        Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr, layer=JLAYER) # contact pad
+        if lincolnLabs: struct().shiftPos(jgap) # gap
+        else: Strip_straight(chip, struct(), length=jgap, w=jfingerw, layer=ULAYER)
 
         # Undercut layer
         if lincolnLabs:
             Strip_taper(chip, ucstruct, length=jtaperl, w0=jarmw, w1=jfingerw, layer=ULAYER)
             Strip_straight(chip, ucstruct, length=jfingerl+jgap, w=jfingerw, layer=ULAYER)
+
+        Strip_straight(chip, struct(), length=junctionl/2-jgap-jfingerl-jpadoverhang, w=jarmw, layer=JLAYER)
+        Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr, layer=JLAYER) # contact pad
+
 
     else:
 
@@ -1351,13 +1350,11 @@ def DolanJunction(
             Strip_taper(chip, struct(), length=jtaperl, w0=jarmw, w1=jfingerw[0], layer=JLAYER)
             Strip_straight(chip, struct(), length=jfingerl, w=jfingerw[0], layer=JLAYER)
             if lincolnLabs: struct().shiftPos(jgap) # gap
-            else: Strip_straight(chip, struct(), length=jgap, w=max(jarmw,jfingerw), layer=ULAYER)
+            else: Strip_straight(chip, struct(), length=jgap, w=jfingerw, layer=ULAYER)
 
             if lincolnLabs:
                 Strip_taper(chip, ucstruct, length=jtaperl, w0=jarmw, w1=jfingerw[0], layer=ULAYER)
                 Strip_straight(chip, ucstruct, length=jfingerl+jgap, w=jfingerw[0], layer=ULAYER)
-            else:
-                Strip_straight(chip, struct(), length=jgap, w=max(jarmw,jfingerw[0]), layer=ULAYER)
 
             Strip_straight(chip, struct(), length=4*loop_height/5-jgap-jfingerl, w=jarmw, layer=JLAYER)
 
