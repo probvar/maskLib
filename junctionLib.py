@@ -186,7 +186,7 @@ def JContact_slot(chip,structure,rotation=0,absoluteDimensions=False,gapw=3,gapl
         struct().shiftPos(tot_length)
     
     
-def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,steml=0.5,tabw=2,tabl=0.5,taboffs=-0.5,r_out=1.5,r_ins=1.5,hflip=False,bgcolor=None,debug=False,**kwargs):
+def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,steml=0.5,tabw=2,tabl=0.5,taboffs=-0.5,r_out_tab=1.5,r_ins_tab=1.5,hflip=False,bgcolor=None,debug=False,**kwargs):
     '''
     Creates shapes forming a puzzle piece tab with rounded corners, and adjustable angles. 
     No overlap : XOR mode compatible
@@ -207,12 +207,14 @@ def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,stem
             return m.Structure(chip,start=structure,direction=rotation)
         else:
             return chip.structure(structure)
+    r_out = r_out_tab
     if r_out is None:
         try:
             r_out = struct().defaults['r_out']
         except KeyError:
             #print('\x1b[33mr_out not defined in ',chip.chipID,'!\x1b[0m')
             r_out = 0
+    r_ins = r_ins_tab
     if r_ins is None:
         try:
             r_ins = struct().defaults['r_ins']
@@ -1231,7 +1233,6 @@ def DolanJunction(
     jarmw=3, jpadw=15, jpadl=20, jpadr=0,jpadoverhang=5, # dimensions for contact tab overlap
     jfingerl=1.36,jtaperl=2-1.36-0.140,jgap=0.140, # fixed for LL
     jarm_shift = 0, # shift junction arm from center
-    jpad_shift = 0, # shift junction pad from edge
     loop_height = 40, # height of loop
     loop_width = 20, # width of loop
     backward=False,# if True, draw so points toward current structure location
@@ -1305,6 +1306,7 @@ def DolanJunction(
             assert False, "NOT DEBUGGED"
             struct().direction += rotation
             if backward: struct().direction += 180
+            jpad_shift = jpadoverhang - jpadl/2
             struct().translatePos(vector=(-junctionl/2-jpadw + jpadoverhang, -jpad_shift))
             Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr,layer=JLAYER)
             struct().translatePos(vector=(0, -jarm_shift))
@@ -1335,6 +1337,7 @@ def DolanJunction(
             if backward: struct().direction += 180
 
             #first pad 
+            jpad_shift = jpadoverhang - jpadl/2
             struct().translatePos(vector=(-junctionl/2-jpadw/2, -jpad_shift))
             Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr,layer=JLAYER)
 
