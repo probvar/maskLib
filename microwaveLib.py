@@ -17,7 +17,7 @@ from dxfwrite.entities import Polyline
 from dxfwrite.vector2d import vadd, midpoint ,vsub, vector2angle, magnitude, distance
 from dxfwrite.algebra import rotate_2d
 
-from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideCurve
+from maskLib.Entities import SolidPline, SkewRect, CurveRect, RoundRect, InsideCurve, DogBone
 from maskLib.utilities import kwargStrip, curveAB
 
 from copy import deepcopy
@@ -1356,25 +1356,27 @@ def Airbridge(
         delta_right = 0
         delta_left = delta
 
-    s_left = struct().clone()
+    chip.add(DogBone(struct().start,
+                     xvr_width,
+                     xvr_length,
+                     rr_width,
+                     rr_length,
+                     rr_br_gap,
+                     delta_left,
+                     delta_right,
+                     rotation=struct().direction, layer=BRLAYER, **kwargs),
+             structure=struct().clone())
+
+    s_left = struct().cloneAlong(vector=(0, xvr_length/2+delta_left+rr_br_gap))
     s_left.direction += 90
-    s_left.shiftPos(-shape_overlap)
-    Strip_straight(chip, s_left, length=xvr_length/2+delta_left+2*shape_overlap, w=xvr_width, layer=BRLAYER, **kwargs)
-    s_left.shiftPos(-shape_overlap)
-    Strip_straight(chip, s_left, length=rr_length + 2*rr_br_gap, w=rr_width + 2*rr_br_gap, layer=BRLAYER, **kwargs)
-    s_l = s_left.clone()
-    s_left.shiftPos(-rr_length - rr_br_gap)
     Strip_straight(chip, s_left, length=rr_length, w=rr_width, layer=RRLAYER, **kwargs)
 
-    s_right = struct().clone()
+    s_right = struct().cloneAlong(vector=(0, -(xvr_length/2+delta_left+rr_br_gap)))
     s_right.direction -= 90
-    s_right.shiftPos(-shape_overlap)
-    Strip_straight(chip, s_right, length=xvr_length/2+delta_right+2*shape_overlap, w=xvr_width, layer=BRLAYER, **kwargs)
-    s_right.shiftPos(-shape_overlap)
-    Strip_straight(chip, s_right, length=rr_length + 2*rr_br_gap, w=rr_width + 2*rr_br_gap, layer=BRLAYER, **kwargs)
-    s_r = s_right.clone()
-    s_right.shiftPos(-rr_length - rr_br_gap)
     Strip_straight(chip, s_right, length=rr_length, w=rr_width, layer=RRLAYER, **kwargs)
+
+    s_l = s_left.cloneAlong(vector=(rr_br_gap,0))
+    s_r = s_right.cloneAlong(vector=(rr_br_gap,0))
 
     return s_l, s_r
 

@@ -571,12 +571,44 @@ class Star(SolidPline, InsideCurve):
         return dy
 
 
+class DogBone(SolidPline):
+    name = 'DOGBONE'
+    def __init__(self, insert,
+                 xvr_width,
+                 xvr_length,
+                 rr_width,
+                 rr_length,
+                 rr_br_gap,
+                 delta_left,
+                 delta_right,
+                 **kwargs):
+        self.xvr_width = xvr_width
+        self.xvr_length = xvr_length
+        self.rr_width = rr_width
+        self.rr_length = rr_length
+        self.rr_br_gap = rr_br_gap
+        self.delta_left = delta_left
+        self.delta_right = delta_right
+        SolidPline.__init__(self,insert,points=self._calc_corners(), **kwargs)
+        
+    def _calc_corners(self):
+        pts = []
 
+        pts.append((self.xvr_width/2, self.xvr_length/2))
+        pts.append((self.rr_width/2 + self.rr_br_gap, self.xvr_length/2))
+        pts.append((self.rr_width/2 + self.rr_br_gap, self.xvr_length/2 + self.rr_length + 2*self.rr_br_gap))
 
+        for pt in pts[2::-1]: # iterate from 2, 1, 0
+            pts.append((-pt[0], pt[1]))
+
+        for pt in pts[5::-1]: # iterate from 5, 4, 3, 2, 1, 0
+            pts.append((pt[0], -pt[1]))
+
+        for pt in pts[:6]: # add delta_left to account for airbridge on cpw bends
+            pt[1] + self.delta_left
+
+        for pt in pts[6:]: # add delta_left to account for airbridge on cpw bends
+            pt[1] - self.delta_right
         
-        
-        
-        
-        
-        
-        
+        return pts
+    
