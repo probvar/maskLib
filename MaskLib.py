@@ -851,10 +851,10 @@ class Linqer_36Port(Chip):
             self.structures = structures
         else:
             self.structures = [#hardwired structures
-                Structure(self,start=(100-75,1600-75 + i*850),direction=0,defaults=self.defaults) for i in range(9)] + \
-                [Structure(self,start=(1600-75 + i*850,self.height - 100 - 75),direction=-90,defaults=self.defaults) for i in range(9)] + \
-                [Structure(self,start=(self.width - 100 - 75,1600 + i*850 - 75),direction=180,defaults=self.defaults) for i in range(9)][::-1] + \
-                [Structure(self,start=(1600 + i*850 - 75,100 - 75),direction=90,defaults=self.defaults) for i in range(9)][::-1]
+                Structure(self,start=(100,1600 + i*850),direction=0,defaults=self.defaults) for i in range(9)] + \
+                [Structure(self,start=(1600 + i*850,self.height - 100 ),direction=-90,defaults=self.defaults) for i in range(9)] + \
+                [Structure(self,start=(self.width - 100 ,1600 + i*850 ),direction=180,defaults=self.defaults) for i in range(9)][::-1] + \
+                [Structure(self,start=(1600 + i*850 ,100 ),direction=90,defaults=self.defaults) for i in range(9)][::-1]
 
 
 
