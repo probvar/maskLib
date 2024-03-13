@@ -14,6 +14,32 @@ from dxfwrite import const
 from maskLib.Entities import SolidPline, RoundRect, SkewRect
 from maskLib.utilities import kwargStrip
 
+       
+# ===============================================================================
+#  5mm CHIP CLASS  
+#       chip with 8 structures corresponding to the launcher positions
+#       NOTE: chip size still needs to be set in the wafer settings, this just determines structure location
+# ===============================================================================
+
+class Chip5mm(m.Chip):
+    def __init__(self,wafer,chipID,layer,structures=None,defaults=None):
+        super().__init__(wafer,chipID,layer,structures=structures)
+        self.defaults = {'w':10, 's':6, 'radius':25,'r_out':0,'r_ins':0}
+        if defaults is not None:
+            #self.defaults = defaults.copy()
+            for d in defaults:
+                self.defaults[d]=defaults[d]
+        if structures is not None:
+            #override default structures
+            self.structures = structures
+        else:
+            self.structures = [#hardwired structures
+                    m.Structure(self,start=(0,self.height/2),direction=0,defaults=self.defaults),
+                    m.Structure(self,start=(self.width/2,0),direction=90,defaults=self.defaults),
+                    m.Structure(self,start=(self.width,self.height/2),direction=180,defaults=self.defaults),
+                    m.Structure(self,start=(self.width/2,self.height),direction=270,defaults=self.defaults)]
+        if wafer.frame:
+            self.add(dxf.rectangle(self.center,5200,5200,layer=wafer.lyr('FRAME'),halign = const.CENTER,valign = const.MIDDLE,linetype='DOT'))
 
 # ===============================================================================
 #  BLANK CENTERED WR10 CHIP CLASS  
@@ -412,8 +438,8 @@ class BilayerResistancePad(m.BlankCenteredWR10):
     def __init__(self,wafer,chipID,w=40,l=1500,pad_extend=1000,offset=(0,0),overhang=80,layer=None):
         m.BlankCenteredWR10.__init__(self,wafer,chipID,wafer.defaultLayer,offset)
         #put in holes to define a resistance bar
-        self.add(dxf.rectangle(self.centered((0,0)),l+2*overhang,self.height/2+overhang,halign=const.CENTER,valign=const.BOTTOM,bgcolor=wafer.bg(wafer.defaultLayer)))
-        self.add(dxf.rectangle(self.centered((0,0)),l+2*overhang,self.height/2+overhang,halign=const.CENTER,valign=const.TOP,bgcolor=wafer.bg(wafer.defaultLayer)))
+        self.add(dxf.rectangle(self.centered((0,0)),l+2*overhang,min(self.height/2+overhang - w,self.height/2+80),halign=const.CENTER,valign=const.BOTTOM,bgcolor=wafer.bg(wafer.defaultLayer)))
+        self.add(dxf.rectangle(self.centered((0,0)),l+2*overhang,min(self.height/2+overhang - w,self.height/2+80),halign=const.CENTER,valign=const.TOP,bgcolor=wafer.bg(wafer.defaultLayer)))
         if layer is None:
             layer = wafer.defaultLayer
         #put in a resistance bar on 'layer'

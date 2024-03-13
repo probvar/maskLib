@@ -95,7 +95,7 @@ def waffle(chip, grid_x, grid_y=None,width=10,height=None,exclude=None,padx=0,pa
                             second_pass[ip][jp] = True
                         except IndexError:
                             pass
-        second_pass = deepcopy(second_pass)
+        occupied = deepcopy(second_pass)
    
     for i in range(int(padx/grid_x),nx-int(padx/grid_x)):
         for j in range(int(pady/grid_y),ny-int(pady/grid_y)):
@@ -1261,6 +1261,55 @@ def CPW_pincer(chip,structure,pincer_w,pincer_l,pincer_padw,pincer_tee_r=0,pad_r
 
     if not pincer_flipped:
         s_start.shiftPos(pincer_padw+pincer_tee_r+2*s)
+        struct().updatePos(s_start.getPos())
+    else: 
+        struct().updatePos(s_start.getPos(),angle=180)
+        #struct.direction = s_start.direction + 180
+        
+def CPW_tee_stub(chip,structure,stub_length,stub_w,tee_r=0,outer_width=None,w=None,s=None,pincer_flipped=False,bgcolor=None,**kwargs):
+    '''
+    stub_length :    end-to-end length of stub pin (not counting gap) 
+    stub_w :   pincer pad trace width
+    pincer_tee_r :  radius of tee
+    pad_r:          inside radius of pincer bends
+    w:              original trace width
+    s:              pincer trace gap
+    pincer_flipped: equivalent to hflip
+    '''
+    def struct():
+        if isinstance(structure,m.Structure):
+            return structure
+        elif isinstance(structure,tuple):
+            return m.Structure(chip,structure)
+        else:
+            return chip.structure(structure)
+    if w is None:
+        try:
+            w = struct().defaults['w']
+        except KeyError:
+            w=0
+            print('\x1b[33mw not defined in ',chip.chipID)
+    if s is None:
+        try:
+            s = struct().defaults['s']
+        except KeyError:
+            print('\x1b[33ms not defined in ',chip.chipID,'!\x1b[0m')
+        
+    if not pincer_flipped: s_start = struct().clone()
+    else:
+        struct().shiftPos(stub_w+2*s,angle=180)
+        #struct().direction += 180
+        s_start = struct().clone()
+
+    s_left, s_right = CPW_tee(chip, struct(), w=w, s=s, w1=stub_w, s1=s, radius=tee_r + s, **kwargs)
+
+    CPW_straight(chip, s_left, length=(stub_length-w-2*s-stub_w)/2, **kwargs)
+    CPW_stub_round(chip, s_left,**kwargs)
+    CPW_straight(chip, s_right, length=(stub_length-w-2*s-stub_w)/2, **kwargs)
+    CPW_stub_round(chip, s_right,**kwargs)
+
+    if not pincer_flipped:
+        s_start.shiftPos(stub_w+2*s)
         struct().updatePos(s_start.getPos())
     else: 
         struct().updatePos(s_start.getPos(),angle=180)
