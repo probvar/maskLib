@@ -186,7 +186,7 @@ def JContact_slot(chip,structure,rotation=0,absoluteDimensions=False,gapw=3,gapl
         struct().shiftPos(tot_length)
     
     
-def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,steml=0.5,tabw=2,tabl=0.5,taboffs=-0.5,r_out=1.5,r_ins=1.5,hflip=False,bgcolor=None,debug=False,**kwargs):
+def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,steml=0.5,tabw=2,tabl=0.5,taboffs=-0.5,r_out_tab=1.5,r_ins_tab=1.5,hflip=False,bgcolor=None,debug=False,**kwargs):
     '''
     Creates shapes forming a puzzle piece tab with rounded corners, and adjustable angles. 
     No overlap : XOR mode compatible
@@ -207,12 +207,14 @@ def JContact_tab(chip,structure,rotation=0,absoluteDimensions=False,stemw=3,stem
             return m.Structure(chip,start=structure,direction=rotation)
         else:
             return chip.structure(structure)
+    r_out = r_out_tab
     if r_out is None:
         try:
             r_out = struct().defaults['r_out']
         except KeyError:
             #print('\x1b[33mr_out not defined in ',chip.chipID,'!\x1b[0m')
             r_out = 0
+    r_ins = r_ins_tab
     if r_ins is None:
         try:
             r_ins = struct().defaults['r_ins']
@@ -1230,7 +1232,12 @@ def DolanJunction(
     chip, structure, junctionl, jfingerw=0.5, rotation=0,
     jarmw=3, jpadw=15, jpadl=20, jpadr=0,jpadoverhang=5, # dimensions for contact tab overlap
     jfingerl=1.36,jtaperl=2-1.36-0.140,jgap=0.140, # fixed for LL
-    backward=False, # if True, draw so points toward current structure location
+    jarm_shift = 0, # shift junction arm from center
+    loop_height = 40, # height of loop
+    loop_width = 20, # width of loop
+    backward=False,# if True, draw so points toward current structure location
+    sidelink=False, # if True the junction is linking to pad on the side
+    squid = False, # if True, draw squid junction
     JANGLE=None, JLAYER=None,ULAYER=None,bgcolor=None,lincolnLabs=False,**kwargs):
     # centered such that taper starts at current position
     # junctionl is the gap distance we wish to cover
@@ -1264,31 +1271,144 @@ def DolanJunction(
             setupJunctionAngles(chip.wafer, [struct().direction])
             JANGLE = chip.wafer.JANGLES[0] % 360
     # assert chip.wafer.JANGLES[0] % 180 == struct().direction % 180, 'Need Dolan junction to be in same direction as JANGLE'
+    try:
+        for w in jfingerw:
+            if lincolnLabs and not (0.1 < w < 3): print(f'WARNING: fingerw {w} out of range. Recommended 0.150 < jfingerw < 3')
+    except:
+        if lincolnLabs and not (0.1 < jfingerw < 3): print(f'WARNING: fingerw {w} out of range. Recommended 0.150 < jfingerw < 3')
+        
 
-    if lincolnLabs and not (0.1 < jfingerw < 3): print('WARNING: fingerw out of range. Recommended 0.150 < jfingerw < 3')
+    if not(sidelink):
+        # Junction layer
+        struct().direction += rotation
+        if backward: struct().direction += 180
+        struct().shiftPos(-junctionl/2-jpadw+jpadoverhang)
+        Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr,layer=JLAYER) # contact pad
+        Strip_straight(chip, struct(), length=junctionl/2-jtaperl-jpadoverhang, w=jarmw, layer=JLAYER)
 
-    # Junction layer
-    struct().direction += rotation
-    if backward: struct().direction += 180
-    struct().shiftPos(-junctionl/2-jpadw+jpadoverhang)
-    Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr,layer=JLAYER) # contact pad
-    Strip_straight(chip, struct(), length=junctionl/2-jtaperl-jpadoverhang, w=jarmw, layer=JLAYER)
-    if lincolnLabs: ucstruct = struct().clone() 
-    Strip_taper(chip, struct(), length=jtaperl, w0=jarmw, w1=jfingerw, layer=JLAYER)
-    Strip_straight(chip, struct(), length=jfingerl, w=jfingerw, layer=JLAYER)
+        if lincolnLabs: ucstruct = struct().clone() 
+        Strip_taper(chip, struct(), length=jtaperl, w0=jarmw, w1=jfingerw, layer=JLAYER)
+        Strip_straight(chip, struct(), length=jfingerl, w=jfingerw, layer=JLAYER)
+        if lincolnLabs: struct().shiftPos(jgap) # gap
+        else: Strip_straight(chip, struct(), length=jgap, w=jfingerw, layer=ULAYER)
 
-    if lincolnLabs:
-        struct().shiftPos(jgap) # gap
+        # Undercut layer
+        if lincolnLabs:
+            Strip_taper(chip, ucstruct, length=jtaperl, w0=jarmw, w1=jfingerw, layer=ULAYER)
+            Strip_straight(chip, ucstruct, length=jfingerl+jgap, w=jfingerw, layer=ULAYER)
+
+        Strip_straight(chip, struct(), length=junctionl/2-jgap-jfingerl-jpadoverhang, w=jarmw, layer=JLAYER)
+        Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr, layer=JLAYER) # contact pad
+
+
     else:
-        Strip_straight(chip, struct(), length=jgap, w=max(jarmw,jfingerw), layer=ULAYER)
 
-    Strip_straight(chip, struct(), length=junctionl/2-jgap-jfingerl-jpadoverhang, w=jarmw, layer=JLAYER)
-    Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr, layer=JLAYER) # contact pad
+        if not(squid):
+            assert False, "NOT DEBUGGED"
+            struct().direction += rotation
+            if backward: struct().direction += 180
+            jpad_shift = jpadoverhang - jpadl/2
+            struct().translatePos(vector=(-junctionl/2-jpadw + jpadoverhang, -jpad_shift))
+            Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr,layer=JLAYER)
+            struct().translatePos(vector=(0, -jarm_shift))
+            Strip_straight(chip, struct(), length=junctionl/2-jpadw/2, w=jarmw, layer=JLAYER)
+            if lincolnLabs: ucstruct = struct().clone()
+            Strip_taper(chip, struct(), length=jtaperl, w0=jarmw, w1=jfingerw, layer=JLAYER)
+            Strip_straight(chip, struct(), length=jfingerl, w=jfingerw, layer=JLAYER)
+            if lincolnLabs:
+                struct().shiftPos(jgap) # gap
+            else:
+                Strip_straight(chip, struct(), length=jgap, w=max(jarmw,jfingerw), layer=ULAYER)
 
-    # Undercut layer
-    if lincolnLabs:
-        Strip_taper(chip, ucstruct, length=jtaperl, w0=jarmw, w1=jfingerw, layer=ULAYER)
-        Strip_straight(chip, ucstruct, length=jfingerl+jgap, w=jfingerw, layer=ULAYER)
+            Strip_straight(chip, struct(), length=junctionl/2-jgap-jfingerl-jpadw/2, w=jarmw, layer=JLAYER)
+            struct().translatePos(vector=(0, jarm_shift))
+            Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr, layer=JLAYER) # contact pad
+
+            # Undercut layer
+            if lincolnLabs:
+                Strip_taper(chip, ucstruct, length=jtaperl, w0=jarmw, w1=jfingerw, layer=ULAYER)
+                Strip_straight(chip, ucstruct, length=jfingerl+jgap, w=jfingerw, layer=ULAYER)
+
+        else:
+
+            if type(jfingerw) == float:
+                jfingerw = [jfingerw]*2 # we consider a symetric squid
+
+            struct().direction += rotation
+            if backward: struct().direction += 180
+
+            #first pad 
+            jpad_shift = jpadoverhang - jpadl/2
+            struct().translatePos(vector=(-junctionl/2-jpadw/2, -jpad_shift))
+            Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr,layer=JLAYER)
+
+            #arm linking the two pads
+            struct().translatePos(vector=(0, -jpadl/2+jarmw/2))
+            Strip_straight(chip, struct(), length=loop_width + (junctionl-jpadw - loop_width)/2 + jarmw, w=jarmw, layer=JLAYER)
+
+            # first arm of the loop 
+            struct().translatePos(vector=(-(loop_width + 3/2*jarmw), -jarmw/2), angle=-90)
+            Strip_straight(chip, struct(), length=loop_height/5-jtaperl, w=jarmw, layer=JLAYER)
+
+            if lincolnLabs: ucstruct = struct().clone()
+            Strip_taper(chip, struct(), length=jtaperl, w0=jarmw, w1=jfingerw[0], layer=JLAYER)
+            Strip_straight(chip, struct(), length=jfingerl, w=jfingerw[0], layer=JLAYER)
+            if lincolnLabs: struct().shiftPos(jgap) # gap
+            else: Strip_straight(chip, struct(), length=jgap, w=jfingerw, layer=ULAYER)
+
+            if lincolnLabs:
+                Strip_taper(chip, ucstruct, length=jtaperl, w0=jarmw, w1=jfingerw[0], layer=ULAYER)
+                Strip_straight(chip, ucstruct, length=jfingerl+jgap, w=jfingerw[0], layer=ULAYER)
+
+            Strip_straight(chip, struct(), length=4*loop_height/5-jgap-jfingerl, w=jarmw, layer=JLAYER)
+
+
+            # link between the two arms 
+            struct().translatePos(vector=(-jarmw/2, jarmw/2), angle=90)
+            Strip_straight(chip, struct(), length=loop_width, w=jarmw, layer=JLAYER)
+
+
+            # second arm of the loop
+            struct().translatePos(vector=(jarmw/2, -jarmw/2), angle=90)
+            Strip_straight(chip, struct(), length=4*loop_height/5-jgap-jfingerl, w=jarmw, layer=JLAYER)
+
+            if lincolnLabs: ucstruct = struct().clone()
+
+            if lincolnLabs: struct().shiftPos(jgap) # gap
+            else: Strip_straight(chip, struct(), length=jgap, w=max(jarmw,jfingerw), layer=ULAYER)
+
+            Strip_straight(chip, struct(), length=jfingerl, w=jfingerw[1], layer=JLAYER)
+            Strip_taper(chip, struct(), length=jtaperl, w0=jfingerw[1], w1=jarmw, layer=JLAYER)
+            if lincolnLabs:
+                Strip_straight(chip, ucstruct, length=jfingerl+jgap, w=jfingerw[1], layer=ULAYER)
+                Strip_taper(chip, ucstruct, length=jtaperl, w0=jfingerw[1], w1=jarmw, layer=ULAYER)
+            else:
+                Strip_straight(chip, struct(), length=jgap, w=max(jarmw,jfingerw[1]), layer=ULAYER)
+            Strip_straight(chip, struct(), length=loop_height/5-jtaperl, w=jarmw, layer=JLAYER)
+
+
+            # arm to second pad 
+            struct().translatePos(vector=(-2*loop_height/5, -jarmw/2), angle=-90)
+            Strip_straight(chip, struct(), length=(junctionl-jpadw - loop_width)/2 - jarmw, w=jarmw, layer=JLAYER)
+            struct().translatePos(vector=(jarmw/2, -jarmw/2), angle=90)
+            Strip_straight(chip, struct(), length=2*loop_height/5 + jarmw/2, w=jarmw, layer=JLAYER)
+
+            # second pad
+            struct().translatePos(vector=(jpadl/2,jarmw/2), angle=-90)
+            Strip_pad(chip, struct(), jpadw, w=jpadl, r_out=jpadr,layer=JLAYER)
+
+
+
+            
+
+
+
+
+
+
+
+
+
 
 
 

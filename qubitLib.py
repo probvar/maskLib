@@ -12,7 +12,7 @@ from dxfwrite import const
 from dxfwrite.vector2d import midpoint, vadd, vsub, distance
 
 #import maskLib.junctionLib as j
-from maskLib.Entities import RoundRect, InsideCurve, CurveRect
+from maskLib.Entities import RoundRect, InsideCurve, CurveRect, Star
 from maskLib.microwaveLib import CPW_stub_open, CPW_straight, Strip_straight, Strip_bend, Strip_taper, CPW_launcher, CPW_taper, Strip_stub_open
 from maskLib.junctionLib import DolanJunction, JContact_tab, ManhattanJunction, JcalcTabDims, JContact_slot, JContact_tab, JSingleProbePad, JProbePads
 
@@ -310,7 +310,7 @@ def Xmon(
     chip, structure, rotation=0,
     xmonw=25, xmonl=150, xmon_gapw=20, xmon_gapl=30,
     r_out=None, r_ins=None, r_arm5=None,
-    jj_loc=6, jj_reverse=False, junctionClass=ManhattanJunction,**kwargs):
+    jj_loc=6, jj_reverse=False, junctionClass=DolanJunction,**kwargs):
 
     """
     Generates an Xmon (does NOT use an XOR layer) with a junction method specified by junctionClass.
@@ -533,3 +533,439 @@ def Xmon(
 
     struct().updatePos(s_start.getPos()) # initial starting position
     return s # center of xmon
+
+
+def Starmon(chip, pos, widths=[10], heights=[100], dist_to_ground_heights = [10], dist_to_ground_widths = [10], 
+            dist_to_ground_widths_tip = [10],dist_to_ground_heights_tip=[10],
+            radius_in = [0],radius_out = [0], tip_heights = [0], tip_widths = [0],
+             offset=0, rotation=0, r_out=None, r_ins=None,bgcolor=None, XLAYER=None, MLAYER=None,
+                jj_branch='up', jj_loc='center' , jj_reverse=False, junctionClass=DolanJunction,**kwargs):
+
+    """
+    Generates a Starmon (does NOT use an XOR layer) with a junction method specified by junctionClass.
+    Additional params can be passed to junctions used kwargs.
+    jj_loc in [0, 11] decides the location on the cross to place the junction:
+        end of every arm and midway along every arm, counting clockwise
+        from the start.
+    By default, draws the junction pointing toward ground. If jj_reverse, draws pointing toward
+        pad at the specified location.
+    """
+    thisStructure = None
+    if isinstance(pos,tuple):
+        thisStructure = m.Structure(chip,start=pos,direction=rotation)
+        
+    def struct():
+        if isinstance(pos,m.Structure):
+            return pos
+        elif isinstance(pos,tuple):
+            return thisStructure
+        else:
+            return chip.structure(pos)
+        
+    if bgcolor is None: #color for junction, not undercut
+        bgcolor = chip.wafer.bg()
+    
+    #get layers from wafer
+    if XLAYER is None:
+        try:
+            XLAYER = chip.wafer.XLAYER
+        except AttributeError:
+            chip.wafer.setupXORlayer()
+            XLAYER = chip.wafer.XLAYER
+
+    # add the XOR layer
+
+    
+
+    def RoundStar(pos, widths, heights, offset, radius_in, radius_out, tip_heights, tip_widths,  **kwargs):
+                
+
+
+        shape = []
+        _heights = []
+        _widths = []
+
+        if len(radius_in) == 1 or len(radius_out) == 1:
+
+            radius_in *=6
+            radius_out *=6
+
+        if len(widths) ==1 or len(heights) == 1:
+
+
+            _widths = [widths[0]]*6
+            _heights = [heights[0]]*6
+
+        if len(tip_heights) == 1 or len(tip_widths) == 1:
+            tip_heights *=6
+            tip_widths *=6
+
+        
+
+
+        # correct the heights according to the tip parameters
+
+        for i in range(len(heights)):
+            if heights[i]>0:
+                if tip_heights[i] != 0:
+                    _heights.append(heights[i] - tip_heights[i])
+                else:
+                    _heights.append(heights[i] - 2*radius_out[i])
+            else:
+                _heights.append(0)
+        
+        _widths = widths
+
+
+        starmon = Star(pos, _widths, _heights, offset, **kwargs)
+        
+        shape.append(starmon)
+
+        star_pts = starmon.points
+
+
+        # return error if two consecutive branches are zero
+
+
+        # return error if the first branch is zero
+        _height_shift = np.roll(_heights,1)
+        edge_zero = [_heights[i]*_height_shift[i]==0 for i in range(len(_heights))]
+        # is_zero = np.roll([heights[i]==0 for i in range(len(heights))], 1)
+        is_zero = np.roll([_heights[i]==0 for i in range(len(_heights))], 0)
+
+        # if is_zero[1]:
+        #     raise ValueError('The first branch must have a non-zero length')
+        
+        # return error if two consecutive branches are zero, to do so check if two consecutive elements in heights are zero
+
+        # print(heights)
+        # for idx in range(len(heights)-1):
+        #     if (heights[idx] and heights[idx+1])==0:
+        #         raise ValueError('Two consecutive branches cannot have zero length')
+            
+
+        # idx_corner_pts = [3*i - 2*np.sum(is_zero[:i]) if i>0 else 0 for i in range(len(widths))]
+        idx_corner_pts = [3*i - 2*np.sum(is_zero[:i]) for i in range(len(_widths))]
+
+
+        ## too be added later the skip when no heights 
+
+
+        # fill the corner with InsideCurve 
+
+
+        dangle = 0.01 # add a bit so that there is an overlap
+
+
+
+        for i in range(len(idx_corner_pts)):
+
+            pts_inside = (pos[0] + star_pts[idx_corner_pts[i]][0], pos[1] + star_pts[idx_corner_pts[i]][1])
+
+
+            if not(edge_zero[i]) :
+                corner = InsideCurve(pts_inside,rotation=-90 -60*i - dangle/2,angle = 60 + dangle, radius = radius_in[i],
+                                    **kwargs)
+            # elif not(edge_zero[i]) and not(is_zero[i]):
+            elif edge_zero[i] and (is_zero[i]):
+                corner = InsideCurve(pts_inside,rotation=-180 -60*i- dangle/2,angle = 150 + dangle, radius = radius_in[i],
+                                    **kwargs)
+                
+            elif edge_zero[i] and not(is_zero[i]):
+                corner = InsideCurve(pts_inside,rotation=-90 -60*i- dangle/2,angle = 150 + dangle, radius = radius_in[i],
+                                    **kwargs)
+
+                
+            # else:
+            #     corner = InsideCurve(pts_inside,rotation=-90 -*i,angle = 120, radius = 0,
+            #                         **kwargs)
+            shape.append(corner)
+
+
+        # add the rounded corner at the end of the branch
+
+
+
+        dl= 30e-3
+        # for i in range(len(idx_corner_pts)):
+        for i in range(len(idx_corner_pts)):
+                
+                if _heights[i]!=0:
+
+                    if tip_widths[i]==0 or tip_widths[i] == _widths[i]:
+                    
+                        start_points = (pos[0]+star_pts[idx_corner_pts[i]+1][0], pos[1]+star_pts[idx_corner_pts[i]+1][1])
+                        tip = RoundRect(start_points, height=radius_out[i]*2, radius=radius_out[i],width=_widths[i], roundCorners=[0,0,1,1],
+                                        rotation= - 60*i,**kwargs)
+                        
+                    else:
+                        dw = (tip_widths[i] - _widths[i])/2 
+                        start_points = (pos[0]+star_pts[idx_corner_pts[i]+1][0] - (dw)*np.cos(np.pi/3*i) - dl*np.sin(np.pi/3*i), pos[1]+star_pts[idx_corner_pts[i]+1][1] + (dw)*np.sin(np.pi/3*i) - dl*np.cos(np.pi/3*i))
+                        tip = RoundRect(start_points, height=tip_heights[i], radius=radius_out[i],width=tip_widths[i], roundCorners=[1,1,1,1],
+                                        rotation= - 60*i,**kwargs)
+                
+                    shape.append(tip)
+
+
+        return shape
+
+
+    # add the rounded star 
+    roundstar = RoundStar(struct().start, widths=widths, heights=heights, offset=offset,radius_in=radius_in,
+                        radius_out=radius_out, tip_widths=tip_widths, tip_heights=tip_heights, 
+                        layer=MLAYER,bgcolor=chip.bg(MLAYER),**kwargs)
+
+    # add all the shape to the chip
+
+    for shape in roundstar:
+        chip.add(shape)
+            
+    
+    # add the Ground layer
+    
+    if len(dist_to_ground_heights) == 1 or len(dist_to_ground_widths) == 1:
+        dist_to_ground_heights *=6
+        dist_to_ground_widths *=6
+
+
+    if len(dist_to_ground_widths_tip) == 1:
+        dist_to_ground_widths_tip *=6
+
+    if len(dist_to_ground_heights_tip)==1:
+        dist_to_ground_heights_tip *=6
+    
+    # add the ground distance to the widths and heights
+
+    widths_gnd = [widths[i]+ 2*dist_to_ground_widths[i] for i in range(len(widths))]
+    tip_widths_gnd = [tip_widths[i]+ 2*dist_to_ground_widths_tip[i] if tip_widths[i]>0 else 0 for i in range(len(tip_widths))]
+    # tip_widths_gnd =[0] 
+
+
+    # add the ground distance to the heights if the height is positive it is zero otherwise
+    heights_gnd = [heights[i] + dist_to_ground_heights[i] - dist_to_ground_widths[i]/np.cos(np.pi/6) -dist_to_ground_widths[i]*np.tan(np.pi/6) if heights[i]>0 else 0 for i in range(len(heights))]
+    # tip_heights_gnd = [tip_heights[i] + dist_to_ground_heights[i] - dist_to_ground_widths[i]/np.cos(np.pi/6) -dist_to_ground_widths[i]*np.tan(np.pi/6) if tip_heights[i]>0 else 0 for i in range(len(tip_heights))]
+    tip_heights_gnd = [tip_heights[i] + 2*dist_to_ground_heights_tip[i] if tip_heights[i]>0 else 0 for i in range(len(tip_heights))]
+    # tip_heights_gnd =[0]
+
+
+    pts_start_gnd = struct().getPos((-dist_to_ground_widths[0], dist_to_ground_widths[-1]/np.cos(np.pi/6) +dist_to_ground_widths[0]*np.tan(np.pi/6)))
+
+    print(heights)
+    print(heights_gnd)
+
+
+    roundstar = RoundStar(pts_start_gnd, widths=widths_gnd, heights=heights_gnd,radius_in=radius_in,tip_heights=tip_heights_gnd,tip_widths=tip_widths_gnd,offset=offset,
+                    radius_out=radius_out, bgcolor=bgcolor,**kwargs)
+    
+
+    
+    for shape in roundstar:
+        chip.add(shape)
+
+
+    # add the junction parts 
+
+    # get the junction location
+
+    star_point = roundstar[0].points
+    s = struct().cloneAlong(distance=0, newDirection=0)
+    is_zero = np.roll([heights[i]==0 for i in range(len(heights))], 0)
+
+    if jj_branch == 'up':
+
+        if jj_loc == 'center':
+
+            vector_start = (star_point[0][0] + widths[0]/2, heights[0])
+            direction = 90
+
+        elif jj_loc =='left':
+
+            if is_zero[0]:
+                # return error if the first branch is zero
+                print('The first branch must have a non-zero length if the junction is aside')
+
+            vector_start = (star_point[0][0]-dist_to_ground_widths[0], 5*heights[0]/6)
+            direction=0
+        
+        elif jj_loc =='right':
+
+            if is_zero[0]:
+                # return error if the first branch is zero
+                print('The first branch must have a non-zero length if the junction is aside')
+
+            vector_start = (star_point[0][0]+widths[0], 5*heights[0]/6)
+            direction=0
+
+        else:
+            raise ValueError('The junction location is not valid ' + jj_loc)
+
+    elif jj_branch == 'down':
+
+        idx_point = np.sum(is_zero[2])*3 
+
+        if jj_loc == 'center':
+
+            vector_start = (star_point[idx_point][0] + widths[3]/2,-heights[3] - np.cos(np.pi/6) * (widths[1] + widths[2]))
+            direction = -90
+        
+        elif jj_loc =='left':
+
+            if is_zero[3]:
+                # return error if the first branch is zero
+                print('The third branch must have a non-zero length if the junction is aside')
+
+            vector_start = (star_point[idx_point][0] - dist_to_ground_widths[3],-5*heights[3]/6 - np.cos(np.pi/6) * (widths[1] + widths[2]))
+            direction = 0
+
+        elif jj_loc =='right':
+
+            if is_zero[3]:
+                # return error if the first branch is zero
+                print('The third branch must have a non-zero length if the junction is aside')
+
+            vector_start = (star_point[idx_point][0] + widths[3],-5*heights[3]/6 - np.cos(np.pi/6) * (widths[1] + widths[2]))
+            direction = 0
+
+
+
+    sjj = s.cloneAlongLast(vector=vector_start, newDirection=direction)
+
+
+    if jj_loc == 'center':
+        junctionl = dist_to_ground_heights[0]
+        if is_zero[0]:
+            junctionl = dist_to_ground_widths[-1]/np.cos(np.pi/6) +dist_to_ground_widths[0]*np.tan(np.pi/6)
+    else:
+        junctionl = dist_to_ground_widths[0]
+
+    JContact_tab(chip, sjj.cloneAlong(newDirection=180),layer=XLAYER,bgcolor=chip.bg(XLAYER), **kwargs)
+    #keep junction method general
+    junctionClass(chip,sjj.cloneAlong(distance=junctionl/2), junctionl=junctionl, backward=jj_reverse, separation=junctionl,**kwargs)
+    JContact_tab(chip, sjj.cloneAlong(distance=junctionl),layer=XLAYER,bgcolor=chip.bg(XLAYER), **kwargs)
+
+
+    s = struct().cloneAlong(distance=0, newDirection=rotation)
+
+    return s
+
+
+
+
+        # JProbePads(chip, sjj,rotation=sjj.direction,layer=XLAYER,bgcolor=chip.bg(XLAYER),separation = junctionl,**kwargs)
+    
+        # ManhattanJunction(chip, sjj, rotation=sjj.direction,separation = junctionl, **kwargs)
+
+
+def Headsetmon(chip, pos, pad_width=100, pad_length=100, pad_distance=40, pad_radius=10, ground_distance=10,jcont_dist=60,
+               ground_pocket_width= 75, ground_pocket_length=40, ground_pocket_radius=5,
+               offset=0, rotation=0, r_out=None,
+                r_ins=None, bgcolor=None, XLAYER=None, MLAYER=None,squid=False, jj_loc='down', jj_reverse=False, junctionClass=DolanJunction,**kwargs):
+    
+
+    thisStructure = None
+    if isinstance(pos, m.Structure):
+        rotation = pos.direction
+    elif isinstance(pos,tuple):
+        thisStructure = m.Structure(chip,start=pos,direction=rotation)
+        
+    def struct():
+        if isinstance(pos,m.Structure):
+            return pos
+        elif isinstance(pos,tuple):
+            return thisStructure
+        else:
+            return chip.structure(pos)
+        
+    if bgcolor is None: #color for junction, not undercut
+        bgcolor = chip.wafer.bg()
+    
+    #get layers from wafer
+    if XLAYER is None:
+        try:
+            XLAYER = chip.wafer.XLAYER
+        except AttributeError:
+            chip.wafer.setupXORlayer()
+            XLAYER = chip.wafer.XLAYER
+
+
+    # add the first pad which is a round rect
+
+    s = struct().cloneAlong(vector=(0,0), newDirection=0)
+    pad1 = RoundRect(s.getPos(), height=pad_length, radius=pad_radius, width=pad_width, ralign=const.TOP, angle=90, rotation=rotation, layer=MLAYER, bgcolor=chip.bg(MLAYER), **kwargs)
+    chip.add(pad1)
+
+    # add the second pad which is a round rect
+
+    s = struct().cloneAlong(vector=(pad_distance + pad_width,0), newDirection=0)
+    pad2 = RoundRect(s.getPos(), height=pad_length, radius=pad_radius, width=pad_width, ralign=const.TOP, angle=90, rotation=rotation, layer=MLAYER, bgcolor=chip.bg(MLAYER), **kwargs)
+    chip.add(pad2)
+
+
+
+    # add the ground layer around the pads
+
+    s = struct().cloneAlongLast(vector=(-ground_distance,-ground_distance), newDirection=0)
+
+    ground_plane = RoundRect(s.getPos(), height=pad_length + 2*ground_distance, radius=pad_radius, width=2*pad_width + 2*ground_distance + pad_distance, 
+                             ralign=const.TOP, angle=s.direction+90, rotation=rotation, bgcolor=bgcolor, **kwargs)
+    
+    chip.add(ground_plane)
+
+    # add the junction parts
+
+    if jj_loc == 'down':
+
+        scont1 = s.cloneAlong(vector=(pad_width+ground_distance - (jcont_dist-pad_distance)/2,ground_distance), newDirection=90)
+        scont2 = s.cloneAlong(vector=(pad_width + ground_distance + pad_distance/2 + jcont_dist/2 ,ground_distance), newDirection=90)
+
+        JContact_tab(chip, scont1.cloneAlong(newDirection=0),layer=XLAYER,bgcolor=chip.bg(XLAYER), **kwargs)
+        DolanJunction(chip,scont1.cloneAlong(vector=(0, -jcont_dist/2), newDirection=-90), junctionl=(jcont_dist), backward=jj_reverse, separation=jcont_dist,sidelink=True,squid=True,**kwargs)
+        JContact_tab(chip, scont2.cloneAlong(newDirection=0),layer=XLAYER,bgcolor=chip.bg(XLAYER), **kwargs)
+
+        s_pocket = struct().cloneAlong(vector=(pad_width + ground_distance - ground_pocket_width/2, 
+                                             - ground_pocket_length- ground_distance), newDirection=0)
+    
+        ground_pocket = RoundRect(s_pocket.getPos(), height=ground_pocket_length, radius=ground_pocket_radius,
+                               width=ground_pocket_width, roundCorners=[1,1,0,0], rotation=rotation, bgcolor=bgcolor, **kwargs)
+
+    if jj_loc == 'up':
+
+        scont1 = s.cloneAlong(vector=(pad_width+ground_distance - (jcont_dist-pad_distance)/2,ground_distance + pad_length), newDirection=-90)
+        scont2 = s.cloneAlong(vector=(pad_width + ground_distance + pad_distance/2 + jcont_dist/2 ,ground_distance + pad_length), newDirection=-90)
+
+        JContact_tab(chip, scont1.cloneAlong(newDirection=0),layer=XLAYER,bgcolor=chip.bg(XLAYER), **kwargs)
+        DolanJunction(chip,scont1.cloneAlong(vector=(0, jcont_dist/2), newDirection=-90), junctionl=(jcont_dist), backward=jj_reverse, separation=jcont_dist,sidelink=True,squid=True,**kwargs)
+        JContact_tab(chip, scont2.cloneAlong(newDirection=0),layer=XLAYER,bgcolor=chip.bg(XLAYER), **kwargs)
+
+        # add the ground pocket around the junction or squid
+
+        s_pocket = struct().cloneAlong(vector=(pad_width + ground_distance - ground_pocket_width/2, 
+                                                + pad_length+ ground_distance), newDirection=0)
+        
+        ground_pocket = RoundRect(s_pocket.getPos(), height=ground_pocket_length, radius=ground_pocket_radius,
+                                width=ground_pocket_width, roundCorners=[0,0,1,1], rotation=rotation, bgcolor=bgcolor, **kwargs)
+    
+    chip.add(ground_pocket)
+
+    return s
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+    
+
+
+            
+    

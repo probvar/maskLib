@@ -835,6 +835,31 @@ class ChipLL_20port(Chip):
             ]
 
 
+class Linqer_36Port(Chip):
+    """
+    36 ports, 10.15mm chip for the linker 
+    """
+    def __init__(self, wafer, chipID, layer, structures=None, defaults=None, FRAME_NAME='FRAME'):
+        Chip.__init__(self,wafer,chipID,layer,structures=structures, FRAME_NAME=FRAME_NAME)
+        self.defaults = {'w':10, 's':6, 'radius':50,'r_out':0,'r_ins':0}
+        if defaults is not None:
+            #self.defaults = defaults.copy()
+            for d in defaults:
+                self.defaults[d]=defaults[d]
+        if structures is not None:
+            #override default structures
+            self.structures = structures
+        else:
+            self.structures = [#hardwired structures
+                Structure(self,start=(100,1600 + i*850),direction=0,defaults=self.defaults) for i in range(9)] + \
+                [Structure(self,start=(1600 + i*850,self.height - 100 ),direction=-90,defaults=self.defaults) for i in range(9)] + \
+                [Structure(self,start=(self.width - 100 ,1600 + i*850 ),direction=180,defaults=self.defaults) for i in range(9)][::-1] + \
+                [Structure(self,start=(1600 + i*850 ,100 ),direction=90,defaults=self.defaults) for i in range(9)][::-1]
+
+
+
+
+
 # ===============================================================================
 #  END CLASS DEFINITIONS   
 # ===============================================================================
