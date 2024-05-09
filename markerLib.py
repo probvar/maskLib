@@ -101,7 +101,8 @@ alphanum_dict = {
 '7': [[(8,0), (12,0), (12,16), (0,16), (0,14), (8,14), (8,0), (8,0)]],
 '8': [[(0,0), (4,0), (4,16), (0,16), (0,10), (4,8), (0,6), (0,0)], [(4,0), (12,0), (12,6), (8,8), (12,10), (12,16), (4,16), (4,14), (8,14), (8,10), (4,10), (4,6), (8,6), (8,2), (4,2), (4,0)]],
 '9': [[(8,0), (12,0), (12,16), (8,16), (8,0)], [(8,16), (0,16), (0,8), (8,8), (8,10), (4,10), (4,14), (8,14), (8,16)]],
-'+': [[(0,6),(4,6),(4,2),(8,2),(8,6),(12,6),(12,10),(8,10),(8,14),(4,14),(4,10),(0,10),(0,6)]]
+'+': [[(0,6),(4,6),(4,2),(8,2),(8,6),(12,6),(12,10),(8,10),(8,14),(4,14),(4,10),(0,10),(0,6)]],
+'.': [[(4,0),(8,0),(8,4),(4,4)]]
 }
 
 def AlphaNumStr(chip, structure, string, size, centered=False, bgcolor=None, **kwargs):
@@ -113,6 +114,7 @@ def AlphaNumStr(chip, structure, string, size, centered=False, bgcolor=None, **k
             return structure
         elif isinstance(structure,tuple):
             return m.Structure(chip,structure)
+            #BUG - below struct().shiftPos is used so using pos instead doesn't work
         else:
             return chip.structure(structure)
     if bgcolor is None:
@@ -125,5 +127,5 @@ def AlphaNumStr(chip, structure, string, size, centered=False, bgcolor=None, **k
         scaled_size = (size[0] / 16., size[1] / 16.)
         for pts in alphanum_dict[letter]:
             scaled_pts = [(p[0]*scaled_size[0], p[1]*scaled_size[1]) for p in pts]
-            chip.add(SolidPline(insert=struct().getPos(), rotation=structure.direction, points=scaled_pts, **kwargs))
+            chip.add(SolidPline(insert=struct().getPos(), rotation=struct().direction, points=scaled_pts, **kwargs))
         struct().shiftPos(size[0])

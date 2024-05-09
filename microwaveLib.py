@@ -213,7 +213,7 @@ def Strip_stub_open(chip,structure,flipped=False,curve_out=True,r_out=None,w=Non
         dx = 0.
         if flipped:
             if allow_oversize:
-                dx = r_out
+                dx = max(length,r_out)
             else:
                 dx = min(w/2,r_out)
         
@@ -224,7 +224,7 @@ def Strip_stub_open(chip,structure,flipped=False,curve_out=True,r_out=None,w=Non
         
         if length is None: length=0
 
-        chip.add(RoundRect(struct().getPos((dx,0)),max(length,l),w,l,roundCorners=[0,curve_out,curve_out,0],hflip=flipped,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=l)
+        chip.add(RoundRect(struct().getPos((dx,0)),max(length,l),w,l,roundCorners=[0,curve_out,curve_out,0],hflip=flipped,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargs),structure=structure,length=max(l,length))
     else:
         if length is not None:
             if allow_oversize:
