@@ -2,7 +2,7 @@
 """
 Created on Thu Aug 8 15:11:27 2024
 
-@author: paul
+@author: chuyao and paul 
 """
 import sys
 import os
@@ -186,8 +186,8 @@ def create_clover_leaf_checkerboard(chip, loc, jlayer='20_SE1', M1_layer="5_M1",
                                     num_checkers=10):
     # clover leaf
     for i in range(3):
-        structure = m.Structure(chip, start = vadd(loc, ((clover_leaf_size + spacing) * i + clover_leaf_size, clover_leaf_size)))
-        clover_leaf(chip, structure, vadd(loc, ((clover_leaf_size + spacing) * i + clover_leaf_size, clover_leaf_size)), 
+        structure = m.Structure(chip, start = vadd(loc, ((clover_leaf_size + spacing) * i + clover_leaf_size/2, clover_leaf_size/2)))
+        clover_leaf(chip, structure, vadd(loc, ((clover_leaf_size + spacing) * i + clover_leaf_size/2, clover_leaf_size/2)), 
                     clover_leaf_size, layer=M1_layer)
     label_struct = m.Structure(chip, start = vadd(loc, (0, (clover_leaf_size + spacing))))
     AlphaNumStr(chip, label_struct, f'{M1_layer}', size=text_size)
@@ -207,10 +207,10 @@ def create_clover_leaf_checkerboard(chip, loc, jlayer='20_SE1', M1_layer="5_M1",
         checker_board(chip, structure, (0,0), num_checkers, size, layer=jlayer)
 
     for i in range(3):
-        structure = m.Structure(chip, start = vadd(loc, ((clover_leaf_size + spacing) * i + clover_leaf_size, 2*clover_leaf_size+2*spacing+text_size[1]+JLayer_ch_offset)))
-        clover_leaf(chip, structure, vadd(loc, ((clover_leaf_size + spacing) * i + clover_leaf_size, 2*clover_leaf_size+2*spacing+text_size[1]+JLayer_ch_offset)), 
+        structure = m.Structure(chip, start = vadd(loc, ((clover_leaf_size + spacing) * i + clover_leaf_size/2, 1.5*clover_leaf_size+4*spacing+2*text_size[1]+np.max(M1_checkerboard)*num_checkers)))
+        clover_leaf(chip, structure, vadd(loc, ((clover_leaf_size + spacing) * i + clover_leaf_size/2, 1.5*clover_leaf_size+4*spacing+2*text_size[1]+np.max(M1_checkerboard)*num_checkers)), 
                     clover_leaf_size, layer=jlayer)
-    label_struct = m.Structure(chip, start = vadd(loc, (0, 650)))
+    label_struct = m.Structure(chip, start = vadd(loc, (0, 1*clover_leaf_size+3*spacing+text_size[1]+np.max(M1_checkerboard)*num_checkers)))
     AlphaNumStr(chip, label_struct, f'{jlayer}', size=text_size)
 
 def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length,
