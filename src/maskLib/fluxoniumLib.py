@@ -224,7 +224,7 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
                      gap_width, window_width, ubridge_width, no_gap, start_grid_x,
                      start_grid_y, M1_pads, ulayer_edge, test_JA, test_smallJ,
                      dose_Jlayer_row, dose_Ulayer_column, no_column, pad_w, pad_s,
-                     ptDensity, pad_l, lead_length, cpw_s, **kwargs):
+                     ptDensity, pad_l, lead_length, cpw_s, jgrid_skip=1, ugrid_skip=1, **kwargs):
 
     if M1_pads:
         row_sep = 490
@@ -239,8 +239,8 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
 
         #TODO: add checking if layer already exists, use that instead
 
-        for i in range(len(grid)):
-            jlayer.append('2'+str(f"{i:02}")+'_SE1_dose_'+str(f"{i:02}"))
+        for i in range(grid[0]):
+            jlayer.append('2'+str(f"{i*jgrid_skip:02}")+'_SE1_dose_'+str(f"{i*jgrid_skip:02}"))
             chip.wafer.addLayer(jlayer[i],221)
     else:
         jlayer = ['20_SE1'] * len(grid)
@@ -250,8 +250,8 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
 
         #TODO: add checking if layer already exists, use that instead
 
-        for i in range(grid[0]):
-            ulayer.append('6'+str(f"{i:02}")+'_SE1_JJ_dose_'+str(f"{i:02}"))
+        for i in range(len(grid)):
+            ulayer.append('6'+str(f"{i*ugrid_skip:02}")+'_SE1_JJ_dose_'+str(f"{i*ugrid_skip:02}"))
             chip.wafer.addLayer(ulayer[i],150)
     else:
         ulayer = ['60_SE1_JJ'] * no_column
@@ -293,39 +293,39 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
                 s_test.translatePos((-lead_length, 0))
                 s_test_ubridge = s_test.clone()
 
-                mw.Strip_taper(chip, s_test, length=lead_length, w0 = pad_w/4, w1 = lead, layer = jlayer[row])
-                mw.Strip_straight(chip, s_test, length=lead_length, w = lead, layer = jlayer[row])
+                mw.Strip_taper(chip, s_test, length=lead_length, w0 = pad_w/4, w1 = lead, layer = jlayer[i])
+                mw.Strip_straight(chip, s_test, length=lead_length, w = lead, layer = jlayer[i])
                 
                 if ulayer_edge:
-                    mw.CPW_taper(chip, s_test_ubridge, length=lead_length, w0 = pad_w/4, w1 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[i])
-                    mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length, layer = ulayer[i])
+                    mw.CPW_taper(chip, s_test_ubridge, length=lead_length, w0 = pad_w/4, w1 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
+                    mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length, layer = ulayer[row])
             else:
                 s_test_ubridge = s_test.clone()
 
-                mw.Strip_taper(chip, s_test, length=lead_length/5, w0 = pad_w/10, w1 = lead, layer = jlayer[row])
-                mw.Strip_straight(chip, s_test, length=lead_length/5, w = lead, layer = jlayer[row])
+                mw.Strip_taper(chip, s_test, length=lead_length/5, w0 = pad_w/10, w1 = lead, layer = jlayer[i])
+                mw.Strip_straight(chip, s_test, length=lead_length/5, w = lead, layer = jlayer[i])
 
                 if ulayer_edge:
-                    mw.CPW_taper(chip, s_test_ubridge, length=lead_length/5, w0 = pad_w/10, w1 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[i])
-                    mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length/5, layer = ulayer[i])
+                    mw.CPW_taper(chip, s_test_ubridge, length=lead_length/5, w0 = pad_w/10, w1 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
+                    mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length/5, layer = ulayer[row])
 
             if test_JA:
-                junction_chain(chip, s_test, n_junc_array=no_gap, w=window_width[row][i], s=lead, gap=gap_width[row][i], CW = True, finalpiece = False, Jlayer = jlayer[row], Ulayer=ulayer[i])
+                junction_chain(chip, s_test, n_junc_array=no_gap, w=window_width[row][i], s=lead, gap=gap_width[row][i], CW = True, finalpiece = False, Jlayer = jlayer[i], Ulayer=ulayer[row])
             
             elif test_smallJ:
                 x, y = s_test.getPos((0, +lead/2))
-                smallJ(chip, s_test, (x, y), j_length[row][i], Jlayer = jlayer[row], Ulayer = ulayer[i], lead = lead)
+                smallJ(chip, s_test, (x, y), j_length[row][i], Jlayer = jlayer[i], Ulayer = ulayer[row], lead = lead)
             
             s_test_ubridge = s_test.clone()
 
             # Right pad
             if M1_pads:
                 if ulayer_edge:
-                    mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length, layer = ulayer[i])
-                    mw.CPW_taper(chip, s_test_ubridge, length=lead_length, w1 = pad_w/4, w0 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[i])
+                    mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length, layer = ulayer[row])
+                    mw.CPW_taper(chip, s_test_ubridge, length=lead_length, w1 = pad_w/4, w0 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
 
-                mw.Strip_straight(chip, s_test, length=lead_length, w = lead, s = cpw_s, layer = jlayer[row])
-                mw.Strip_taper(chip, s_test, length=lead_length, w1 = pad_w/4, w0 = lead, layer = jlayer[row])
+                mw.Strip_straight(chip, s_test, length=lead_length, w = lead, s = cpw_s, layer = jlayer[i])
+                mw.Strip_taper(chip, s_test, length=lead_length, w1 = pad_w/4, w0 = lead, layer = jlayer[i])
 
                 s_test.translatePos((-lead_length, 0))
                 
@@ -337,11 +337,11 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
             else:
                 if ulayer_edge:
                     s_test_ubridge = s_test.clone()
-                    mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length/5, layer = ulayer[i])
-                    mw.CPW_taper(chip, s_test_ubridge, length=lead_length/5, w1 = pad_w/10, w0 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[i])
+                    mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length/5, layer = ulayer[row])
+                    mw.CPW_taper(chip, s_test_ubridge, length=lead_length/5, w1 = pad_w/10, w0 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
 
-                mw.Strip_straight(chip, s_test, length=lead_length/5, w = lead, s = cpw_s, layer = jlayer[row])
-                mw.Strip_taper(chip, s_test, length=lead_length/5, w1 = pad_w/10, w0 = lead, layer = jlayer[row])
+                mw.Strip_straight(chip, s_test, length=lead_length/5, w = lead, s = cpw_s, layer = jlayer[i])
+                mw.Strip_taper(chip, s_test, length=lead_length/5, w1 = pad_w/10, w0 = lead, layer = jlayer[i])
                 
             # Ground window for structure 
             if test_JA:
