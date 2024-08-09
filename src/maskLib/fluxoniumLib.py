@@ -359,3 +359,24 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
 
             chip.add(dxf.rectangle(s_test_gnd.getPos(position), gnd_width, 80,
                         bgcolor=chip.wafer.bg(), layer="5_M1"))
+            
+class testChip(m.ChipHelin):
+    def __init__(self, wafer, chipID, layer, params, test=True, do_clv_and_cb=True, chipWidth=6800, chipHeight=6800):
+        super().__init__(wafer, chipID, layer)
+
+        # Top left no metal strip
+        s = m.Structure(self, start=(0, chipHeight - 50), direction=0)
+        mw.Strip_straight(self, s, length=300, w=100)
+
+        # Chip ID
+        s = m.Structure(self, start=(chipWidth/2, chipHeight-200))
+        AlphaNumStr(self, s, chipID, size=(100, 100), centered=True)
+
+        # add standard clover leaf and checkerboard
+        if do_clv_and_cb:
+            create_clover_leaf_checkerboard(self, loc=(chipWidth-800, chipWidth-1000))
+
+        if test:
+            for i in range(len(params)):
+               create_test_grid(self, **params[i])
+            #    print(i)
