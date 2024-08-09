@@ -108,7 +108,7 @@ def junction_chain(chip, structure, n_junc_array=None, w=None, s=None, gap=None,
 
     struct().translatePos((0, +s/2))
 
-def smallJ(chip, structure, start, j_length, Jlayer, Ulayer, gap=0.14, lead = 1, **kwargs):
+def smallJ(chip, structure, start, j_length, Jlayer, Ulayer, gap=0.14, lead = 1, ubridge_width=0.3, **kwargs):
 
     x, y = start
 
@@ -123,6 +123,8 @@ def smallJ(chip, structure, start, j_length, Jlayer, Ulayer, gap=0.14, lead = 1,
     # chip.add(u_quad)
 
     structure.translatePos((0.5, - j_length/2), angle=0)
+
+    undercut = structure.clone()
     
     finger_length = 1.36 # specified by LL 
     chip.add(dxf.rectangle(structure.getPos((0, 0)), finger_length, j_length,
@@ -130,6 +132,11 @@ def smallJ(chip, structure, start, j_length, Jlayer, Ulayer, gap=0.14, lead = 1,
     chip.add(dxf.rectangle(structure.getPos((finger_length, 0)), gap, j_length,
                         rotation=structure.direction, bgcolor=chip.wafer.bg(), layer=Ulayer))
     structure.translatePos((finger_length + gap, j_length/2), angle=0)
+
+
+    undercut.translatePos((-0.5, j_length/2), angle=0)
+    mw.CPW_taper(chip, undercut, length=0.5, w1 = j_length, w0 = lead, s0 = ubridge_width, s1 = ubridge_width, layer = Ulayer)
+    mw.CPW_straight(chip, undercut, w = j_length, s = ubridge_width, length = finger_length, layer = Ulayer)
 
 # checker_board for resolution tests
 def checker_board(chip, structure, start, num, square_size, layer=None):
