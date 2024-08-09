@@ -21,6 +21,16 @@ import maskLib.microwaveLib as mw
 from maskLib.utilities import curveAB
 from maskLib.markerLib import AlphaNumStr
 
+def round_sf(value, n):
+    """
+    Round a value to n significant figures
+    
+    Args:
+        value (float): value to round
+        n (int): number of significant figures
+    """
+    return round(value, -int(np.floor(np.log10(abs(value)))) + (n - 1))
+
 def grid_from_row(row, no_row):
     return [row for _ in range(no_row)]
 
@@ -224,7 +234,8 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
                      gap_width, window_width, ubridge_width, no_gap, start_grid_x,
                      start_grid_y, M1_pads, ulayer_edge, test_JA, test_smallJ,
                      dose_Jlayer_row, dose_Ulayer_column, no_column, pad_w, pad_s,
-                     ptDensity, pad_l, lead_length, cpw_s, jgrid_skip=1, ugrid_skip=1, **kwargs):
+                     ptDensity, pad_l, lead_length, cpw_s, jgrid_skip=1, ugrid_skip=1,
+                     do_e_beam_label= True, **kwargs):
 
     if M1_pads:
         row_sep = 490
@@ -258,14 +269,14 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
 
         AlphaNumStr(chip, row_label, y_key, size=(40,40), centered=False)
         row_label.translatePos((-120, -60))
-        AlphaNumStr(chip, row_label, str(round(y_var[row][0],2)), size=(40,40), centered=False)
+        AlphaNumStr(chip, row_label, str(round_sf(y_var[row][0],3)), size=(40,40), centered=False)
 
         if row == 0:
             for i in range(column):
                 column_label = m.Structure(chip, start = (start_grid_x + i * column_sep-40, start_grid_y - 300),)
                 AlphaNumStr(chip, column_label, x_key, size=(40,40), centered=False)
                 column_label.translatePos((-120, 60))
-                AlphaNumStr(chip, column_label, str(round(x_var[0][i],2)), size=(40,40), centered=False)
+                AlphaNumStr(chip, column_label, str(round_sf(x_var[0][i],3)), size=(40,40), centered=False)
 
         for i in range(column):
 
@@ -305,9 +316,22 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
                     mw.CPW_taper(chip, s_test_ubridge, length=lead_length/5, w0 = pad_w/10, w1 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
                     mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length/5, layer = ulayer[row])
 
+            if do_e_beam_label:
+                e_beam_label = s_test.clone()
+                e_beam_label.translatePos((2, 10))
+                AlphaNumStr(chip, e_beam_label, y_key, size=(4,4), centered=False, layer='20_SE1')
+                e_beam_label.translatePos((8, 0))
+                AlphaNumStr(chip, e_beam_label, str(round_sf(y_var[row][0],3)), size=(4,4), centered=False, layer='20_SE1')
+
+                e_beam_label.translatePos((-36, 8))
+                AlphaNumStr(chip, e_beam_label, x_key, size=(4,4), centered=False, layer='20_SE1')
+                e_beam_label.translatePos((8, 0))
+                AlphaNumStr(chip, e_beam_label, str(round_sf(x_var[0][i],3)), size=(4,4), centered=False, layer='20_SE1')
+
+
             if test_JA:
                 junction_chain(chip, s_test, n_junc_array=no_gap, w=window_width[row][i], s=lead, gap=gap_width[row][i], CW = True, finalpiece = False, Jlayer = jlayer[i], Ulayer=ulayer[row])
-            
+
             elif test_smallJ:
                 x, y = s_test.getPos((0, +lead/2))
                 smallJ(chip, s_test, (x, y), j_length[row][i], Jlayer = jlayer[i], Ulayer = ulayer[row], lead = lead)
