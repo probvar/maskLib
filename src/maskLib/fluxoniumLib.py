@@ -237,24 +237,20 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
     if dose_Jlayer_row:
         jlayer = []
 
-        #TODO: add checking if layer already exists, use that instead
-
         for i in range(grid[0]):
             jlayer.append('2'+str(f"{i*jgrid_skip:02}")+'_SE1_dose_'+str(f"{i*jgrid_skip:02}"))
             chip.wafer.addLayer(jlayer[i],221)
     else:
-        jlayer = ['20_SE1'] * len(grid)
+        jlayer = ['20_SE1'] * no_column
     
     if dose_Ulayer_column:
         ulayer = []
-
-        #TODO: add checking if layer already exists, use that instead
 
         for i in range(len(grid)):
             ulayer.append('6'+str(f"{i*ugrid_skip:02}")+'_SE1_JJ_dose_'+str(f"{i*ugrid_skip:02}"))
             chip.wafer.addLayer(ulayer[i],150)
     else:
-        ulayer = ['60_SE1_JJ'] * no_column
+        ulayer = ['60_SE1_JJ'] * len(grid)
 
     for row, column in enumerate (grid):
 
