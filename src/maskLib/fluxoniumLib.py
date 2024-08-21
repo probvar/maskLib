@@ -7,6 +7,8 @@ Created on Thu Aug 8 15:11:27 2024
 import sys
 import os
 current_dir = os.getcwd()
+file_dir = os.path.dirname(__file__)
+
 import maskLib
 from dxfwrite.vector2d import vadd,midpoint,vmul_scalar,vsub
 import math
@@ -15,6 +17,7 @@ import numpy as np
 from dxfwrite import DXFEngine as dxf
 from dxfwrite import const
 from dxfwrite.entities import Polyline
+import ezdxf
 
 import maskLib.MaskLib as m
 import maskLib.microwaveLib as mw
@@ -29,7 +32,11 @@ def round_sf(value, n):
         value (float): value to round
         n (int): number of significant figures
     """
-    return round(value, -int(np.floor(np.log10(abs(value)))) + (n - 1))
+    rounded_val = round(value, -int(np.floor(np.log10(abs(value)))) + (n - 1))
+    # if rounded_val has >= n digits to the left of the decimal point, return int
+    if len(str(rounded_val).split('.')[0]) >= n:
+        rounded_val = int(rounded_val)
+    return rounded_val
 
 def grid_from_row(row, no_row):
     return [row for _ in range(no_row)]
@@ -66,7 +73,16 @@ def junction_chain(chip, structure, n_junc_array=None, w=None, s=None, gap=None,
 
     struct().translatePos((0, -s/2))
 
+    # undercut amount = 0.3 approximate
+    UNDERCUT = 0.3
+
     for count, n in enumerate(n_junc_array):
+        undercut = struct().clone()
+        # undercut on outside of JJ array
+        undercut.translatePos((0, s/2), angle=0)
+
+        mw.CPW_straight(chip, undercut, w = s, s = UNDERCUT, length = n*gap + (n-1)*w, 
+                        layer = Ulayer, rotation = struct().direction)
 
         chip.add(dxf.rectangle(struct().getPos((0, 0)), gap, s,
                                    rotation=struct().direction, bgcolor=bgcolor, layer=Ulayer),
@@ -97,15 +113,23 @@ def junction_chain(chip, structure, n_junc_array=None, w=None, s=None, gap=None,
                     direction = -1
 
             if count + 1 < len(n_junc_array):
-                # undercut amount = 0.3 approximate
-                UNDERCUT = 0.3
                 chip.add(dxf.rectangle(struct().getPos((0, factor*s)), w + gap, 3 * s, rotation=struct().direction,
                                         bgcolor=bgcolor, layer=Jlayer))
                 chip.add(dxf.rectangle(struct().getPos((w + gap, factor*s)), UNDERCUT, 3 * s, rotation=struct().direction,
                                         bgcolor=bgcolor, layer=Ulayer))
-                chip.add(dxf.rectangle(struct().getPos((-UNDERCUT, (factor+1)*s)), UNDERCUT, s, rotation=struct().direction,
+                chip.add(dxf.rectangle(struct().getPos((0, abs(direction)*s)), w + gap + UNDERCUT, UNDERCUT, rotation=struct().direction,
+                                        bgcolor=bgcolor, layer=Ulayer))
+                chip.add(dxf.rectangle(struct().getPos((0, factor*s-UNDERCUT)), w + gap + UNDERCUT, UNDERCUT, rotation=struct().direction,
+                        bgcolor=bgcolor, layer=Ulayer))
+                chip.add(dxf.rectangle(struct().getPos((-UNDERCUT, (factor+1)*s+UNDERCUT)), UNDERCUT, s-2*UNDERCUT, rotation=struct().direction,
                                         bgcolor=bgcolor, layer=Ulayer))
                 struct().translatePos((0, direction * s), angle=180)
+
+                # undercut.translatePos((0, s/2))
+                # chip.add(dxf.rectangle(undercut.getPos((0, 0)), w+gap+UNDERCUT, UNDERCUT,
+                #                    rotation=undercut.direction, bgcolor=bgcolor, layer=Ulayer),
+                #                    structure=structure, length= gap)
+
             elif finalpiece:
                 chip.add(dxf.rectangle(struct().getPos((0, factor*s)), w + gap, 3 * s, rotation=struct().direction,
                                         bgcolor=bgcolor, layer=Jlayer))
@@ -139,11 +163,11 @@ def smallJ(chip, structure, start, j_length, Jlayer, Ulayer, gap=0.14, lead = 1,
     finger_length = 1.36 # specified by LL 
     chip.add(dxf.rectangle(structure.getPos((0, 0)), finger_length, j_length,
                         rotation=structure.direction, bgcolor=chip.wafer.bg(), layer=Jlayer))
-    chip.add(dxf.rectangle(structure.getPos((finger_length, 0)), gap, j_length,
+    chip.add(dxf.rectangle(structure.getPos((finger_length, -ubridge_width-lead/2 +j_length/2)), gap, 2*ubridge_width + lead,
                         rotation=structure.direction, bgcolor=chip.wafer.bg(), layer=Ulayer))
     structure.translatePos((finger_length + gap, j_length/2), angle=0)
 
-
+    # do undercut for U layer 
     undercut.translatePos((-0.5, j_length/2), angle=0)
     mw.CPW_taper(chip, undercut, length=0.5, w1 = j_length, w0 = lead, s0 = ubridge_width, s1 = ubridge_width, layer = Ulayer)
     mw.CPW_straight(chip, undercut, w = j_length, s = ubridge_width, length = finger_length, layer = Ulayer)
@@ -199,6 +223,7 @@ def clover_leaf(chip, structure, start, diameter, layer=None, ptDensity=64):
 def create_clover_leaf_checkerboard(chip, loc, jlayer='20_SE1', M1_layer="5_M1",
                                     clover_leaf_size=250, spacing=20, 
                                     M1_checkerboard=None, JLayer_checkerboard=None,
+                                    do_JClover=False,
                                     JLayer_ch_offset=50, text_size=(40,40),
                                     num_checkers=10):
     # clover leaf
@@ -210,7 +235,7 @@ def create_clover_leaf_checkerboard(chip, loc, jlayer='20_SE1', M1_layer="5_M1",
     AlphaNumStr(chip, label_struct, f'{M1_layer}', size=text_size)
 
     if M1_checkerboard is None:
-        M1_checkerboard = [0.5, 1, 2, 4, 8, 16, 32]
+        M1_checkerboard = [0.5, 1, 2, 4, 8, 16]
     # checkerboard Metal
     for i, size in enumerate(M1_checkerboard):
         structure = m.Structure(chip, start = vadd(loc, (np.sum([(num_checkers+2)*size_sq for size_sq in M1_checkerboard[:i]]), clover_leaf_size+2*spacing+text_size[1])))  
@@ -223,12 +248,13 @@ def create_clover_leaf_checkerboard(chip, loc, jlayer='20_SE1', M1_layer="5_M1",
         structure = m.Structure(chip, start = vadd(loc, (np.sum([(num_checkers+2)*size_sq for size_sq in JLayer_checkerboard[:i]]), clover_leaf_size+2*spacing+text_size[1]+JLayer_ch_offset)))  
         checker_board(chip, structure, (0,0), num_checkers, size, layer=jlayer)
 
-    for i in range(3):
-        structure = m.Structure(chip, start = vadd(loc, ((clover_leaf_size + spacing) * i + clover_leaf_size/2, 1.5*clover_leaf_size+4*spacing+2*text_size[1]+np.max(M1_checkerboard)*num_checkers)))
-        clover_leaf(chip, structure, vadd(loc, ((clover_leaf_size + spacing) * i + clover_leaf_size/2, 1.5*clover_leaf_size+4*spacing+2*text_size[1]+np.max(M1_checkerboard)*num_checkers)), 
-                    clover_leaf_size, layer=jlayer)
-    label_struct = m.Structure(chip, start = vadd(loc, (0, 1*clover_leaf_size+3*spacing+text_size[1]+np.max(M1_checkerboard)*num_checkers)))
-    AlphaNumStr(chip, label_struct, f'{jlayer}', size=text_size)
+    if do_JClover:
+        for i in range(3):
+            structure = m.Structure(chip, start = vadd(loc, ((clover_leaf_size + spacing) * i + clover_leaf_size/2, 1.5*clover_leaf_size+4*spacing+2*text_size[1]+np.max(M1_checkerboard)*num_checkers)))
+            clover_leaf(chip, structure, vadd(loc, ((clover_leaf_size + spacing) * i + clover_leaf_size/2, 1.5*clover_leaf_size+4*spacing+2*text_size[1]+np.max(M1_checkerboard)*num_checkers)), 
+                        clover_leaf_size, layer=jlayer)
+        label_struct = m.Structure(chip, start = vadd(loc, (0, 1*clover_leaf_size+3*spacing+text_size[1]+np.max(M1_checkerboard)*num_checkers)))
+        AlphaNumStr(chip, label_struct, f'{jlayer}', size=text_size)
 
 def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length,
                      gap_width, window_width, ubridge_width, no_gap, start_grid_x,
@@ -318,14 +344,14 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
 
             if do_e_beam_label:
                 e_beam_label = s_test.clone()
-                e_beam_label.translatePos((2, 10))
+                e_beam_label.translatePos((-13, 10))
                 AlphaNumStr(chip, e_beam_label, y_key, size=(4,4), centered=False, layer='20_SE1')
-                e_beam_label.translatePos((8, 0))
+                e_beam_label.translatePos((4, 0))
                 AlphaNumStr(chip, e_beam_label, str(round_sf(y_var[row][0],3)), size=(4,4), centered=False, layer='20_SE1')
 
-                e_beam_label.translatePos((-36, 8))
+                e_beam_label.translatePos((-24, 8))
                 AlphaNumStr(chip, e_beam_label, x_key, size=(4,4), centered=False, layer='20_SE1')
-                e_beam_label.translatePos((8, 0))
+                e_beam_label.translatePos((4, 0))
                 AlphaNumStr(chip, e_beam_label, str(round_sf(x_var[0][i],3)), size=(4,4), centered=False, layer='20_SE1')
 
 
@@ -334,7 +360,7 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
 
             elif test_smallJ:
                 x, y = s_test.getPos((0, +lead/2))
-                smallJ(chip, s_test, (x, y), j_length[row][i], Jlayer = jlayer[i], Ulayer = ulayer[row], lead = lead)
+                smallJ(chip, s_test, (x, y), j_length[row][i], Jlayer = jlayer[i], Ulayer = ulayer[row], lead = lead, gap=gap_width[row][i])
             
             s_test_ubridge = s_test.clone()
 
@@ -388,12 +414,12 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
                         bgcolor=chip.wafer.bg(), layer="5_M1"))
             
 class testChip(m.ChipHelin):
-    def __init__(self, wafer, chipID, layer, params, test=True, do_clv_and_cb=True, chipWidth=6800, chipHeight=6800):
+    def __init__(self, wafer, chipID, layer, params, test=True, do_clv_and_cb=True, chipWidth=6800, chipHeight=6800, lab_logo=True, motivational_dxf_path=None):
         super().__init__(wafer, chipID, layer)
 
-        # Top left no metal strip
-        s = m.Structure(self, start=(0, chipHeight - 50), direction=0)
-        mw.Strip_straight(self, s, length=300, w=100)
+        # # Top left no metal strip
+        # s = m.Structure(self, start=(0, chipHeight - 50), direction=0)
+        # mw.Strip_straight(self, s, length=300, w=100)
 
         # Chip ID
         s = m.Structure(self, start=(chipWidth/2, chipHeight-200))
@@ -401,9 +427,109 @@ class testChip(m.ChipHelin):
 
         # add standard clover leaf and checkerboard
         if do_clv_and_cb:
-            create_clover_leaf_checkerboard(self, loc=(chipWidth-800, chipWidth-1000))
+            create_clover_leaf_checkerboard(self, loc=(chipWidth-1300, chipHeight-490))
+
+        # add lab logo
+        if lab_logo:
+            add_imported_polyLine(self, start=(1000, chipHeight-280),
+                                file_name=os.path.join(file_dir, 'slab_logo.dxf'),
+                                layer='5_M1', scale=0.6)
+        
+        # add motivational dxf
+        if motivational_dxf_path:
+            # add dxf that will cause the chip/wafer to be blessed
+            # should be approximately 500x500um for scale to work
+            add_imported_polyLine(self, start=(1800, chipHeight-280),
+                                    file_name=motivational_dxf_path,
+                                    layer='5_M1', scale=0.6)
 
         if test:
             for i in range(len(params)):
                create_test_grid(self, **params[i])
             #    print(i)
+
+class ImportedChip(m.ChipHelin):
+    def __init__(self,wafer,chipID,layer,file_name,rename_dict=None, chipWidth=6800, chipHeight=6800, surpress_warnings=False):
+        m.ChipHelin.__init__(self,wafer,chipID,layer)
+
+        doc = ezdxf.readfile(file_name)
+        doc.header['$INSUNITS'] = 13 
+        msp = doc.modelspace()
+
+        defaultChipWidth = 6800
+        defaultChipHeight = 6800
+
+        # Chip ID
+        s = m.Structure(self, start=(defaultChipWidth/2, defaultChipHeight-200))
+        AlphaNumStr(self, s, chipID, size=(100, 100), centered=True)
+
+        # if chipWidth and chipHeight are not default, shift all points by the difference/2
+        offset = (defaultChipWidth/2, defaultChipHeight/2)
+
+
+        for entity in msp:
+            if entity.dxf.layer in rename_dict:
+                layer_updated = rename_dict[entity.dxf.layer]
+            else:
+                layer_updated = entity.dxf.layer
+            
+            if entity.dxftype() == 'LINE':
+                self.add(dxf.line(
+                    start=vadd(entity.dxf.start, offset),
+                    end=vadd(entity.dxf.end, offset),
+                    color=entity.dxf.color,
+                    layer=layer_updated
+                ))
+            elif entity.dxftype() == 'CIRCLE':
+                self.add(dxf.circle(
+                    center=vadd(entity.dxf.center, offset),
+                    radius=entity.dxf.radius,
+                    color=entity.dxf.color,
+                    layer=layer_updated
+                ))
+            elif entity.dxftype() == 'POLYLINE':
+                pts = list(entity.points())
+                pts.append(pts[0])
+                pts = [vadd(pt, offset) for pt in pts]
+                poly = dxf.polyline(
+                    points=pts,
+                    color=entity.dxf.color,
+                    layer=layer_updated,
+                    bgcolor=self.wafer.bg(layer)
+                )
+                poly.POLYLINE_CLOSED = True
+                poly.close()
+
+                self.add(poly)
+            elif entity.dxftype() == 'INSERT':
+                raise NotImplementedError('INSERT not supported. Please explode the INSERT block before importing')
+            else:
+                print(f'Unsupported entity type: {entity.dxftype()}, skipping')
+                continue
+
+def add_imported_polyLine(chip, start, file_name, scale=1.0, layer=None):
+    doc = ezdxf.readfile(file_name)
+    doc.header['$INSUNITS'] = 13 
+    msp = doc.modelspace()
+
+    # check that there is only one layer
+    for entity in msp:
+        if entity.dxftype() != 'POLYLINE':
+            print(f'Unsupported entity type: {entity.dxftype()}, skipping')
+            continue
+        
+        pts = list(entity.points())
+        pts = [vmul_scalar(pt, scale) for pt in pts]
+        # shift points to start
+        pts = [vadd(start, pt) for pt in pts]
+        pts.append(pts[0])
+        poly = dxf.polyline(
+            points=pts,
+            color=entity.dxf.color,
+            layer=layer,
+            bgcolor=chip.wafer.bg(layer)
+        )
+        poly.POLYLINE_CLOSED = True
+        poly.close()
+
+        chip.add(poly)
