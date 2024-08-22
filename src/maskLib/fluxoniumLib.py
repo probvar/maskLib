@@ -182,39 +182,85 @@ def checker_board(chip, structure, start, num, square_size, layer=None):
                                        rotation=structure.direction, bgcolor=chip.wafer.bg(), layer=layer))
 
 # clover_leaf for 4-pt_probe measurement
-def clover_leaf(chip, structure, start, diameter, layer=None, ptDensity=64):
+def clover_leaf(chip, structure, start, diameter, layer=None, ptDensity=64, sf=1.05, ground_plane=True):
     x, y = start
     # init polyline
     size = diameter/2
-    poly = dxf.polyline(points=[[x+size/10, y+size/4]], bgcolor=chip.wafer.bg(), layer=layer)
 
-    ## first quadrant
-    # big circle
-    poly.add_vertices(curveAB((x+size/10, y+size), (x+size, y+size/10), ptDensity=ptDensity))
-    # small circle
-    poly.add_vertices(curveAB((x+size/4, y+size/10), (x+size/4, y-size/10), ptDensity=ptDensity, clockwise=False, angleDeg=180))
+    if ground_plane:
+        poly = dxf.polyline(points=[], bgcolor=chip.wafer.bg(), layer=layer)
 
-    ## second quadrant
-    # big circle
-    poly.add_vertices(curveAB((x+size, y-size/10), (x+size/10, y-size), ptDensity=ptDensity))
-    # small circle
-    poly.add_vertices(curveAB((x+size/10, y-size/4), (x-size/10, y-size/4), ptDensity=ptDensity, clockwise=False, angleDeg=180))
+        ## first quadrant
+        # big circle
+        poly.add_vertices(curveAB((x+size/10, y+size), (x+size, y+size/10), ptDensity=ptDensity))
+        # small circle
+        poly.add_vertices(curveAB((x+size/4, y+size/10), (x+size/4, y-size/10), ptDensity=ptDensity, clockwise=False, angleDeg=180))
 
-    ## third quadrant
-    # big circle
-    poly.add_vertices(curveAB((x-size/10, y-size), (x-size, y-size/10), ptDensity=ptDensity))
-    # small circle
-    poly.add_vertices(curveAB((x-size/4, y-size/10), (x-size/4, y+size/10), ptDensity=ptDensity, clockwise=False, angleDeg=180))
+        ## second quadrant
+        # big circle
+        poly.add_vertices(curveAB((x+size, y-size/10), (x+size/10, y-size), ptDensity=ptDensity))
 
-    ## fourth quadrant
-    # big circle
-    poly.add_vertices(curveAB((x-size, y+size/10), (x-size/10, y+size), ptDensity=ptDensity))
-    # small circle
-    poly.add_vertices(curveAB((x-size/10, y+size/4), (x+size/10, y+size/4), ptDensity=ptDensity, clockwise=False, angleDeg=180))
+        # finish 1st poly object
+        poly.add_vertices([(x+size/10, y-sf*size), (x+sf*size, y-sf*size), (x+sf*size, y+sf*size), (x+size/10, y+sf*size)])
 
-    poly.close()
+        poly.close()
 
-    chip.add(poly)
+        chip.add(poly)
+
+        # second poly object
+        poly = dxf.polyline(points=[(x+size/10, y-size)], bgcolor=chip.wafer.bg(), layer=layer)
+
+        # small circle
+        poly.add_vertices(curveAB((x+size/10, y-size/4), (x-size/10, y-size/4), ptDensity=ptDensity, clockwise=False, angleDeg=180))
+
+        ## third quadrant
+        # big circle
+        poly.add_vertices(curveAB((x-size/10, y-size), (x-size, y-size/10), ptDensity=ptDensity))
+        # small circle
+        poly.add_vertices(curveAB((x-size/4, y-size/10), (x-size/4, y+size/10), ptDensity=ptDensity, clockwise=False, angleDeg=180))
+
+        ## fourth quadrant
+        # big circle
+        poly.add_vertices(curveAB((x-size, y+size/10), (x-size/10, y+size), ptDensity=ptDensity))
+        # small circle
+        poly.add_vertices(curveAB((x-size/10, y+size/4), (x+size/10, y+size/4), ptDensity=ptDensity, clockwise=False, angleDeg=180))
+
+        # finish 2nd poly object
+        poly.add_vertices([(x+size/10, y+sf*size), (x-sf*size, y+sf*size), (x-sf*size, y-sf*size), (x+size/10, y-sf*size)])
+
+        poly.close() 
+
+        chip.add(poly)
+    else:
+        poly = dxf.polyline(points=[], bgcolor=chip.wafer.bg(), layer=layer)        
+        
+        ## first quadrant
+        # big circle
+        poly.add_vertices(curveAB((x+size/10, y+size), (x+size, y+size/10), ptDensity=ptDensity))
+        # small circle
+        poly.add_vertices(curveAB((x+size/4, y+size/10), (x+size/4, y-size/10), ptDensity=ptDensity, clockwise=False, angleDeg=180))
+
+        ## second quadrant
+        # big circle
+        poly.add_vertices(curveAB((x+size, y-size/10), (x+size/10, y-size), ptDensity=ptDensity))
+        # small circle
+        poly.add_vertices(curveAB((x+size/10, y-size/4), (x-size/10, y-size/4), ptDensity=ptDensity, clockwise=False, angleDeg=180))
+
+        ## third quadrant
+        # big circle
+        poly.add_vertices(curveAB((x-size/10, y-size), (x-size, y-size/10), ptDensity=ptDensity))
+        # small circle
+        poly.add_vertices(curveAB((x-size/4, y-size/10), (x-size/4, y+size/10), ptDensity=ptDensity, clockwise=False, angleDeg=180))
+
+        ## fourth quadrant
+        # big circle
+        poly.add_vertices(curveAB((x-size, y+size/10), (x-size/10, y+size), ptDensity=ptDensity))
+        # small circle
+        poly.add_vertices(curveAB((x-size/10, y+size/4), (x+size/10, y+size/4), ptDensity=ptDensity, clockwise=False, angleDeg=180))
+
+        poly.close() 
+
+        chip.add(poly)
 
 # create chip which has 10 clover leafs for each metal layer
 # also has checkerboard pattern from 0.5um to 50um as [0.5, 1, 2, 4, 8, 16, 32, 50] um, with label on '5_M1' layer
@@ -252,7 +298,7 @@ def create_clover_leaf_checkerboard(chip, loc, jlayer='20_SE1', M1_layer="5_M1",
         for i in range(3):
             structure = m.Structure(chip, start = vadd(loc, ((clover_leaf_size + spacing) * i + clover_leaf_size/2, 1.5*clover_leaf_size+4*spacing+2*text_size[1]+np.max(M1_checkerboard)*num_checkers)))
             clover_leaf(chip, structure, vadd(loc, ((clover_leaf_size + spacing) * i + clover_leaf_size/2, 1.5*clover_leaf_size+4*spacing+2*text_size[1]+np.max(M1_checkerboard)*num_checkers)), 
-                        clover_leaf_size, layer=jlayer)
+                        clover_leaf_size, layer=jlayer, ground_plane=False)
         label_struct = m.Structure(chip, start = vadd(loc, (0, 1*clover_leaf_size+3*spacing+text_size[1]+np.max(M1_checkerboard)*num_checkers)))
         AlphaNumStr(chip, label_struct, f'{jlayer}', size=text_size)
 
@@ -414,7 +460,9 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
                         bgcolor=chip.wafer.bg(), layer="5_M1"))
             
 class testChip(m.ChipHelin):
-    def __init__(self, wafer, chipID, layer, params, test=True, do_clv_and_cb=True, chipWidth=6800, chipHeight=6800, lab_logo=True, motivational_dxf_path=None):
+    def __init__(self, wafer, chipID, layer, params, test=True, do_clv_and_cb=True,
+                 chipWidth=6800, chipHeight=6800, lab_logo=True, motivational_dxf_path=None,
+                 do_chip_title=True):
         super().__init__(wafer, chipID, layer)
 
         # # Top left no metal strip
@@ -422,8 +470,9 @@ class testChip(m.ChipHelin):
         # mw.Strip_straight(self, s, length=300, w=100)
 
         # Chip ID
-        s = m.Structure(self, start=(chipWidth/2, chipHeight-200))
-        AlphaNumStr(self, s, chipID, size=(100, 100), centered=True)
+        if do_chip_title:
+            s = m.Structure(self, start=(chipWidth/2, chipHeight-520))
+            AlphaNumStr(self, s, chipID, size=(500, 500), centered=True)
 
         # add standard clover leaf and checkerboard
         if do_clv_and_cb:
@@ -449,7 +498,9 @@ class testChip(m.ChipHelin):
             #    print(i)
 
 class ImportedChip(m.ChipHelin):
-    def __init__(self,wafer,chipID,layer,file_name,rename_dict=None, chipWidth=6800, chipHeight=6800, surpress_warnings=False):
+    def __init__(self,wafer,chipID,layer,file_name,rename_dict=None,
+                 chipWidth=6800, chipHeight=6800, surpress_warnings=False,
+                 do_chip_title=True):
         m.ChipHelin.__init__(self,wafer,chipID,layer)
 
         doc = ezdxf.readfile(file_name)
@@ -460,12 +511,12 @@ class ImportedChip(m.ChipHelin):
         defaultChipHeight = 6800
 
         # Chip ID
-        s = m.Structure(self, start=(defaultChipWidth/2, defaultChipHeight-200))
-        AlphaNumStr(self, s, chipID, size=(100, 100), centered=True)
+        if do_chip_title:
+            s = m.Structure(self, start=(defaultChipWidth/2, defaultChipHeight-200))
+            AlphaNumStr(self, s, chipID, size=(100, 100), centered=True)
 
         # if chipWidth and chipHeight are not default, shift all points by the difference/2
         offset = (defaultChipWidth/2, defaultChipHeight/2)
-
 
         for entity in msp:
             if entity.dxf.layer in rename_dict:
