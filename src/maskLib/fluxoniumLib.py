@@ -24,6 +24,9 @@ import maskLib.microwaveLib as mw
 from maskLib.utilities import curveAB
 from maskLib.markerLib import AlphaNumStr
 
+from maskLib.markerLib import MarkerSquare, MarkerCross
+from maskLib.utilities import doMirrored
+
 def round_sf(value, n):
     """
     Round a value to n significant figures
@@ -459,7 +462,7 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
             chip.add(dxf.rectangle(s_test_gnd.getPos(position), gnd_width, 80,
                         bgcolor=chip.wafer.bg(), layer="5_M1"))
             
-class testChip(m.ChipHelin):
+class TestChip(m.ChipHelin):
     def __init__(self, wafer, chipID, layer, params, test=True, do_clv_and_cb=True,
                  chipWidth=6800, chipHeight=6800, lab_logo=True, motivational_dxf_path=None,
                  do_chip_title=True):
@@ -482,7 +485,7 @@ class testChip(m.ChipHelin):
         if lab_logo:
             add_imported_polyLine(self, start=(1000, chipHeight-280),
                                 file_name=os.path.join(file_dir, 'slab_logo.dxf'),
-                                layer='5_M1', scale=0.6)
+                                layer=layer, scale=0.6)
         
         # add motivational dxf
         if motivational_dxf_path:
@@ -490,18 +493,43 @@ class testChip(m.ChipHelin):
             # should be approximately 500x500um for scale to work
             add_imported_polyLine(self, start=(1800, chipHeight-280),
                                     file_name=motivational_dxf_path,
-                                    layer='5_M1', scale=0.6)
+                                    layer=layer, scale=0.6)
 
         if test:
             for i in range(len(params)):
                create_test_grid(self, **params[i])
             #    print(i)
 
+class Fluxonium4inWafer(m.Wafer):
+    def __init__(self, waferID='SIH_Fluxonium_4in', directory=os.path.join(current_dir, 'masks_DXF\\SIH_Tests\\')):
+        w = m.Wafer(waferID, directory, chipWidth=6800, chipHeight=6800, 
+                waferDiameter=m.waferDiameters['4in'], sawWidth=200, frame=True, markers=True, solid=False)
+
+        w.SetupLayers([  # [layernumber_name, color (autocad index colors)] https://gohtx.com/acadcolors.php
+            ['5_M1', 2], #Al base metal
+            #['10_M2', 2], #TiN base metal
+            ['20_SE1', 221], #Fine shadow-evaporated features
+            ['55_SEB1', 221], #Coarse shadow-evaporated features
+            ['60_SE1_JJ', 150], #Auxiliary layer for SE1_JJ DRC checks
+        ])
+
+        w.setupJunctionLayers(JLAYER='20_SE1', ULAYER='60_SE1_JJ')
+        #w.setupAirbridgeLayers(BRLAYER='31_BR', RRLAYER='30_RR', IBRLAYER='131_IBR', IRRLAYER='130_IRR', brcolor=41, rrcolor=32) #CHECK why only on interposer layer
+
+        w.init(FRAME_LAYER=['703_ChipEdge', 7])
+        w.DicingBorder(thin=20, long=10, dash=500)
+
+        markerpts = [(-41800,-20800),(-34800,-27800),(-27800,-34800),(-20800,-41800)]
+        for pt in markerpts:
+            #(note: mirrorX and mirrorY are true by default)
+            doMirrored(MarkerSquare, w, pt, 80,layer='EBEAM_MARK')
+            doMirrored(MarkerSquare, w, pt, 80,layer='5_M1')
+
 class ImportedChip(m.ChipHelin):
     def __init__(self,wafer,chipID,layer,file_name,rename_dict=None,
                  chipWidth=6800, chipHeight=6800, surpress_warnings=False,
                  do_chip_title=True):
-        m.ChipHelin.__init__(self,wafer,chipID,layer)
+        super().__init__(wafer,chipID,layer)
 
         doc = ezdxf.readfile(file_name)
         doc.header['$INSUNITS'] = 13 
@@ -584,3 +612,11 @@ def add_imported_polyLine(chip, start, file_name, scale=1.0, layer=None):
         poly.close()
 
         chip.add(poly)
+
+# class StandardTestChip(TestChip):
+#     def __init__(wafer, test_index, chipWidth=6800, chipHeight=6800):
+
+#         params = std_params[test_index]
+#         chipID = params[0]['chipID']
+#         super().__init__(wafer, chipID, layer="5_M1", params=params, test=True, do_clv_and_cb=True,
+#                  chipWidth=chipWidth, chipHeight=chipHeight, lab_logo=True, do_chip_title=True)
