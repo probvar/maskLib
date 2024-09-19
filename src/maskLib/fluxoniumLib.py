@@ -18,6 +18,7 @@ from dxfwrite import DXFEngine as dxf
 from dxfwrite import const
 from dxfwrite.entities import Polyline
 import ezdxf
+import datetime
 
 import maskLib.MaskLib as m
 import maskLib.microwaveLib as mw
@@ -26,6 +27,21 @@ from maskLib.markerLib import AlphaNumStr
 
 from maskLib.markerLib import MarkerSquare, MarkerCross
 from maskLib.utilities import doMirrored
+
+def est_exposure_time(exposed_area, avg_dose, beam_current=5):
+    """
+    Estimate exposure time in minutes given the exposed area, average dose, and beam current.
+
+    Args:
+        exposed_area (float): area to be exposed in um^2
+        avg_dose (float): average dose in uC/cm^2
+        beam_current (float): beam current in nA, typically 5 nA
+    """
+    total_charge = avg_dose * exposed_area / (1e4)**2 # uC
+
+    exposure_time = total_charge / (beam_current * 1e-3) / 60 # min
+
+    return exposure_time
 
 def round_sf(value, n):
     """
@@ -291,7 +307,8 @@ def create_clover_leaf_checkerboard(chip, loc, jlayer='20_SE1', M1_layer="5_M1",
         checker_board(chip, structure, (0,0), num_checkers, size, layer=M1_layer)
     
     if JLayer_checkerboard is None:
-        JLayer_checkerboard = [0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.5, 1, 2]
+        # JLayer_checkerboard = [0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.5, 1, 2]
+        JLayer_checkerboard = [0.016, 0.032, 0.064, 0.128, 0.256, 0.5, 1, 2]
     # checkerboard Junction
     for i, size in enumerate(JLayer_checkerboard):
         structure = m.Structure(chip, start = vadd(loc, (np.sum([(num_checkers+2)*size_sq for size_sq in JLayer_checkerboard[:i]]), clover_leaf_size+2*spacing+text_size[1]+JLayer_ch_offset)))  
@@ -305,11 +322,11 @@ def create_clover_leaf_checkerboard(chip, loc, jlayer='20_SE1', M1_layer="5_M1",
         label_struct = m.Structure(chip, start = vadd(loc, (0, 1*clover_leaf_size+3*spacing+text_size[1]+np.max(M1_checkerboard)*num_checkers)))
         AlphaNumStr(chip, label_struct, f'{jlayer}', size=text_size)
 
-def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length,
+def create_test_grid(chip, no_column, no_row, x_var, y_var, x_key, y_key, ja_length, j_length,
                      gap_width, window_width, ubridge_width, no_gap, start_grid_x,
                      start_grid_y, M1_pads, ulayer_edge, test_JA, test_smallJ,
-                     dose_Jlayer_row, dose_Ulayer_column, no_column, pad_w, pad_s,
-                     ptDensity, pad_l, lead_length, cpw_s, jgrid_skip=1, ugrid_skip=1,
+                     dose_Jlayer_row, dose_Ulayer_column, pad_w, pad_s,
+                     ptDensity, pad_l, lead_length, cpw_s, doseU, doseJ, jgrid_skip=1, ugrid_skip=1,
                      do_e_beam_label= True, **kwargs):
 
     if M1_pads:
@@ -323,22 +340,25 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
     if dose_Jlayer_row:
         jlayer = []
 
-        for i in range(grid[0]):
-            jlayer.append('2'+str(f"{i*jgrid_skip:02}")+'_SE1_dose_'+str(f"{i*jgrid_skip:02}"))
+        for i in range(no_column):
+            jlayer.append(f"2{i*jgrid_skip:02}_SE1_dose_{i*jgrid_skip:02}_{round(doseJ[0][i])}_uC")
             chip.wafer.addLayer(jlayer[i],221)
     else:
         jlayer = ['20_SE1'] * no_column
+
+    # for layer in jlayer:
+    #     print(layer)
     
     if dose_Ulayer_column:
         ulayer = []
 
-        for i in range(len(grid)):
-            ulayer.append('6'+str(f"{i*ugrid_skip:02}")+'_SE1_JJ_dose_'+str(f"{i*ugrid_skip:02}"))
+        for i in range(no_row):
+            ulayer.append(f"6{i*ugrid_skip:02}_SE1_JJ_dose_{i*ugrid_skip:02}_{round(doseU[i][0])}_uC")
             chip.wafer.addLayer(ulayer[i],150)
     else:
-        ulayer = ['60_SE1_JJ'] * len(grid)
+        ulayer = ['60_SE1_JJ'] * no_row
 
-    for row, column in enumerate (grid):
+    for row in range(no_row):
 
         row_label = m.Structure(chip, start = (start_grid_x-250, start_grid_y + row * row_sep),)
 
@@ -347,13 +367,13 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
         AlphaNumStr(chip, row_label, str(round_sf(y_var[row][0],3)), size=(40,40), centered=False)
 
         if row == 0:
-            for i in range(column):
+            for i in range(no_column):
                 column_label = m.Structure(chip, start = (start_grid_x + i * column_sep-40, start_grid_y - 300),)
                 AlphaNumStr(chip, column_label, x_key, size=(40,40), centered=False)
                 column_label.translatePos((-120, 60))
                 AlphaNumStr(chip, column_label, str(round_sf(x_var[0][i],3)), size=(40,40), centered=False)
 
-        for i in range(column):
+        for i in range(no_column):
 
             s_test = m.Structure(chip, start = (start_grid_x + i * column_sep, start_grid_y + row * row_sep))
             
@@ -375,11 +395,11 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
                 s_test.translatePos((-lead_length, 0))
                 s_test_ubridge = s_test.clone()
 
-                mw.Strip_taper(chip, s_test, length=lead_length, w0 = pad_w/4, w1 = lead, layer = jlayer[i])
+                mw.Strip_taper(chip, s_test, length=lead_length, w0 = pad_w/10, w1 = lead, layer = jlayer[i])
                 mw.Strip_straight(chip, s_test, length=lead_length, w = lead, layer = jlayer[i])
                 
                 if ulayer_edge:
-                    mw.CPW_taper(chip, s_test_ubridge, length=lead_length, w0 = pad_w/4, w1 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
+                    mw.CPW_taper(chip, s_test_ubridge, length=lead_length, w0 = pad_w/10, w1 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
                     mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length, layer = ulayer[row])
             else:
                 s_test_ubridge = s_test.clone()
@@ -417,10 +437,10 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
             if M1_pads:
                 if ulayer_edge:
                     mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length, layer = ulayer[row])
-                    mw.CPW_taper(chip, s_test_ubridge, length=lead_length, w1 = pad_w/4, w0 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
+                    mw.CPW_taper(chip, s_test_ubridge, length=lead_length, w1 = pad_w/10, w0 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
 
                 mw.Strip_straight(chip, s_test, length=lead_length, w = lead, s = cpw_s, layer = jlayer[i])
-                mw.Strip_taper(chip, s_test, length=lead_length, w1 = pad_w/4, w0 = lead, layer = jlayer[i])
+                mw.Strip_taper(chip, s_test, length=lead_length, w1 = pad_w/10, w0 = lead, layer = jlayer[i])
 
                 s_test.translatePos((-lead_length, 0))
                 
@@ -462,10 +482,10 @@ def create_test_grid(chip, grid, x_var, y_var, x_key, y_key, ja_length, j_length
             chip.add(dxf.rectangle(s_test_gnd.getPos(position), gnd_width, 80,
                         bgcolor=chip.wafer.bg(), layer="5_M1"))
             
-class TestChip(m.ChipHelin):
+class TestChip(m.Chip):
     def __init__(self, wafer, chipID, layer, params, test=True, do_clv_and_cb=True,
-                 chipWidth=6800, chipHeight=6800, lab_logo=True, motivational_dxf_path=None,
-                 do_chip_title=True):
+                 chipWidth=6800, chipHeight=6800, lab_logo=True, do_chip_title=True,
+                 do_e_beam_alignment_marks=True):
         super().__init__(wafer, chipID, layer)
 
         # # Top left no metal strip
@@ -487,13 +507,12 @@ class TestChip(m.ChipHelin):
                                 file_name=os.path.join(file_dir, 'slab_logo.dxf'),
                                 layer=layer, scale=0.6)
         
-        # add motivational dxf
-        if motivational_dxf_path:
-            # add dxf that will cause the chip/wafer to be blessed
-            # should be approximately 500x500um for scale to work
-            add_imported_polyLine(self, start=(1800, chipHeight-280),
-                                    file_name=motivational_dxf_path,
-                                    layer=layer, scale=0.6)
+        if do_e_beam_alignment_marks:
+            poses = [(chipWidth-100, chipHeight-100), (100, chipHeight-100), (100, 100), (chipWidth-100, 100)]
+            for pos in poses:
+                MarkerSquare(w=self, pos=pos, layer=layer)
+                MarkerSquare(w=self, pos=pos, layer="EBEAM_MARK")
+            # print(f'e-beam alignment marks added to chip at positions: {poses}')
 
         if test:
             for i in range(len(params)):
@@ -501,11 +520,11 @@ class TestChip(m.ChipHelin):
             #    print(i)
 
 class Fluxonium4inWafer(m.Wafer):
-    def __init__(self, waferID='SIH_Fluxonium_4in', directory=os.path.join(current_dir, 'masks_DXF\\SIH_Tests\\')):
-        w = m.Wafer(waferID, directory, chipWidth=6800, chipHeight=6800, 
-                waferDiameter=m.waferDiameters['4in'], sawWidth=200, frame=True, markers=True, solid=False)
+    def __init__(self, waferID='SIH_Fluxonium_4in', directory=os.path.join(current_dir, 'masks_DXF\\SIH_Tests\\'), **kwargs):
+        super().__init__(waferID, directory, chipWidth=6800, chipHeight=6800, 
+                waferDiameter=m.waferDiameters['4in'], sawWidth=200, frame=True, markers=True, solid=False, **kwargs)
 
-        w.SetupLayers([  # [layernumber_name, color (autocad index colors)] https://gohtx.com/acadcolors.php
+        self.SetupLayers([  # [layernumber_name, color (autocad index colors)] https://gohtx.com/acadcolors.php
             ['5_M1', 2], #Al base metal
             #['10_M2', 2], #TiN base metal
             ['20_SE1', 221], #Fine shadow-evaporated features
@@ -513,22 +532,22 @@ class Fluxonium4inWafer(m.Wafer):
             ['60_SE1_JJ', 150], #Auxiliary layer for SE1_JJ DRC checks
         ])
 
-        w.setupJunctionLayers(JLAYER='20_SE1', ULAYER='60_SE1_JJ')
+        self.setupJunctionLayers(JLAYER='20_SE1', ULAYER='60_SE1_JJ')
         #w.setupAirbridgeLayers(BRLAYER='31_BR', RRLAYER='30_RR', IBRLAYER='131_IBR', IRRLAYER='130_IRR', brcolor=41, rrcolor=32) #CHECK why only on interposer layer
 
-        w.init(FRAME_LAYER=['703_ChipEdge', 7])
-        w.DicingBorder(thin=20, long=10, dash=500)
+        self.init(FRAME_LAYER=['703_ChipEdge', 7])
+        self.DicingBorder(thin=20, long=10, dash=500)
 
         markerpts = [(-41800,-20800),(-34800,-27800),(-27800,-34800),(-20800,-41800)]
         for pt in markerpts:
             #(note: mirrorX and mirrorY are true by default)
-            doMirrored(MarkerSquare, w, pt, 80,layer='EBEAM_MARK')
-            doMirrored(MarkerSquare, w, pt, 80,layer='5_M1')
+            doMirrored(MarkerSquare, self, pt, 80,layer='EBEAM_MARK')
+            doMirrored(MarkerSquare, self, pt, 80,layer='5_M1')
 
-class ImportedChip(m.ChipHelin):
+class ImportedChip(m.Chip):
     def __init__(self,wafer,chipID,layer,file_name,rename_dict=None,
                  chipWidth=6800, chipHeight=6800, surpress_warnings=False,
-                 do_chip_title=True):
+                 do_chip_title=True, do_e_beam_alignment_marks=True):
         super().__init__(wafer,chipID,layer)
 
         doc = ezdxf.readfile(file_name)
@@ -581,10 +600,17 @@ class ImportedChip(m.ChipHelin):
 
                 self.add(poly)
             elif entity.dxftype() == 'INSERT':
-                raise NotImplementedError('INSERT not supported. Please explode the INSERT block before importing')
+                raise NotImplementedError('INSERT not supported. Please "Flatten Cells" in klayout before importing')
             else:
                 print(f'Unsupported entity type: {entity.dxftype()}, skipping')
                 continue
+        
+        if do_e_beam_alignment_marks:
+            poses = [(chipWidth-100, chipHeight-100), (100, chipHeight-100), (100, 100), (chipWidth-100, 100)]
+            for pos in poses:
+                MarkerSquare(w=self, pos=pos, layer=layer)
+                MarkerSquare(w=self, pos=pos, layer="EBEAM_MARK")
+            # print(f'e-beam alignment marks added to chip at positions: {poses}')
 
 def add_imported_polyLine(chip, start, file_name, scale=1.0, layer=None):
     doc = ezdxf.readfile(file_name)
@@ -594,7 +620,7 @@ def add_imported_polyLine(chip, start, file_name, scale=1.0, layer=None):
     # check that there is only one layer
     for entity in msp:
         if entity.dxftype() != 'POLYLINE':
-            print(f'Unsupported entity type: {entity.dxftype()}, skipping')
+            print(f'Unsupported entity type: {entity.dxftype()}, skipping. Only POLYLINE supported')
             continue
         
         pts = list(entity.points())
@@ -613,10 +639,267 @@ def add_imported_polyLine(chip, start, file_name, scale=1.0, layer=None):
 
         chip.add(poly)
 
-# class StandardTestChip(TestChip):
-#     def __init__(wafer, test_index, chipWidth=6800, chipHeight=6800):
+class StandardTestChip(TestChip):
+    def __init__(self, wafer, test_index, default_params, x_low=None, x_high=None, y_low=None,
+                 y_high=None, metal_layer="5_M1", verbose=False, do_only_params=False, **kwargs):
+        """
+        Test chip with standard parameters for different tests. Use these as
+        witness chips riding along on a wafer. The test_index determines the
+        test to be run. The default_params are the parameters that are standard
+        
+        """
+        self.chip_labels = [
+               'DOSE',
+               'DOSE_JJA',
+               'DOSE_JJ',
+               'BRIDGE1',
+               'BRIDGE2',
+               'WINDOW1',
+               'WINDOW2',
+               'JJ_SIZE1',
+               'JJ_SIZE2'
+            ]
 
-#         params = std_params[test_index]
-#         chipID = params[0]['chipID']
-#         super().__init__(wafer, chipID, layer="5_M1", params=params, test=True, do_clv_and_cb=True,
-#                  chipWidth=chipWidth, chipHeight=chipHeight, lab_logo=True, do_chip_title=True)
+        self.init_row_column_probe_pads(test_index)
+        
+        self.init_default_x_y(test_index)
+            
+        params = [self.params_TestChip(self.no_column, self.no_row, default_params)]
+
+        if x_low is None:
+            x_low = self.x_low_default
+        if x_high is None:
+            x_high = self.x_high_default
+        if y_low is None:
+            y_low = self.y_low_default
+        if y_high is None:
+            y_high = self.y_high_default
+
+        x_swept = np.linspace(x_low, x_high, self.no_column)
+        x_var = grid_from_row(x_swept, self.no_row)
+        y_swept = np.linspace(y_low, y_high, self.no_row)
+        y_var = grid_from_column(y_swept, self.no_column, self.no_row)
+
+        if verbose:
+            print(f"x_key: {self.x_key} x_swept: {x_swept}")
+            print(f"y_key: {self.y_key} y_swept: {y_swept}")
+        
+        params[0]['x_var'] = x_var
+        params[0]['y_var'] = y_var
+        params[0]['M1_pads'] = self.probe_pads
+        params[0]['x_key'] = self.x_key
+        params[0]['y_key'] = self.y_key
+
+        self.chipID = self.chip_labels[test_index]
+
+        if test_index == 0:
+            params[0]['dose_Jlayer_row'] = True
+            params[0]['dose_Ulayer_column'] = True
+            params[0]['test_smallJ'] = True
+            params[0]['doseJ'] = x_var
+            params[0]['doseU'] = y_var
+
+            # deep copy params[0] to params2
+            params.append(params[0].copy())
+            params[1]['test_smallJ'] = False
+            params[1]['test_JA'] = True
+            params[1]['start_grid_y'] = 3500
+
+            self.save_dose_table(x_swept, y_swept, self.chipID, default_params['dose_J'], default_params['dose_U'])
+        elif test_index == 1:
+            params[0]['dose_Jlayer_row'] = True
+            params[0]['dose_Ulayer_column'] = True
+            params[0]['test_JA'] = True
+            params[0]['doseJ'] = x_var
+            params[0]['doseU'] = y_var
+            params[0]['jgrid_skip'] = 5
+
+            self.save_dose_table(x_swept, y_swept, self.chipID, default_params['dose_J'], default_params['dose_U'], jgrid_skip=5)
+        elif test_index == 2:
+            params[0]['dose_Jlayer_row'] = True
+            params[0]['dose_Ulayer_column'] = True
+            params[0]['test_smallJ'] = True
+            params[0]['doseJ'] = x_var
+            params[0]['doseU'] = y_var
+            params[0]['jgrid_skip'] = 5
+
+            self.save_dose_table(x_swept, y_swept, self.chipID, default_params['dose_J'], default_params['dose_U'], jgrid_skip=5)
+        elif test_index in [3, 4]:
+            params[0]['test_JA'] = True
+            params[0]['gap_width'] = x_var
+            params[0]['ja_length'] = y_var
+        elif test_index in [5, 6]:
+            params[0]['test_JA'] = True
+            params[0]['gap_width'] = x_var
+            params[0]['window_width'] = y_var
+        elif test_index in [7, 8]:
+            params[0]['test_smallJ'] = True
+            params[0]['gap_width'] = x_var
+            params[0]['j_length'] = y_var
+
+        if not do_only_params:
+            super().__init__(wafer, self.chipID, metal_layer, params, **kwargs)
+        
+        self.params = params
+
+    def init_row_column_probe_pads(self, test_index):
+        if test_index in [1, 2, 4, 6, 8]:
+            # cases when we have a probe pads
+            self.no_row = 12
+            self.no_column = 6
+            self.probe_pads = True
+        elif test_index == 0:
+            # case with 
+            self.no_row = 12
+            self.no_column = 26
+            self.probe_pads = False
+        else:
+            # no probe pads
+            self.no_row = 38
+            self.no_column = 30 
+            self.probe_pads = False
+
+
+    def init_default_x_y(self, test_index):
+        """
+        Initialize default x and y keys and values for test chips.
+        These values were chosen to have failure on both sides.
+        
+        To adjust these values, change the x_low, x_high, y_low, y_high values
+        in the __init__ method.
+        """
+        if test_index in [0, 1, 2]:
+            # doseJ, doseU
+            self.x_key = 'DJ'
+            self.x_low_default = 500
+            self.x_high_default = 2000
+
+            self.y_key = 'DU'
+            self.y_low_default = 100
+            self.y_high_default = 600
+            
+        elif test_index in [3, 4]:
+            # bridge_gap, bridge_len
+            self.x_key = 'gap'
+            self.x_low_default = 0.10
+            self.x_high_default = 0.68
+
+            self.y_key = 'len'
+            self.y_low_default = 1.0
+            self.y_high_default = 8.0
+            
+        elif test_index in [5, 6]:
+            # window_gap, window_width
+            self.x_key = 'gap'
+            self.x_low_default = 0.10
+            self.x_high_default = 0.68
+
+            self.y_key = 'win'
+            self.y_low_default = 0.10
+            self.y_high_default = 0.84
+
+        elif test_index in [7, 8]:
+            # JJ_gap, JJ_len
+            self.x_key = 'gap'
+            self.x_low_default = 0.10
+            self.x_high_default = 0.68
+
+            self.y_key = 'len'
+            self.y_low_default = 0.10
+            self.y_high_default = 0.84
+    
+    def save_dose_table(self, doseJ_range, doseU_range, chipID, dose_J_default,
+                        dose_U_default, PEC_factor=0.25, jgrid_skip=1, ugrid_skip=1, save_klayout_rename=True,
+                        print_file_location=True):
+        """
+        Assignment for BEAMER dose table. Saves klayout renamed layers as well
+        as default, (i.e. 20_SE1 and 60_SE1_JJ -> L20D0_SE1 and L60D0_SE1_JJ 
+        if the dxf file is edited in klayout)
+
+        # LAYER ASSIGNMENT TABLE 
+        # Layer/Datatype	,	Assignment Value
+        200_SE1_dose_00	,	500
+        201_SE1_dose_01	,	500
+        """
+        # get cwd
+        cwd = os.getcwd()
+        date = datetime.datetime.now().strftime("%Y-%m-%d")
+        with open(f'{cwd}\\dose_table_{chipID}_{date}.txt', 'w') as f:
+            f.write('# LAYER ASSIGNMENT TABLE\n')
+            f.write('# Layer/Datatype, Assignment Value\n')
+            
+            for i, doseJ in enumerate(doseJ_range):
+                f.write(f'2{i*jgrid_skip:02}_SE1_dose_{i*jgrid_skip:02}_{round(doseJ)}_uC, {doseJ}\n')
+            for j, doseU in enumerate(doseU_range):
+                updated_doseU = doseU / PEC_factor # PEC factor as we assign PEC in BEAMER
+                f.write(f'6{j*ugrid_skip:02}_SE1_JJ_dose_{j*ugrid_skip:02}_{round(doseU)}_uC, {updated_doseU}\n')
+            
+            # assign 20_SE1' and '60_SE1_JJ' to default values:
+            f.write(f'20_SE1, {dose_J_default}\n')
+            f.write(f'60_SE1_JJ, {dose_U_default / PEC_factor}\n')
+
+            # accounts for klayout renaming dose layers
+            if save_klayout_rename:
+                for i, doseJ in enumerate(doseJ_range):
+                    f.write(f'L2{i*jgrid_skip:02}D0_SE1_dose_{i*jgrid_skip:02}_{round(doseJ)}_uC, {doseJ}\n')
+                for j, doseU in enumerate(doseU_range):
+                    updated_doseU = doseU / PEC_factor # PEC factor as we assign PEC in BEAMER
+                    f.write(f'L6{j*ugrid_skip:02}D0_SE1_JJ_dose_{j*ugrid_skip:02}_{round(doseU)}_uC, {updated_doseU}\n')
+                
+                # assign 20_SE1' and '60_SE1_JJ' to default values:
+                f.write(f'L20D0_SE1, {dose_J_default}\n')
+                f.write(f'L60D0_SE1_JJ, {dose_U_default / PEC_factor}\n')
+
+        if print_file_location:
+            print(f"Dose table saved to: {cwd}\\dose_table_{chipID}_{date}.txt")
+
+    
+    def params_TestChip(self, no_column, no_row, default_params):
+        """
+        init standard params for all test chips in proper shape for TestChip
+        """
+        doseJ = grid_from_entry(default_params['dose_J'], no_row, no_column)
+        doseU = grid_from_entry(default_params['dose_U'], no_row, no_column)
+        
+        ubridge_width = grid_from_entry(default_params['ubridge_width'], no_row, no_column)
+        window_width = grid_from_entry(default_params['window_width'], no_row, no_column)
+        ja_length = grid_from_entry(default_params['ja_length'], no_row, no_column)
+        j_length = grid_from_entry(default_params['j_length'], no_row, no_column)
+        gap_width = grid_from_entry(default_params['gap_width'], no_row, no_column)
+        
+        params = {
+            'M1_pads': False,   # Probe pads? No -> tigher packing
+
+            # Choose the tested structure, can only have one True
+            'test_smallJ': False, # Small JJ structure
+            'test_JA': False, # Junction array structure
+
+            'no_gap': default_params['no_gap'], # number of bridges in JJ array, list includes overlap
+
+            # Vary dose (hence separate layers) for Jlayer (each row) or Ulayer (each column)
+            'dose_Jlayer_row': False,
+            'dose_Ulayer_column': False,
+
+            'ulayer_edge': True,  # Ulayer edge gap TODO: remove?
+            'start_grid_x' : default_params['start_grid_x'], # x position of bottom left of grid
+            'start_grid_y' : default_params['start_grid_y'], # y position of bottom left of grid
+            
+            'ja_length': ja_length,
+            'j_length': j_length,
+            'gap_width': gap_width,
+            'window_width': window_width,
+            'ubridge_width': ubridge_width,
+            'doseJ': doseJ,
+            'doseU': doseU,
+            'no_column': no_column,
+            'no_row': no_row,
+
+            'pad_w': default_params['pad_w'],
+            'pad_l': default_params['pad_l'],
+            'pad_s': default_params['pad_s'],
+            'ptDensity': default_params['ptDensity'],
+            'lead_length': default_params['lead_length'],
+            'cpw_s': default_params['cpw_s'],
+        }
+
+        return params
