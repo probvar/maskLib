@@ -520,7 +520,7 @@ class TestChip(m.Chip):
             #    print(i)
 
 class Fluxonium4inWafer(m.Wafer):
-    def __init__(self, waferID='SIH_Fluxonium_4in', directory=os.path.join(current_dir, 'masks_DXF\\SIH_Tests\\'), **kwargs):
+    def __init__(self, waferID, directory=current_dir+'\\', **kwargs):
         super().__init__(waferID, directory, chipWidth=6800, chipHeight=6800, 
                 waferDiameter=m.waferDiameters['4in'], sawWidth=200, frame=True, markers=True, solid=False, **kwargs)
 
@@ -641,7 +641,7 @@ def add_imported_polyLine(chip, start, file_name, scale=1.0, layer=None):
 
 class StandardTestChip(TestChip):
     def __init__(self, wafer, test_index, default_params, x_low=None, x_high=None, y_low=None,
-                 y_high=None, metal_layer="5_M1", verbose=False, do_only_params=False, **kwargs):
+                 y_high=None, no_row=None, no_column=None, probe_pads=None, metal_layer="5_M1", verbose=False, do_only_params=False, **kwargs):
         """
         Test chip with standard parameters for different tests. Use these as
         witness chips riding along on a wafer. The test_index determines the
@@ -660,12 +660,17 @@ class StandardTestChip(TestChip):
                'JJ_SIZE2'
             ]
 
-        self.init_row_column_probe_pads(test_index)
+        self.init_default_row_column_probe_pads(test_index)
         
+        if no_row is None:
+            no_row = self.no_row_default
+        if no_column is None:
+            no_column = self.no_column_default
+        if probe_pads is None:
+            probe_pads = self.probe_pads_default
+
         self.init_default_x_y(test_index)
             
-        params = [self.params_TestChip(self.no_column, self.no_row, default_params)]
-
         if x_low is None:
             x_low = self.x_low_default
         if x_high is None:
@@ -675,10 +680,12 @@ class StandardTestChip(TestChip):
         if y_high is None:
             y_high = self.y_high_default
 
-        x_swept = np.linspace(x_low, x_high, self.no_column)
-        x_var = grid_from_row(x_swept, self.no_row)
-        y_swept = np.linspace(y_low, y_high, self.no_row)
-        y_var = grid_from_column(y_swept, self.no_column, self.no_row)
+        params = [self.params_TestChip(no_column, no_row, default_params)]
+
+        x_swept = np.linspace(x_low, x_high, no_column)
+        x_var = grid_from_row(x_swept, no_row)
+        y_swept = np.linspace(y_low, y_high, no_row)
+        y_var = grid_from_column(y_swept, no_column, no_row)
 
         if verbose:
             print(f"x_key: {self.x_key} x_swept: {x_swept}")
@@ -686,7 +693,7 @@ class StandardTestChip(TestChip):
         
         params[0]['x_var'] = x_var
         params[0]['y_var'] = y_var
-        params[0]['M1_pads'] = self.probe_pads
+        params[0]['M1_pads'] = probe_pads
         params[0]['x_key'] = self.x_key
         params[0]['y_key'] = self.y_key
 
@@ -742,22 +749,22 @@ class StandardTestChip(TestChip):
         
         self.params = params
 
-    def init_row_column_probe_pads(self, test_index):
+    def init_default_row_column_probe_pads(self, test_index):
         if test_index in [1, 2, 4, 6, 8]:
             # cases when we have a probe pads
-            self.no_row = 12
-            self.no_column = 6
-            self.probe_pads = True
+            self.no_row_default = 12
+            self.no_column_default = 6
+            self.probe_pads_default = True
         elif test_index == 0:
             # case with 
-            self.no_row = 12
-            self.no_column = 26
-            self.probe_pads = False
+            self.no_row_default = 12
+            self.no_column_default = 26
+            self.probe_pads_default = False
         else:
             # no probe pads
-            self.no_row = 38
-            self.no_column = 30 
-            self.probe_pads = False
+            self.no_row_default = 38
+            self.no_column_default = 30 
+            self.probe_pads_default = False
 
 
     def init_default_x_y(self, test_index):
