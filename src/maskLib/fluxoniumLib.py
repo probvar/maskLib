@@ -327,7 +327,8 @@ def create_test_grid(chip, no_column, no_row, x_var, y_var, x_key, y_key, ja_len
                      start_grid_y, M1_pads, ulayer_edge, test_JA, test_smallJ,
                      dose_Jlayer_row, dose_Ulayer_column, pad_w, pad_s,
                      ptDensity, pad_l, lead_length, cpw_s, doseU, doseJ, jgrid_skip=1, ugrid_skip=1,
-                     do_e_beam_label= True, **kwargs):
+                     do_e_beam_label= True, arb_struct=False, arb_path=None, arb_ulayer=None,
+                     arb_jlayer=None,**kwargs):
 
     if M1_pads:
         row_sep = 490
@@ -401,7 +402,7 @@ def create_test_grid(chip, no_column, no_row, x_var, y_var, x_key, y_key, ja_len
                 if ulayer_edge:
                     mw.CPW_taper(chip, s_test_ubridge, length=lead_length, w0 = pad_w/10, w1 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
                     mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length, layer = ulayer[row])
-            else:
+            elif not arb_struct:
                 s_test_ubridge = s_test.clone()
 
                 mw.Strip_taper(chip, s_test, length=lead_length/5, w0 = pad_w/10, w1 = lead, layer = jlayer[i])
@@ -431,6 +432,10 @@ def create_test_grid(chip, no_column, no_row, x_var, y_var, x_key, y_key, ja_len
                 x, y = s_test.getPos((0, +lead/2))
                 smallJ(chip, s_test, (x, y), j_length[row][i], Jlayer = jlayer[i], Ulayer = ulayer[row], lead = lead, gap=gap_width[row][i])
             
+            elif arb_struct:
+                x, y = s_test.getPos((0, 0))
+                add_imported_polyLine(chip, start=(x, y), file_name=arb_path, rename_dict={arb_jlayer: jlayer[i], arb_ulayer: ulayer[row]}, scale=1.0)
+
             s_test_ubridge = s_test.clone()
 
             # Right pad
@@ -449,7 +454,7 @@ def create_test_grid(chip, no_column, no_row, x_var, y_var, x_key, y_key, ja_len
             
                 mw.CPW_stub_round(chip, s_test, w = pad_w, s = pad_s, ptDensity = ptDensity, flipped = False)
     
-            else:
+            elif not arb_struct:
                 if ulayer_edge:
                     s_test_ubridge = s_test.clone()
                     mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length/5, layer = ulayer[row])
@@ -473,6 +478,9 @@ def create_test_grid(chip, no_column, no_row, x_var, y_var, x_key, y_key, ja_len
 
             elif test_smallJ:
                 gnd_width = lead_length*2 + 0.5 + 1.36 + 0.14
+
+            elif arb_struct:
+                gnd_width = lead_length*2 + 0.5 + 1.36 + 0.14 # temp, need to change
 
             if not M1_pads:
                 position = (-(lead_length)*(2-4/5)/2, -40)
@@ -505,7 +513,7 @@ class TestChip(m.Chip):
         if lab_logo:
             add_imported_polyLine(self, start=(1000, chipHeight-280),
                                 file_name=os.path.join(file_dir, 'slab_logo.dxf'),
-                                layer=layer, scale=0.6)
+                                rename_dict={'L1D0': layer}, scale=0.6)
         
         if do_e_beam_alignment_marks:
             poses = [(chipWidth-100, chipHeight-100), (100, chipHeight-100), (100, 100), (chipWidth-100, 100)]
@@ -612,13 +620,18 @@ class ImportedChip(m.Chip):
                 MarkerSquare(w=self, pos=pos, layer="EBEAM_MARK")
             # print(f'e-beam alignment marks added to chip at positions: {poses}')
 
-def add_imported_polyLine(chip, start, file_name, scale=1.0, layer=None):
+def add_imported_polyLine(chip, start, file_name, scale=1.0, rename_dict=None):
     doc = ezdxf.readfile(file_name)
     doc.header['$INSUNITS'] = 13 
     msp = doc.modelspace()
 
     # check that there is only one layer
     for entity in msp:
+        if entity.dxf.layer in rename_dict:
+            layer_updated = rename_dict[entity.dxf.layer]
+        else:
+            layer_updated = entity.dxf.layer
+
         if entity.dxftype() != 'POLYLINE':
             print(f'Unsupported entity type: {entity.dxftype()}, skipping. Only POLYLINE supported')
             continue
@@ -631,8 +644,8 @@ def add_imported_polyLine(chip, start, file_name, scale=1.0, layer=None):
         poly = dxf.polyline(
             points=pts,
             color=entity.dxf.color,
-            layer=layer,
-            bgcolor=chip.wafer.bg(layer)
+            layer=layer_updated,
+            bgcolor=chip.wafer.bg(layer_updated)
         )
         poly.POLYLINE_CLOSED = True
         poly.close()
