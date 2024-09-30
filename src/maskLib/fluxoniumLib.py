@@ -821,12 +821,12 @@ class StandardTestChip(TestChip):
         elif test_index in [7, 8]:
             # JJ_gap, JJ_len
             self.x_key = 'gap'
-            self.x_low_default = 0.10
-            self.x_high_default = 0.68
+            self.x_low_default = 0.05
+            self.x_high_default = 0.32
 
             self.y_key = 'len'
             self.y_low_default = 0.10
-            self.y_high_default = 0.84
+            self.y_high_default = 0.50
     
     def save_dose_table(self, doseJ_range, doseU_range, chipID, dose_J_default,
                         dose_U_default, PEC_factor=0.25, jgrid_skip=1, ugrid_skip=1, save_klayout_rename=True,
