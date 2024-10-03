@@ -477,10 +477,15 @@ def create_test_grid(chip, no_column, no_row, x_var, y_var, x_key, y_key, ja_len
                     gnd_width = lead_length*2 + (gap_width[row][i] + window_width[row][i]) * arraylength - window_width[row][i]
 
             elif test_smallJ:
-                gnd_width = lead_length*2 + 0.5 + 1.36 + 0.14
+                # 0.5 = LL taper length
+                # 1.36 = LL finger length
+                gnd_width = lead_length*2 + 0.5 + 1.36 + gap_width[row][i]
 
             elif arb_struct:
-                gnd_width = lead_length*2 + 0.5 + 1.36 + 0.14 # temp, need to change
+                # 0.5 = LL taper length
+                # 1.36 = LL finger length
+                gnd_width = lead_length*2 + 0.5 + 1.36 + gap_width[row][i]
+                # TODO: update gnd_width to fit for arbitrary structure
 
             if not M1_pads:
                 position = (-(lead_length)*(2-4/5)/2, -40)
