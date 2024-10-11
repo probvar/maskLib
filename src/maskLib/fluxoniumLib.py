@@ -332,7 +332,7 @@ def create_test_grid(chip, no_column, no_row, x_var, y_var, x_key, y_key, ja_len
                      dose_Jlayer_row, dose_Ulayer_column, pad_w, pad_s,
                      ptDensity, pad_l, lead_length, cpw_s, doseU, doseJ, jgrid_skip=1, ugrid_skip=1,
                      do_e_beam_label= True, arb_struct=False, arb_path=None, arb_ulayer=None,
-                     arb_jlayer=None,**kwargs):
+                     arb_jlayer=None, no_bandage=True, **kwargs):
 
     if M1_pads:
         row_sep = 490
@@ -386,7 +386,7 @@ def create_test_grid(chip, no_column, no_row, x_var, y_var, x_key, y_key, ja_len
             
             if test_JA:
                 lead = ja_length[row][i]
-            elif test_smallJ:
+            elif test_smallJ or not no_bandage:
                 lead = j_length[row][i]+1
 
             # Left pad
@@ -397,15 +397,87 @@ def create_test_grid(chip, no_column, no_row, x_var, y_var, x_key, y_key, ja_len
                 mw.CPW_taper(chip, s_test, length=lead_length, w0 = pad_w, s0=pad_s, w1 = lead + 3, s1=pad_s)
 
                 s_test_gnd = s_test.clone()
-                s_test.translatePos((-lead_length, 0))
-                s_test_ubridge = s_test.clone()
 
-                mw.Strip_taper(chip, s_test, length=lead_length, w0 = pad_w/10, w1 = lead, layer = jlayer[i])
-                mw.Strip_straight(chip, s_test, length=lead_length, w = lead, layer = jlayer[i])
+                if no_bandage:
+                    s_test.translatePos((-lead_length, 0))
+                    s_test_ubridge = s_test.clone()
+
+                    mw.Strip_taper(chip, s_test, length=lead_length, w0 = pad_w/10, w1 = lead, layer = jlayer[i])
+                    mw.Strip_straight(chip, s_test, length=lead_length, w = lead, layer = jlayer[i])
+                    
+                    if ulayer_edge:
+                        mw.CPW_taper(chip, s_test_ubridge, length=lead_length, w0 = pad_w/10, w1 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
+                        mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length, layer = ulayer[row])
+                else:
+                    # variables for now:
+                    # forced 45 degree angle currently
+                    length=13
+                    width=2
+                    inner_lead_length=25
+                    top_undercut=5
+                    length_offset=2 # offset up to line structure up
+                    pad_undercut=3
+                    angle=45/360*2*np.pi
+
+                    s_test.translatePos((-inner_lead_length, 0))
+                    x, y = s_test.getPos((0, 0))
+
+                    j_struct = dxf.polyline(points=[[x-length/2*np.sin(angle), y-length/2*np.cos(angle)], 
+                                                    [x-length/2*np.sin(angle)+width*np.cos(angle), y-length/2*np.cos(angle)-width*np.sin(angle)], 
+                                                    [x+width*1/np.cos(angle)-lead/2*np.tan(angle), y-lead/2],
+                                                    [x+width*1/np.cos(angle)-lead/2*np.tan(angle)+inner_lead_length+lead_length, y-lead/2],
+                                                    [x+width*1/np.cos(angle)-lead/2*np.tan(angle)+inner_lead_length+lead_length, y+lead/2],
+                                                    [x+width*1/np.cos(angle)+lead/2*np.tan(angle), y+lead/2], # this might need to be changed
+                                                    [x+length/2*np.sin(angle)+width*np.cos(angle), y+length/2*np.cos(angle)-width*np.sin(angle)], 
+                                                    [x+length/2*np.sin(angle), y+length/2*np.cos(angle)]], bgcolor=chip.wafer.bg(), layer=jlayer[i])
+                    j_struct.close()
+                    s_test.translatePos((lead_length+inner_lead_length+width/2,0))
+                    chip.add(j_struct)
+
+                    u_struct = dxf.polyline(points=[[x-length/2*np.sin(angle), y-length/2*np.cos(angle)], 
+                                                    [x-length/2*np.sin(angle)+width*np.cos(angle), y-length/2*np.cos(angle)-width*np.sin(angle)], 
+                                                    [x+width*1/np.cos(angle)-lead/2*np.tan(angle), y-lead/2],
+                                                    [x+width*1/np.cos(angle)-lead/2*np.tan(angle)+inner_lead_length+lead_length, y-lead/2],
+                                                    [x+width*1/np.cos(angle)-lead/2*np.tan(angle)+inner_lead_length+lead_length, y-lead/2-ubridge_width[row][i]],
+                                                    [x+(width+ubridge_width[row][i])*1/np.cos(angle)-(lead/2+ubridge_width[row][i])*np.tan(angle), y-lead/2-ubridge_width[row][i]],
+                                                    [x-(length/2+top_undercut)*np.sin(angle)+(ubridge_width[row][i]+width)*np.cos(angle), y-(length/2+top_undercut)*np.cos(angle)-(width+ubridge_width[row][i])*np.sin(angle)], 
+                                                    [x-(length/2+top_undercut)*np.sin(angle)-ubridge_width[row][i]*np.cos(angle), y-(length/2+top_undercut)*np.cos(angle)+ubridge_width[row][i]*np.sin(angle)],
+                                                    [x+(length/2+top_undercut)*np.sin(angle)-ubridge_width[row][i]*np.cos(angle), y+(length/2+top_undercut)*np.cos(angle)+ubridge_width[row][i]*np.sin(angle)],
+                                                    [x+(length/2+top_undercut)*np.sin(angle)+(ubridge_width[row][i]+width)*np.cos(angle), y+(length/2+top_undercut)*np.cos(angle)-(width+ubridge_width[row][i])*np.sin(angle)],
+                                                    [x+(width+ubridge_width[row][i])*1/np.cos(angle)+(lead/2+ubridge_width[row][i])*np.tan(angle), y+lead/2+ubridge_width[row][i]],
+                                                    [x+width*1/np.cos(angle)-lead/2*np.tan(angle)+inner_lead_length+lead_length, y+lead/2+ubridge_width[row][i]],
+                                                    [x+width*1/np.cos(angle)-lead/2*np.tan(angle)+inner_lead_length+lead_length, y+lead/2],
+                                                    [x+width*1/np.cos(angle)+lead/2*np.tan(angle), y+lead/2], # this might need to be changed
+                                                    [x+length/2*np.sin(angle)+width*np.cos(angle), y+length/2*np.cos(angle)-width*np.sin(angle)], 
+                                                    [x+length/2*np.sin(angle), y+length/2*np.cos(angle)]], bgcolor=chip.wafer.bg(), layer=ulayer[i])
+                    
                 
-                if ulayer_edge:
-                    mw.CPW_taper(chip, s_test_ubridge, length=lead_length, w0 = pad_w/10, w1 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
-                    mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length, layer = ulayer[row])
+                    # u_struct = dxf.polyline(points=[[x-length/2*np.sin(angle), y-length/2*np.cos(angle)], 
+                    #                                 [x-length/2*np.sin(angle)+width*np.cos(angle), y-length/2*np.cos(angle)-width*np.sin(angle)], 
+                    #                                 [x+width*1/np.cos(angle)-lead/2*np.tan(angle), y-lead/2],
+                    #                                 [x+width*1/np.cos(angle)-lead/2*np.tan(angle)+inner_lead_length+lead_length, y-lead/2],
+                    #                                 [x+width*1/np.cos(angle)-lead/2*np.tan(angle)+inner_lead_length+lead_length, y-lead/2-ubridge_width[row][i]],
+                    #                                 [x+(width+ubridge_width[row][i])*1/np.cos(angle)-(lead/2+ubridge_width[row][i])*np.tan(angle), y-lead/2-ubridge_width[row][i]],
+                    #                                 [x-(length/2)*np.sin(angle)+(ubridge_width[row][i]+width)*np.cos(angle), y-(length/2)*np.cos(angle)-(width+ubridge_width[row][i])*np.sin(angle)],
+                    #                                 [x-(length/2)*np.sin(angle)+(ubridge_width[row][i]+width+pad_undercut)*np.cos(angle), y-(length/2)*np.cos(angle)-(width+ubridge_width[row][i]+pad_undercut)*np.sin(angle)], 
+                    #                                 [x-(length/2+top_undercut)*np.sin(angle)+(ubridge_width[row][i]+width+pad_undercut)*np.cos(angle), y-(length/2+top_undercut)*np.cos(angle)-(width+ubridge_width[row][i]+pad_undercut)*np.sin(angle)],
+                                                    
+                    #                                 [x-(length/2+top_undercut)*np.sin(angle)-(ubridge_width[row][i]+pad_undercut)*np.cos(angle), y-(length/2)*np.cos(angle)+(ubridge_width[row][i]+pad_undercut)*np.sin(angle)],
+                                                    
+                    #                                 [x+(length/2+top_undercut)*np.sin(angle)-ubridge_width[row][i]*np.cos(angle), y+(length/2+top_undercut)*np.cos(angle)+ubridge_width[row][i]*np.sin(angle)],
+                    #                                 [x+(length/2+top_undercut)*np.sin(angle)+(ubridge_width[row][i]+width)*np.cos(angle), y+(length/2+top_undercut)*np.cos(angle)-(width+ubridge_width[row][i])*np.sin(angle)],
+                    #                                 [x+(width+ubridge_width[row][i])*1/np.cos(angle)+(lead/2+ubridge_width[row][i])*np.tan(angle), y+lead/2+ubridge_width[row][i]],
+                    #                                 [x+width*1/np.cos(angle)-lead/2*np.tan(angle)+inner_lead_length+lead_length, y+lead/2+ubridge_width[row][i]],
+                    #                                 [x+width*1/np.cos(angle)-lead/2*np.tan(angle)+inner_lead_length+lead_length, y+lead/2],
+                    #                                 [x+width*1/np.cos(angle)+lead/2*np.tan(angle), y+lead/2], # this might need to be changed
+                    #                                 [x+length/2*np.sin(angle)+width*np.cos(angle), y+length/2*np.cos(angle)-width*np.sin(angle)], 
+                    #                                 [x+length/2*np.sin(angle), y+length/2*np.cos(angle)]], bgcolor=chip.wafer.bg(), layer=ulayer[i])
+                    u_struct.close()
+                    chip.add(u_struct)
+
+                    # need to flip this structure
+                    # add ability to shift up and down where diagonal is
+            
             elif not arb_struct:
                 s_test_ubridge = s_test.clone()
 
@@ -444,20 +516,35 @@ def create_test_grid(chip, no_column, no_row, x_var, y_var, x_key, y_key, ja_len
 
             # Right pad
             if M1_pads:
-                if ulayer_edge:
-                    mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length, layer = ulayer[row])
-                    mw.CPW_taper(chip, s_test_ubridge, length=lead_length, w1 = pad_w/10, w0 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
+                if no_bandage:
+                    if ulayer_edge:
+                        mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length, layer = ulayer[row])
+                        mw.CPW_taper(chip, s_test_ubridge, length=lead_length, w1 = pad_w/10, w0 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
 
-                mw.Strip_straight(chip, s_test, length=lead_length, w = lead, s = cpw_s, layer = jlayer[i])
-                mw.Strip_taper(chip, s_test, length=lead_length, w1 = pad_w/10, w0 = lead, layer = jlayer[i])
+                    mw.Strip_straight(chip, s_test, length=lead_length, w = lead, s = cpw_s, layer = jlayer[i])
+                    mw.Strip_taper(chip, s_test, length=lead_length, w1 = pad_w/10, w0 = lead, layer = jlayer[i])
 
-                s_test.translatePos((-lead_length, 0))
+                    s_test.translatePos((-lead_length, 0))
+                    
+                    mw.CPW_taper(chip, s_test, length=lead_length, w1 = pad_w, w0 = lead, s0 = pad_s, s1 = pad_s)
+                    mw.CPW_straight(chip, s_test, w = pad_w, s = pad_s, length = pad_l, ptDensity = ptDensity)
                 
-                mw.CPW_taper(chip, s_test, length=lead_length, w1 = pad_w, w0 = lead, s0 = pad_s, s1 = pad_s)
-                mw.CPW_straight(chip, s_test, w = pad_w, s = pad_s, length = pad_l, ptDensity = ptDensity)
-            
-                mw.CPW_stub_round(chip, s_test, w = pad_w, s = pad_s, ptDensity = ptDensity, flipped = False)
-    
+                    mw.CPW_stub_round(chip, s_test, w = pad_w, s = pad_s, ptDensity = ptDensity, flipped = False)
+                else:
+                    if ulayer_edge:
+                        mw.CPW_straight(chip, s_test_ubridge, w = lead, s = ubridge_width[row][i], length = lead_length, layer = ulayer[row])
+                        mw.CPW_taper(chip, s_test_ubridge, length=lead_length, w1 = pad_w/10, w0 = lead, s0 = ubridge_width[row][i], s1 = ubridge_width[row][i], layer = ulayer[row])
+
+                    mw.Strip_straight(chip, s_test, length=lead_length, w = lead, s = cpw_s, layer = jlayer[i])
+                    mw.Strip_taper(chip, s_test, length=lead_length, w1 = pad_w/10, w0 = lead, layer = jlayer[i])
+
+                    s_test.translatePos((-lead_length, 0))
+                    
+                    mw.CPW_taper(chip, s_test, length=lead_length, w1 = pad_w, w0 = lead, s0 = pad_s, s1 = pad_s)
+                    mw.CPW_straight(chip, s_test, w = pad_w, s = pad_s, length = pad_l, ptDensity = ptDensity)
+                
+                    mw.CPW_stub_round(chip, s_test, w = pad_w, s = pad_s, ptDensity = ptDensity, flipped = False)
+
             elif not arb_struct:
                 if ulayer_edge:
                     s_test_ubridge = s_test.clone()
@@ -560,6 +647,15 @@ class Fluxonium4inWafer(m.Wafer):
             #(note: mirrorX and mirrorY are true by default)
             doMirrored(MarkerSquare, self, pt, 80,layer='EBEAM_MARK')
             doMirrored(MarkerSquare, self, pt, 80,layer='5_M1')
+
+    # def populate(self):
+    #     super().populate()
+    #     # add labels in top right of corners for chip #
+    #     for i in range(len(self.chips)):
+    #         #identifying marks
+    #         s = m.Structure(self.chips[i], start=vadd(self.chipPts[i],(5400,6100)),defaults=self.chips[i].defaults.copy())
+    #         AlphaNumStr(self.chips[i], s, str(i), size=(240, 240), centered=True, bgcolor=self.bg('5_M1'))
+
 
 class ImportedChip(m.Chip):
     def __init__(self,wafer,chipID,layer,file_name,rename_dict=None,
