@@ -51,11 +51,15 @@ def round_sf(value, n):
         value (float): value to round
         n (int): number of significant figures
     """
-    rounded_val = round(value, -int(np.floor(np.log10(abs(value)))) + (n - 1))
-    # if rounded_val has >= n digits to the left of the decimal point, return int
-    if len(str(rounded_val).split('.')[0]) >= n:
-        rounded_val = int(rounded_val)
-    return rounded_val
+    try:
+        rounded_val = round(value, -int(np.floor(np.log10(abs(value)))) + (n - 1))
+        # if rounded_val has >= n digits to the left of the decimal point, return int
+        if len(str(rounded_val).split('.')[0]) >= n:
+            rounded_val = int(rounded_val)
+        return rounded_val
+    except:
+        return value
+
 
 def grid_from_row(row, no_row):
     return [row for _ in range(no_row)]
@@ -826,7 +830,7 @@ class StandardTestChip(TestChip):
         elif test_index in [7, 8]:
             # JJ_gap, JJ_len
             self.x_key = 'gap'
-            self.x_low_default = 0.05
+            self.x_low_default = 0.00 # start at 0 for shorts
             self.x_high_default = 0.32
 
             self.y_key = 'len'
