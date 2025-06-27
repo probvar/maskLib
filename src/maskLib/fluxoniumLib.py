@@ -966,6 +966,10 @@ class StandardTestChip(TestChip):
         params = [self.params_TestChip(no_column, no_row, default_params)]
 
         x_swept = np.linspace(x_low, x_high, no_column)
+        # have shorted and open in the center for test chips 9, 10, 11, 12
+        if test_index in [9, 10, 11, 12]:
+            x_swept[2] = 0
+            x_swept[3] = 0.6 
         x_var = grid_from_row(x_swept, no_row)
         y_swept = np.linspace(y_low, y_high, no_row)
         y_var = grid_from_column(y_swept, no_column, no_row)
