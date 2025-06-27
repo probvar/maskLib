@@ -106,6 +106,92 @@ def waffle(chip, grid_x, grid_y=None,width=10,height=None,exclude=None,padx=0,pa
                 
     return chip
 
+def waffle_bumpbond(chip, grid_x, grid_y=None, width=10, height=None, exclude=None, padx=0, pady=None, bleedRadius=1, layer1='140_IUBM',
+                    layer2='40_UBM', layer3='45_BUMP', num_bumps=1):
+    radius = max(int(bleedRadius), 0)
+
+    if exclude is None:
+        exclude = ['FRAME', '703_ChipEdge', '101_IPOST', '103_IPOSTCLEAN', '12_DELBUMP']
+    else:
+        exclude.append('FRAME')
+
+    if grid_y is None:
+        grid_y = grid_x
+
+    if height is None:
+        height = width
+
+    if pady is None:
+        pady = padx
+
+    nx, ny = list(map(int, [(chip.width) / grid_x, (chip.height) / grid_y]))
+    occupied = [[False] * ny for i in range(nx)]
+    for i in range(nx):
+        occupied[i][0] = True
+        occupied[i][-1] = True
+    for i in range(ny):
+        occupied[0][i] = True
+        occupied[-1][i] = True
+
+    for e in chip.chipBlock.get_data():
+        if isinstance(e.__dxftags__()[0], Polyline):
+            if e.layer not in exclude:
+                o_x_list = []
+                o_y_list = []
+                plinePts = [v.__getitem__('location').__getitem__('xy') for v in e.__dxftags__()[0].get_data()]
+                plinePts.append(plinePts[0])
+                for p in plinePts:
+                    o_x, o_y = list(map(int, (p[0] / grid_x, p[1] / grid_y)))
+                    if 0 <= o_x < nx and 0 <= o_y < ny:
+                        o_x_list.append(o_x)
+                        o_y_list.append(o_y)
+
+                        # this will however ignore a rectangle with corners outside the chip...
+                if o_x_list:
+                    path = Path([[pt[0] / grid_x, pt[1] / grid_y] for pt in plinePts], closed=True)
+                    for x in range(min(o_x_list) - 1, max(o_x_list) + 2):
+                        for y in range(min(o_y_list) - 1, max(o_y_list) + 2):
+                            try:
+                                if path.contains_point([x + .5, y + .5]):
+                                    occupied[x][y] = True
+                                elif path.intersects_bbox(Bbox.from_bounds(x, y, 1., 1.), filled=True):
+                                    occupied[x][y] = True
+                            except IndexError:
+                                pass
+
+    second_pass = deepcopy(occupied)
+    for r in range(radius):
+        for i in range(nx):
+            for j in range(ny):
+                if occupied[i][j]:
+                    for ip, jp in [(i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)]:
+                        try:
+                            second_pass[ip][jp] = True
+                        except IndexError:
+                            pass
+        second_pass = deepcopy(second_pass)
+
+    for i in range(int(padx / grid_x), nx - int(padx / grid_x)):
+        for j in range(int(pady / grid_y), ny - int(pady / grid_y)):
+            if not second_pass[i][j]:
+                pos = i * grid_x + grid_x / 2., j * grid_y + grid_y / 2.
+                create_bumpbond(chip=chip, pos=pos, width=width, height=height, radius=7.5, layer1=layer1, layer2=layer2, layer3=layer3, num_bumps=num_bumps)
+    return chip
+
+def create_bumpbond(chip, pos, width, height, radius, layer1, layer2, layer3, num_bumps=1):
+    chip.add(dxf.rectangle(pos, width, height, bgcolor=chip.wafer.bg(), halign=const.CENTER, valign=const.MIDDLE,
+                      layer=layer1))
+    chip.add(dxf.rectangle(pos, width, height, bgcolor=chip.wafer.bg(), halign=const.CENTER, valign=const.MIDDLE,
+                      layer=layer2))
+    #Unable to use, because circle only creates a polyline with 32 sides, while LL requires the polyline to have 40-50 sides
+    # chip.add(dxf.circle(radius=7.5, center=pos, bgcolor=chip.wafer.bg(), layer=layer3))
+    initial_pos = pos
+    for i in range(num_bumps):
+        pos = (initial_pos[0] - radius - (20+2*radius)*(i-math.floor(num_bumps/2)), initial_pos[1] - radius)
+        chip.add(RoundRect(pos, height=radius*2, radius=radius, width=radius*2, roundCorners=[1, 1, 1, 1],
+                  rotation=0, ptDensity=45, layer=layer3))
+
+
 # ===============================================================================
 # basic POSITIVE microstrip function definitions
 # ===============================================================================
@@ -261,8 +347,8 @@ def Strip_stub_short(chip,structure,r_ins=None,w=None,flipped=False,extra_straig
     if r_ins > 0:
         if extra_straight_section and not flipped:
             Strip_straight(chip, struct(), r_ins, w=w,rotation=struct().direction,bgcolor=bgcolor,**kwargs)
-        chip.add(InsideCurve(struct().getPos((0,-w/2)),r_ins,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs))
-        chip.add(InsideCurve(struct().getPos((0,w/2)),r_ins,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
+        chip.add(InsideCurve(struct().getPos((0,w/2)),r_ins,rotation=struct().direction,hflip=flipped,bgcolor=bgcolor,**kwargs))
+        chip.add(InsideCurve(struct().getPos((0,-w/2)),r_ins,rotation=struct().direction,hflip=flipped,vflip=True,bgcolor=bgcolor,**kwargs))
         if extra_straight_section and flipped:
                 Strip_straight(chip, struct(), r_ins, w=w,rotation=struct().direction,bgcolor=bgcolor,**kwargs)
 
@@ -514,8 +600,8 @@ def CPW_cap(chip,structure,gap,r_ins=None,w=None,s=None,bgcolor=None,angle=90,**
     if r_ins > 0:
         chip.add(InsideCurve(struct().getPos((0,w/2)),r_ins,rotation=struct().direction + 90,vflip=True,angle=angle,bgcolor=bgcolor,**kwargs))
         chip.add(InsideCurve(struct().getPos((0,-w/2)),r_ins,rotation=struct().direction - 90,angle=angle,bgcolor=bgcolor,**kwargs))
-        chip.add(InsideCurve(struct().getPos((gap,w/2)),r_ins,rotation=struct().direction + 90,angle=angle,bgcolor=bgcolor,**kwargs))
-        chip.add(InsideCurve(struct().getPos((gap,-w/2)),r_ins,rotation=struct().direction - 90,vflip=True,angle=angle,bgcolor=bgcolor,**kwargs))
+        # chip.add(InsideCurve(struct().getPos((gap,w/2)),r_ins,rotation=struct().direction + 90,angle=angle,bgcolor=bgcolor,**kwargs))
+        # chip.add(InsideCurve(struct().getPos((gap,-w/2)),r_ins,rotation=struct().direction - 90,vflip=True,angle=angle,bgcolor=bgcolor,**kwargs))
 
     chip.add(dxf.rectangle(struct().start,gap,w+2*s,valign=const.MIDDLE,rotation=struct().direction,bgcolor=bgcolor,**kwargStrip(kwargs)),structure=structure,length=gap)
 
@@ -811,7 +897,7 @@ def CPW_pad(chip,struct,l_pad=0,l_gap=0,padw=300,pads=50,l_lead=None,w=None,s=No
 
 def CPW_launcher(chip,struct,l_taper=None,l_pad=0,l_gap=0,padw=300,pads=160,w=None,s=None,r_ins=0,r_out=0,bgcolor=None,**kwargs):
     CPW_stub_open(chip,struct,length=max(l_gap,pads),r_out=r_out,r_ins=r_ins,w=padw,s=pads,flipped=True,**kwargs)
-    CPW_straight(chip,struct,max(l_pad,padw),w=padw,s=pads,**kwargs)
+    CPW_straight(chip,struct,l_pad,w=padw,s=pads,**kwargs)
     CPW_taper(chip,struct,length=l_taper,w0=padw,s0=pads,**kwargs)
 
 def CPW_taper_cap(chip,structure,gap,width,l_straight=0,l_taper=None,s1=None,**kwargs):
@@ -975,7 +1061,13 @@ def wiggle_calc(chip,structure,length=None,nTurns=None,maxWidth=None,Width=None,
                 h = (length - nTurns*2*math.pi*radius - (start_bend+stop_bend)*(math.pi/2-1)*radius)/(4*nTurns)
     else: #length is not contrained
         h= maxWidth-radius-w/2-s
-    h = max(h,radius)
+    if h<radius:
+        print("WARNING: straight segment is shorter than the radius, possible bad CPW resonator")
+    # h = max(h,radius)
+    # Commented out by CD on 4/14/2025 - not sure why the straight segment needs to be longer than the curved segment,
+    # likely for a microwave engineering reason. But I think the alternative is significantly worse, because it just
+    # gives the wrong resonator length if n_turns is too large.
+
     return {'nTurns':nTurns,'h':h,'length':length,'maxWidth':maxWidth,'Width':Width}
 
 def CPW_wiggles(chip,structure,length=None,nTurns=None,maxWidth=None,CCW=True,start_bend = True,stop_bend=True,w=None,s=None,radius=None,bgcolor=None,debug=False,**kwargs):
@@ -1325,16 +1417,21 @@ def CPW_tee_stub(chip,structure,stub_length,stub_w,tee_r=0,outer_width=None,w=No
 # ===============================================================================
 # Airbridges (Lincoln Labs designs)
 # ===============================================================================
-def setupAirbridgeLayers(wafer:m.Wafer,BRLAYER='BRIDGE',RRLAYER='TETHER',brcolor=41,rrcolor=32):
+def setupAirbridgeLayers(wafer:m.Wafer,BRLAYER='BRIDGE',RRLAYER='TETHER',brcolor=41,rrcolor=32,IBRLAYER='BRIDGE',IRRLAYER='TETHER',ibrcolor=41,irrcolor=32):
     #add correct layers to wafer, and cache layer
     wafer.addLayer(BRLAYER,brcolor)
     wafer.BRLAYER=BRLAYER
     wafer.addLayer(RRLAYER,rrcolor)
     wafer.RRLAYER=RRLAYER
+    wafer.addLayer(IBRLAYER,ibrcolor)
+    wafer.IBRLAYER=IBRLAYER
+    wafer.addLayer(IRRLAYER,irrcolor)
+    wafer.IRRLAYER=IRRLAYER
 
 def Airbridge(
     chip, structure, cpw_w=None, cpw_s=None, xvr_width=None, xvr_length=None, rr_width=None, rr_length=None,
-    rr_br_gap=None, rr_cpw_gap=None, shape_overlap=0, br_radius=0, clockwise=False, lincolnLabs=False, BRLAYER=None, RRLAYER=None, **kwargs):
+    rr_br_gap=None, rr_cpw_gap=None, shape_overlap=0, br_radius=0, clockwise=False, lincolnLabs=False, BRLAYER=None,
+        RRLAYER=None, IBRLAYER=None, IRRLAYER=None,  layer=None, **kwargs):
     """
     Define either cpw_w and cpw_s (refers to the cpw that the airbridge goes across) or xvr_length.
     xvr_length overrides cpw_w and cpw_s.
@@ -1359,18 +1456,45 @@ def Airbridge(
             print('\x1b[33ms not defined in ',chip.chipID)
 
     #get layers from wafer
-    if BRLAYER is None:
-        try:
-            BRLAYER = chip.wafer.BRLAYER
-        except AttributeError:
-            setupAirbridgeLayers(chip.wafer)
-            BRLAYER = chip.wafer.BRLAYER
-    if RRLAYER is None:
-        try:
-            RRLAYER = chip.wafer.RRLAYER
-        except AttributeError:
-            setupAirbridgeLayers(chip.wafer)
-            RRLAYER = chip.wafer.RRLAYER
+    if layer is None:
+        if BRLAYER is None:
+            try:
+                BRLAYER = chip.wafer.IBRLAYER
+            except AttributeError:
+                setupAirbridgeLayers(chip.wafer)
+                BRLAYER = chip.wafer.IBRLAYER
+        if RRLAYER is None:
+            try:
+                RRLAYER = chip.wafer.IRRLAYER
+            except AttributeError:
+                setupAirbridgeLayers(chip.wafer)
+                RRLAYER = chip.wafer.IRRLAYER
+    elif layer=='5_M1':
+        if BRLAYER is None:
+            try:
+                BRLAYER = chip.wafer.BRLAYER
+            except AttributeError:
+                setupAirbridgeLayers(chip.wafer)
+                BRLAYER = chip.wafer.BRLAYER
+        if RRLAYER is None:
+            try:
+                RRLAYER = chip.wafer.RRLAYER
+            except AttributeError:
+                setupAirbridgeLayers(chip.wafer)
+                RRLAYER = chip.wafer.RRLAYER
+    elif layer=='105_IM1':
+        if IBRLAYER is None:
+            try:
+                BRLAYER = chip.wafer.IBRLAYER
+            except AttributeError:
+                setupAirbridgeLayers(chip.wafer)
+                BRLAYER = chip.wafer.IBRLAYER
+        if IRRLAYER is None:
+            try:
+                RRLAYER = chip.wafer.IRRLAYER
+            except AttributeError:
+                setupAirbridgeLayers(chip.wafer)
+                RRLAYER = chip.wafer.IRRLAYER
 
     if lincolnLabs:
         rr_br_gap = 1.5 # RR.BR.E.1
